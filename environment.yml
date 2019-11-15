@@ -4,3 +4,6 @@ channels:
 dependencies:
 - jupyterlab=1
 - nodejs
+- pip
+- pip:
+  - ipylab==0.1.0
