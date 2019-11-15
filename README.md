@@ -1,5 +1,7 @@
 # ipylab
 
+![Github Actions Status](https://github.com/jtpio/ipylab/workflows/CI/badge.svg)
+
 Control JupyterLab from Python notebooks.
 
 The goal is to provide access to most of the JupyterLab environment from Python notebooks. For example:
