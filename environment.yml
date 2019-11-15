@@ -1,0 +1,6 @@
+name: ipylab
+channels:
+  - conda-forge
+dependencies:
+- jupyterlab=1
+- nodejs
