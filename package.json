@@ -29,11 +29,11 @@
     "url": "https://github.com/jtpio/ipylab"
   },
   "scripts": {
-    "build": "npm run build:lib && npm run build:nbextension",
+    "build": "npm run build:lib",
     "build:labextension": "npm run clean:labextension && mkdirp ipylab/labextension && cd ipylab/labextension && npm pack ../..",
     "build:lib": "tsc",
     "build:nbextension": "webpack -p",
-    "build:all": "npm run build:labextension && npm run build:nbextension",
+    "build:all": "npm run build:labextension",
     "clean": "npm run clean:lib && npm run clean:nbextension",
     "clean:lib": "rimraf lib",
     "clean:labextension": "rimraf ipylab/labextension",
@@ -52,7 +52,9 @@
     "@jupyterlab/application": "^1.2.0",
     "@jupyter-widgets/jupyterlab-manager": "^1.0.0",
     "@jupyter-widgets/base": "^1 || ^2",
-    "@phosphor/commands": "^1.7.2"
+    "@jupyter-widgets/controls": "^1.5.3",
+    "@phosphor/commands": "^1.7.2",
+    "@phosphor/widgets": "^1.9.3"
   },
   "devDependencies": {
     "@phosphor/application": "^1.6.0",

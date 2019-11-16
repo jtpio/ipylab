@@ -13,6 +13,7 @@
     "sourceMap": true,
     "strict": true,
     "strictNullChecks": false,
+    "strictPropertyInitialization": false,
     "target": "es2017"
   },
   "include": [

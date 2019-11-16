@@ -19,8 +19,12 @@ const extension: JupyterFrontEndPlugin<void> = {
   autoStart: true,
   requires: [IJupyterWidgetRegistry],
   activate: (app: JupyterFrontEnd, registry: IJupyterWidgetRegistry): void => {
+
+    // add globals
     widgetExports.JupyterFrontEndModel._app = app;
+    widgetExports.ShellModel._shell = app.shell;
     widgetExports.CommandRegistryModel._commands = app.commands;
+
     registry.registerWidget({
       name: MODULE_NAME,
       version: MODULE_VERSION,
