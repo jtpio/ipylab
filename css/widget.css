@@ -1,3 +1,8 @@
 .custom-widget {
   background-color: blue;
 }
+
+/* Default Split Handle Color*/
+.jp-JupyterPhosphorSplitPanelWidget .p-SplitPanel-handle {
+  background-color: var(--jp-border-color2);
+}
