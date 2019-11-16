@@ -11,6 +11,7 @@ The goal is to provide access to most of the JupyterLab environment from Python 
 - Build more advanced interfaces leveraging `SplitPanel`, `Toolbar` and other Phosphor widgets
 - Launch arbitrary commands (new terminal, change theme, open file and so on)
 - Open a workspace with a specific layout
+- Listen to JupyterLab signals (notebook opened, console closed) and trigger Python callbacks
 
 ## Examples
 
