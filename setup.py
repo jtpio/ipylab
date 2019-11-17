@@ -27,34 +27,28 @@ ensure_python('>=3.4')
 # Get our version
 version = get_version(pjoin(name, '_version.py'))
 
-nb_path = pjoin(HERE, name, 'nbextension', 'static')
 lab_path = pjoin(HERE, name, 'labextension')
 
 # Representative files that should exist after a successful build
 jstargets = [
-    pjoin(nb_path, 'index.js'),
     pjoin(HERE, 'lib', 'plugin.js'),
 ]
 
 package_data_spec = {
     name: [
-        'nbextension/static/*.*js*',
         'labextension/*.tgz'
     ]
 }
 
 data_files_spec = [
-    ('share/jupyter/nbextensions/ipylab',
-        nb_path, '*.js*'),
     ('share/jupyter/lab/extensions', lab_path, '*.tgz'),
-    ('etc/jupyter/nbconfig/notebook.d' , HERE, 'ipylab.json')
 ]
 
 
 cmdclass = create_cmdclass('jsdeps', package_data_spec=package_data_spec,
     data_files_spec=data_files_spec)
 cmdclass['jsdeps'] = combine_commands(
-    install_npm(HERE, build_cmd='build:all'),
+    install_npm(HERE, build_cmd='build'),
     ensure_targets(jstargets),
 )
 
@@ -68,7 +62,7 @@ setup_args = dict(
     packages        = find_packages(),
     author          = 'Jeremy Tuloup',
     author_email    = 'jeremy@jtp.io',
-    url             = 'https://github.com//ipylab',
+    url             = 'https://github.com/jtpio/ipylab',
     license         = 'BSD',
     platforms       = "Linux, Mac OS X, Windows",
     keywords        = ['Jupyter', 'Widgets', 'IPython'],
@@ -82,6 +76,7 @@ setup_args = dict(
         'Programming Language :: Python :: 3.5',
         'Programming Language :: Python :: 3.6',
         'Programming Language :: Python :: 3.7',
+        'Programming Language :: Python :: 3.8',
         'Framework :: Jupyter',
     ],
     include_package_data = True,
