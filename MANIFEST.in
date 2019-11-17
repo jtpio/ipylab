@@ -7,7 +7,6 @@ include .coverage.rc
 
 include tsconfig.json
 include package.json
-include webpack.config.js
 include ipylab/labextension/*.tgz
 
 # Documentation
