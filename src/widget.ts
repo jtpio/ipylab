@@ -194,6 +194,9 @@ export class CommandRegistryModel extends WidgetModel {
     this.commands = CommandRegistryModel._commands;
     super.initialize(attributes, options);
     this.on("msg:custom", this.onMessage.bind(this));
+
+    this.set('_commands', this.commands.listCommands());
+    this.save_changes();
   }
 
   private onMessage(msg: any) {
