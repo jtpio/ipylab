@@ -110,7 +110,7 @@ export class SplitPanelView extends VBoxView {
 
   initialize(parameters: any) {
     super.initialize(parameters);
-    const pWidget = this.pWidget as any;
+    const pWidget = (this.pWidget as any) as JupyterPhosphorSplitPanelWidget;
     this.model.on('change:orientation', () => {
       const orientation = this.model.get('orientation');
       pWidget.orientation = orientation;
