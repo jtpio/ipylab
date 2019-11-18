@@ -7,7 +7,7 @@ from ._frontend import module_name, module_version
 
 
 class CommandRegistry(Widget):
-    _model_name = Unicode('CommandRegistryModel').tag(sync=True)
+    _model_name = Unicode("CommandRegistryModel").tag(sync=True)
     _model_module = Unicode(module_name).tag(sync=True)
     _model_module_version = Unicode(module_version).tag(sync=True)
 
@@ -15,10 +15,7 @@ class CommandRegistry(Widget):
 
     def execute(self, command, args=None):
         args = args or {}
-        self.send({
-            'func': 'execute',
-            'payload': {'command': command, 'args': args}
-        })
+        self.send({"func": "execute", "payload": {"command": command, "args": args}})
 
     def list_commands(self):
         return self._commands
