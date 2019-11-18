@@ -2,6 +2,8 @@
 
 ![Github Actions Status](https://github.com/jtpio/ipylab/workflows/CI/badge.svg)
 [![Binder](https://mybinder.org/badge_logo.svg)](https://mybinder.org/v2/gh/jtpio/ipylab/stable?urlpath=lab/tree/examples/introduction.ipynb)
+[![pypi](https://img.shields.io/pypi/v/ipylab.svg)](https://pypi.python.org/pypi/ipylab)
+[![npm](https://img.shields.io/npm/v/ipylab.svg)](https://www.npmjs.com/package/ipylab)
 
 Control JupyterLab from Python notebooks.
 
