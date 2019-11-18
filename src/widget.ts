@@ -203,7 +203,7 @@ export class CommandRegistryModel extends WidgetModel {
     switch (msg.func) {
       case 'execute':
         const { command, args } = msg.payload;
-        this.commands.execute(command, args);
+        void this.commands.execute(command, args);
         break;
       default:
         break;

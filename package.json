@@ -33,9 +33,13 @@
     "build:labextension": "npm run clean:labextension && mkdirp ipylab/labextension && cd ipylab/labextension && npm pack ../..",
     "clean": "rimraf lib tsconfig.tsbuildinfo",
     "clean:labextension": "rimraf ipylab/labextension",
+    "lint": "jlpm && jlpm run prettier && jlpm run tslint",
+    "lint:check": "jlpm run prettier:check && jlpm run tslint:check",
     "prepack": "npm run build",
     "prettier": "prettier --write \"**/*{.ts,.tsx,.js,.jsx,.css,.json,.md}\" \"!dist/**\" \"!docs/**\"",
     "prettier:check": "prettier --list-different \"**/*{.ts,.tsx,.js,.jsx,.css,.json,.md}\" \"!dist/**\" \"!docs/**\"",
+    "tslint": "tslint --fix -c tslint.json --project tsconfig.json \"**/*{.ts,.tsx}\"",
+    "tslint:check": "tslint -c tslint.json --project tsconfig.json \"**/*{.ts,.tsx}\"",
     "watch": "npm-run-all -p watch:*",
     "watch:lib": "tsc -w"
   },
@@ -80,7 +84,11 @@
     "source-map-loader": "^0.2.4",
     "style-loader": "^1.0.0",
     "ts-loader": "^5.2.1",
-    "typescript": "~3.1.2"
+    "tslint": "^5.20.1",
+    "tslint-config-prettier": "^1.18.0",
+    "tslint-plugin-prettier": "^2.0.1",
+    "tslint-react": "^4.1.0",
+    "typescript": "~3.7.2"
   },
   "jupyterlab": {
     "extension": "lib/plugin"

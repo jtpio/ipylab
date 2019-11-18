@@ -18,7 +18,7 @@ jobs:
        node-version: '10.x'
     - name: Lint TypeScript
       run: |
-        npm i && npm run prettier:check
+        npm i && npm run lint
 
   lint_python:
     runs-on: ubuntu-latest
