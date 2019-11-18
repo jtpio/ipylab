@@ -4,22 +4,21 @@
 import {
   JupyterFrontEndPlugin,
   JupyterFrontEnd
-} from "@jupyterlab/application";
+} from '@jupyterlab/application';
 
-import { IJupyterWidgetRegistry } from "@jupyter-widgets/base";
+import { IJupyterWidgetRegistry } from '@jupyter-widgets/base';
 
-import * as widgetExports from "./widget";
+import * as widgetExports from './widget';
 
-import { MODULE_NAME, MODULE_VERSION } from "./version";
+import { MODULE_NAME, MODULE_VERSION } from './version';
 
-const EXTENSION_ID = "ipylab:plugin";
+const EXTENSION_ID = 'ipylab:plugin';
 
 const extension: JupyterFrontEndPlugin<void> = {
   id: EXTENSION_ID,
   autoStart: true,
   requires: [IJupyterWidgetRegistry],
   activate: (app: JupyterFrontEnd, registry: IJupyterWidgetRegistry): void => {
-
     // add globals
     widgetExports.JupyterFrontEndModel._app = app;
     widgetExports.ShellModel._shell = app.shell;

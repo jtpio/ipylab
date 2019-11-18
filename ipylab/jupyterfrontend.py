@@ -11,10 +11,12 @@ from ._frontend import module_name, module_version
 from .commands import CommandRegistry
 from .shell import Shell
 
+
 class JupyterFrontEnd(Widget):
     """TODO: Make Singleton?
     """
-    _model_name = Unicode('JupyterFrontEndModel').tag(sync=True)
+
+    _model_name = Unicode("JupyterFrontEndModel").tag(sync=True)
     _model_module = Unicode(module_name).tag(sync=True)
     _model_module_version = Unicode(module_version).tag(sync=True)
 
@@ -22,9 +24,4 @@ class JupyterFrontEnd(Widget):
     commands = Instance(CommandRegistry).tag(sync=True, **widget_serialization)
 
     def __init__(self, *args, **kwargs):
-        super().__init__(
-            *args,
-            shell=Shell(),
-            commands=CommandRegistry(),
-            **kwargs
-        )
+        super().__init__(*args, shell=Shell(), commands=CommandRegistry(), **kwargs)

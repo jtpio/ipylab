@@ -1,9 +1,9 @@
 // Copyright (c) Jeremy Tuloup
 // Distributed under the terms of the Modified BSD License.
 
-import { JupyterFrontEnd } from "@jupyterlab/application";
+import { JupyterFrontEnd } from '@jupyterlab/application';
 
-import { CommandRegistry } from "@phosphor/commands";
+import { CommandRegistry } from '@phosphor/commands';
 
 import {
   DOMWidgetModel,
@@ -12,18 +12,18 @@ import {
   unpack_models,
   JupyterPhosphorWidget,
   DOMWidgetView
-} from "@jupyter-widgets/base";
+} from '@jupyter-widgets/base';
 
-import { VBoxModel, VBoxView } from "@jupyter-widgets/controls";
+import { VBoxModel, VBoxView } from '@jupyter-widgets/controls';
 
-import { MODULE_NAME, MODULE_VERSION } from "./version";
+import { MODULE_NAME, MODULE_VERSION } from './version';
 
-import { SplitPanel } from "@phosphor/widgets";
-import { Message } from "@phosphor/messaging";
-import $ from "jquery";
+import { SplitPanel } from '@phosphor/widgets';
+import { Message } from '@phosphor/messaging';
+import $ from 'jquery';
 
 // Import the CSS
-import "../css/widget.css";
+import '../css/widget.css';
 
 export class PanelModel extends VBoxModel {
   defaults() {
@@ -36,7 +36,7 @@ export class PanelModel extends VBoxModel {
     };
   }
 
-  static model_name = "PanelModel";
+  static model_name = 'PanelModel';
   static model_module = MODULE_NAME;
   static model_module_version = MODULE_VERSION;
 }
@@ -82,10 +82,10 @@ export class SplitPanelModel extends PanelModel {
     };
   }
 
-  static model_name = "SplitPanelModel";
+  static model_name = 'SplitPanelModel';
   static model_module = MODULE_NAME;
   static model_module_version = MODULE_VERSION;
-  static view_name = "SplitPanelView";
+  static view_name = 'SplitPanelView';
   static view_module = MODULE_NAME;
   static view_module_name = MODULE_VERSION;
 }
@@ -101,7 +101,7 @@ export class SplitPanelView extends VBoxView {
 
   _setElement(el: HTMLElement) {
     if (this.el || el !== this.pWidget.node) {
-      throw new Error("Cannot reset the DOM element.");
+      throw new Error('Cannot reset the DOM element.');
     }
 
     this.el = this.pWidget.node;
@@ -114,7 +114,7 @@ export class SplitPanelView extends VBoxView {
     this.model.on('change:orientation', () => {
       const orientation = this.model.get('orientation');
       pWidget.orientation = orientation;
-    })
+    });
   }
 
   async render() {
@@ -139,12 +139,12 @@ export class ShellModel extends WidgetModel {
   initialize(attributes: any, options: any) {
     this.shell = ShellModel._shell;
     super.initialize(attributes, options);
-    this.on("msg:custom", this.onMessage.bind(this));
+    this.on('msg:custom', this.onMessage.bind(this));
   }
 
   private async onMessage(msg: any) {
     switch (msg.func) {
-      case "add":
+      case 'add':
         const { serializedWidget, area, args } = msg.payload;
         const model = await unpack_models(
           serializedWidget,
@@ -169,7 +169,7 @@ export class ShellModel extends WidgetModel {
     ...WidgetModel.serializers
   };
 
-  static model_name = "ShellModel";
+  static model_name = 'ShellModel';
   static model_module = MODULE_NAME;
   static model_module_version = MODULE_VERSION;
   static view_name: string = null;
@@ -193,7 +193,7 @@ export class CommandRegistryModel extends WidgetModel {
   initialize(attributes: any, options: any) {
     this.commands = CommandRegistryModel._commands;
     super.initialize(attributes, options);
-    this.on("msg:custom", this.onMessage.bind(this));
+    this.on('msg:custom', this.onMessage.bind(this));
 
     this.set('_commands', this.commands.listCommands());
     this.save_changes();
@@ -201,9 +201,9 @@ export class CommandRegistryModel extends WidgetModel {
 
   private onMessage(msg: any) {
     switch (msg.func) {
-      case "execute":
+      case 'execute':
         const { command, args } = msg.payload;
-        this.commands.execute(command, args);
+        void this.commands.execute(command, args);
         break;
       default:
         break;
@@ -214,7 +214,7 @@ export class CommandRegistryModel extends WidgetModel {
     ...WidgetModel.serializers
   };
 
-  static model_name = "CommandRegistryModel";
+  static model_name = 'CommandRegistryModel';
   static model_module = MODULE_NAME;
   static model_module_version = MODULE_VERSION;
   static view_name: string = null;
@@ -245,7 +245,7 @@ export class JupyterFrontEndModel extends WidgetModel {
     ...DOMWidgetModel.serializers
   };
 
-  static model_name = "JupyterFrontEndModel";
+  static model_name = 'JupyterFrontEndModel';
   static model_module = MODULE_NAME;
   static model_module_version = MODULE_VERSION;
   static view_name: string = null;

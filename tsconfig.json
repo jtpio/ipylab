@@ -1,7 +1,7 @@
 {
   "compilerOptions": {
     "declaration": true,
-    "esModuleInterop":true,
+    "esModuleInterop": true,
     "module": "esnext",
     "moduleResolution": "node",
     "noEmitOnError": true,
@@ -16,8 +16,5 @@
     "strictPropertyInitialization": false,
     "target": "es2017"
   },
-  "include": [
-    "src/**/*.ts",
-    "src/**/*.tsx",
-  ]
+  "include": ["src/**/*.ts", "src/**/*.tsx"]
 }
