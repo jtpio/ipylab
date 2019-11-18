@@ -41,3 +41,11 @@ python -m pip install -e .
 jlpm && jlpm run build
 jupyter labextension install @jupyter-widgets/jupyterlab-manager . --debug
 ```
+
+## Related projects
+
+There are a couple of projects that also enable interacting with the JupyterLab environment from Python notebooks:
+
+- [wxyz](https://github.com/deathbeds/wxyz): experimental widgets (including `DockPanel`)
+- [jupyterlab-sidecar](https://github.com/jupyter-widgets/jupyterlab-sidecar): add widgets to the JupyterLab right area
+- [jupyterlab_commands](https://github.com/timkpaine/jupyterlab_commands): add arbitrary Python commands to the jupyterlab command palette
