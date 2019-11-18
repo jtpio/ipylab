@@ -37,7 +37,7 @@ jupyter labextension install @jupyter-widgets/jupyterlab-manager ipylab
 ## Development
 
 ```bash
-python -m pip install -e .
+python -m pip install -e ".[dev]"
 jlpm && jlpm run build
 jupyter labextension install @jupyter-widgets/jupyterlab-manager . --debug
 ```
