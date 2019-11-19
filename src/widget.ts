@@ -237,8 +237,10 @@ export class JupyterFrontEndModel extends WidgetModel {
 
   initialize(attributes: any, options: any) {
     this.app = JupyterFrontEndModel._app;
-    console.log(this.app);
     super.initialize(attributes, options);
+    this.send({ event: 'lab_ready' }, {});
+    this.set('version', this.app.version);
+    this.save_changes();
   }
 
   static serializers: ISerializers = {
