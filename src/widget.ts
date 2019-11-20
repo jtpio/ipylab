@@ -178,6 +178,7 @@ export class ShellModel extends WidgetModel {
         let pWidget = view.pWidget;
         pWidget.id = view.id;
         pWidget.title.label = title.get('label');
+        pWidget.title.iconClass = title.get('icon_class');
         pWidget.title.closable = title.get('closable');
         pWidget.disposed.connect(() => {
           view.remove();

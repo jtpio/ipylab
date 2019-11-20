@@ -12,6 +12,7 @@ class Title(Widget):
     _model_module_version = Unicode(module_version).tag(sync=True)
 
     label = Unicode().tag(sync=True)
+    icon_class = Unicode().tag(sync=True)
     closable = Bool(True).tag(sync=True)
 
 
