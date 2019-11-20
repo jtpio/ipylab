@@ -177,6 +177,12 @@ export class ShellModel extends WidgetModel {
         }
         this.shell.add(pWidget, area, args);
         break;
+      case 'expandLeft':
+        this.shell.expandLeft();
+        break;
+      case 'expandRight':
+        this.shell.expandRight();
+        break;
       default:
         break;
     }
