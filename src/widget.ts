@@ -25,6 +25,24 @@ import $ from 'jquery';
 // Import the CSS
 import '../css/widget.css';
 
+export class TitleModel extends WidgetModel {
+  defaults() {
+    return {
+      ...super.defaults(),
+      _model_name: TitleModel.model_name,
+      _model_module: TitleModel.model_module,
+      _model_module_version: TitleModel.model_module_version
+    };
+  }
+
+  static model_name = 'TitleModel';
+  static model_module = MODULE_NAME;
+  static model_module_version = MODULE_VERSION;
+  static view_name: string = null;
+  static view_module: string = null;
+  static view_module_version = MODULE_VERSION;
+}
+
 export class PanelModel extends VBoxModel {
   defaults() {
     return {
@@ -152,10 +170,15 @@ export class ShellModel extends WidgetModel {
         );
         const view = await this.widget_manager.create_view(model, {});
 
+        const title = await unpack_models(
+          model.get('title'),
+          this.widget_manager
+        );
+
         let pWidget = view.pWidget;
         pWidget.id = view.id;
-        pWidget.title.label = 'Widget'; // TODO: read from widget
-        pWidget.title.closable = true;
+        pWidget.title.label = title.get('label');
+        pWidget.title.closable = title.get('closable');
         pWidget.disposed.connect(() => {
           view.remove();
         });
