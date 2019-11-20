@@ -3,7 +3,8 @@
 
 import {
   JupyterFrontEndPlugin,
-  JupyterFrontEnd
+  JupyterFrontEnd,
+  ILabShell
 } from '@jupyterlab/application';
 
 import { IJupyterWidgetRegistry } from '@jupyter-widgets/base';
@@ -17,11 +18,15 @@ const EXTENSION_ID = 'ipylab:plugin';
 const extension: JupyterFrontEndPlugin<void> = {
   id: EXTENSION_ID,
   autoStart: true,
-  requires: [IJupyterWidgetRegistry],
-  activate: (app: JupyterFrontEnd, registry: IJupyterWidgetRegistry): void => {
+  requires: [IJupyterWidgetRegistry, ILabShell],
+  activate: (
+    app: JupyterFrontEnd,
+    registry: IJupyterWidgetRegistry,
+    shell: ILabShell
+  ): void => {
     // add globals
     widgetExports.JupyterFrontEndModel._app = app;
-    widgetExports.ShellModel._shell = app.shell;
+    widgetExports.ShellModel._shell = shell;
     widgetExports.CommandRegistryModel._commands = app.commands;
 
     registry.registerWidget({

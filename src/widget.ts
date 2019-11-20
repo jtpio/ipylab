@@ -1,7 +1,7 @@
 // Copyright (c) Jeremy Tuloup
 // Distributed under the terms of the Modified BSD License.
 
-import { JupyterFrontEnd } from '@jupyterlab/application';
+import { JupyterFrontEnd, ILabShell } from '@jupyterlab/application';
 
 import { CommandRegistry } from '@phosphor/commands';
 
@@ -154,10 +154,27 @@ export class ShellModel extends WidgetModel {
 
         let pWidget = view.pWidget;
         pWidget.id = view.id;
+        pWidget.title.label = 'Widget'; // TODO: read from widget
         pWidget.title.closable = true;
         pWidget.disposed.connect(() => {
           view.remove();
         });
+
+        if (area === 'left' || area === 'right') {
+          let handler;
+          if (area === 'left') {
+            handler = this.shell['_leftHandler'];
+          } else {
+            handler = this.shell['_rightHandler'];
+          }
+
+          // handle tab closed event
+          handler.sideBar.tabCloseRequested.connect((sender: any, tab: any) => {
+            tab.title.owner.close();
+          });
+
+          pWidget.addClass('jp-SideAreaWidget');
+        }
         this.shell.add(pWidget, area, args);
         break;
       default:
@@ -176,8 +193,8 @@ export class ShellModel extends WidgetModel {
   static view_module: string = null;
   static view_module_version = MODULE_VERSION;
 
-  private shell: JupyterFrontEnd.IShell;
-  static _shell: JupyterFrontEnd.IShell;
+  private shell: ILabShell;
+  static _shell: ILabShell;
 }
 
 export class CommandRegistryModel extends WidgetModel {
