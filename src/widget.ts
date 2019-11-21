@@ -1,7 +1,7 @@
 // Copyright (c) Jeremy Tuloup
 // Distributed under the terms of the Modified BSD License.
 
-import { JupyterFrontEnd } from '@jupyterlab/application';
+import { JupyterFrontEnd, ILabShell } from '@jupyterlab/application';
 
 import { CommandRegistry } from '@phosphor/commands';
 
@@ -24,6 +24,24 @@ import $ from 'jquery';
 
 // Import the CSS
 import '../css/widget.css';
+
+export class TitleModel extends WidgetModel {
+  defaults() {
+    return {
+      ...super.defaults(),
+      _model_name: TitleModel.model_name,
+      _model_module: TitleModel.model_module,
+      _model_module_version: TitleModel.model_module_version
+    };
+  }
+
+  static model_name = 'TitleModel';
+  static model_module = MODULE_NAME;
+  static model_module_version = MODULE_VERSION;
+  static view_name: string = null;
+  static view_module: string = null;
+  static view_module_version = MODULE_VERSION;
+}
 
 export class PanelModel extends VBoxModel {
   defaults() {
@@ -152,13 +170,48 @@ export class ShellModel extends WidgetModel {
         );
         const view = await this.widget_manager.create_view(model, {});
 
+        const title = await unpack_models(
+          model.get('title'),
+          this.widget_manager
+        );
+
         let pWidget = view.pWidget;
         pWidget.id = view.id;
-        pWidget.title.closable = true;
         pWidget.disposed.connect(() => {
           view.remove();
         });
+
+        const updateTitle = () => {
+          pWidget.title.label = title.get('label');
+          pWidget.title.iconClass = title.get('icon_class');
+          pWidget.title.closable = title.get('closable');
+        };
+
+        title.on('change', updateTitle);
+        updateTitle();
+
+        if (area === 'left' || area === 'right') {
+          let handler;
+          if (area === 'left') {
+            handler = this.shell['_leftHandler'];
+          } else {
+            handler = this.shell['_rightHandler'];
+          }
+
+          // handle tab closed event
+          handler.sideBar.tabCloseRequested.connect((sender: any, tab: any) => {
+            tab.title.owner.close();
+          });
+
+          pWidget.addClass('jp-SideAreaWidget');
+        }
         this.shell.add(pWidget, area, args);
+        break;
+      case 'expandLeft':
+        this.shell.expandLeft();
+        break;
+      case 'expandRight':
+        this.shell.expandRight();
         break;
       default:
         break;
@@ -176,8 +229,8 @@ export class ShellModel extends WidgetModel {
   static view_module: string = null;
   static view_module_version = MODULE_VERSION;
 
-  private shell: JupyterFrontEnd.IShell;
-  static _shell: JupyterFrontEnd.IShell;
+  private shell: ILabShell;
+  static _shell: ILabShell;
 }
 
 export class CommandRegistryModel extends WidgetModel {

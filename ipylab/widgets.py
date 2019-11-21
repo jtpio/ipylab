@@ -1,15 +1,30 @@
 # Copyright (c) Jeremy Tuloup.
 # Distributed under the terms of the Modified BSD License.
 
-from ipywidgets import VBox
-from traitlets import Unicode
+from ipywidgets import VBox, Widget, widget_serialization
+from traitlets import Bool, Instance, Unicode
 from ._frontend import module_name, module_version
+
+
+class Title(Widget):
+    _model_name = Unicode("TitleModel").tag(sync=True)
+    _model_module = Unicode(module_name).tag(sync=True)
+    _model_module_version = Unicode(module_version).tag(sync=True)
+
+    label = Unicode().tag(sync=True)
+    icon_class = Unicode().tag(sync=True)
+    closable = Bool(True).tag(sync=True)
 
 
 class Panel(VBox):
     _model_name = Unicode("PanelModel").tag(sync=True)
     _model_module = Unicode(module_name).tag(sync=True)
     _model_module_version = Unicode(module_version).tag(sync=True)
+
+    title = Instance(Title).tag(sync=True, **widget_serialization)
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, title=Title(), **kwargs)
 
 
 class SplitPanel(Panel):
