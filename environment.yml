@@ -6,4 +6,4 @@ dependencies:
 - nodejs
 - pip
 - pip:
-  - ipylab==0.1.2
+  - ipylab==0.1.3
