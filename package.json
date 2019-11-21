@@ -35,7 +35,7 @@
     "clean:labextension": "rimraf ipylab/labextension",
     "lint": "jlpm && jlpm run prettier && jlpm run tslint",
     "lint:check": "jlpm run prettier:check && jlpm run tslint:check",
-    "prepack": "jlpm run build",
+    "prepack": "npm run build",
     "prettier": "prettier --write \"**/*{.ts,.tsx,.js,.jsx,.css,.json,.md}\" \"!dist/**\" \"!docs/**\"",
     "prettier:check": "prettier --list-different \"**/*{.ts,.tsx,.js,.jsx,.css,.json,.md}\" \"!dist/**\" \"!docs/**\"",
     "tslint": "tslint --fix -c tslint.json --project tsconfig.json \"**/*{.ts,.tsx}\"",
