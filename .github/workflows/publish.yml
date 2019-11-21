@@ -13,7 +13,7 @@ jobs:
       uses: actions/setup-node@v1
       with:
        node-version: '10.x'
-       run: npm install
+       registry-url: 'https://registry.npmjs.org'
     - name: Set up Python
       uses: actions/setup-python@v1
       with:
