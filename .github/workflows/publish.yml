@@ -29,7 +29,14 @@ jobs:
       run: |
         python setup.py sdist bdist_wheel
         twine upload dist/*
+    - uses: actions/setup-node@v1
+      with:
+       node-version: '10.x'
+       registry-url: 'https://registry.npmjs.org'
     - name: Publish to npm
       env:
         NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
-      run: npm publish
+      run: |
+        echo "//registry.npmjs.org/:_authToken=${{ secrets.NPM_TOKEN }}" > ~/.npmrc
+        npm publish
+        
