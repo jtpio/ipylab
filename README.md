@@ -2,6 +2,7 @@
 
 ![Github Actions Status](https://github.com/jtpio/ipylab/workflows/Build/badge.svg)
 [![Binder](https://mybinder.org/badge_logo.svg)](https://mybinder.org/v2/gh/jtpio/ipylab/stable?urlpath=lab/tree/examples/widgets.ipynb)
+[![Conda Version](https://img.shields.io/conda/vn/conda-forge/ipylab.svg)](https://anaconda.org/conda-forge/ipylab)
 [![pypi](https://img.shields.io/pypi/v/ipylab.svg)](https://pypi.python.org/pypi/ipylab)
 [![npm](https://img.shields.io/npm/v/ipylab.svg)](https://www.npmjs.com/package/ipylab)
 
@@ -14,6 +15,12 @@ The goal is to provide access to most of the JupyterLab environment from Python 
 - Launch arbitrary commands (new terminal, change theme, open file and so on)
 - Open a workspace with a specific layout
 - Listen to JupyterLab signals (notebook opened, console closed) and trigger Python callbacks
+
+## Try it online
+
+Try it in your browser with Binder:
+
+[![Binder](https://mybinder.org/badge_logo.svg)](https://mybinder.org/v2/gh/jtpio/ipylab/stable?urlpath=lab/tree/examples/widgets.ipynb)
 
 ## Examples
 
@@ -31,6 +38,17 @@ You can install using `pip`:
 
 ```bash
 pip install ipylab
+```
+
+Or with `conda`:
+
+```bash
+conda install -c conda-forge ipylab
+```
+
+To install the JupyterLab extension:
+
+```bash
 jupyter labextension install @jupyter-widgets/jupyterlab-manager ipylab
 ```
 
