@@ -3,7 +3,9 @@
 
 import { JupyterFrontEnd, ILabShell } from '@jupyterlab/application';
 
-import { CommandRegistry } from '@phosphor/commands';
+import { DOMUtils, WidgetTracker } from '@jupyterlab/apputils';
+
+import { DocumentRegistry } from '@jupyterlab/docregistry';
 
 import {
   DOMWidgetModel,
@@ -16,11 +18,15 @@ import {
 
 import { VBoxModel, VBoxView } from '@jupyter-widgets/controls';
 
-import { MODULE_NAME, MODULE_VERSION } from './version';
+import { CommandRegistry } from '@phosphor/commands';
 
-import { SplitPanel } from '@phosphor/widgets';
 import { Message } from '@phosphor/messaging';
+
+import { SplitPanel, Widget } from '@phosphor/widgets';
+
 import $ from 'jquery';
+
+import { MODULE_NAME, MODULE_VERSION } from './version';
 
 // Import the CSS
 import '../css/widget.css';
@@ -64,8 +70,8 @@ class JupyterPhosphorSplitPanelWidget extends SplitPanel {
     let view = options.view;
     delete options.view;
     super(options);
-    this.addClass('jp-JupyterPhosphorSplitPanelWidget');
     this._view = view;
+    this.addClass('jp-JupyterPhosphorSplitPanelWidget');
   }
 
   processMessage(msg: Message) {
@@ -156,6 +162,10 @@ export class ShellModel extends WidgetModel {
 
   initialize(attributes: any, options: any) {
     this.shell = ShellModel._shell;
+    this.commands = ShellModel._commands;
+    this.tracker = ShellModel._tracker;
+    this._registerCommands();
+
     super.initialize(attributes, options);
     this.on('msg:custom', this.onMessage.bind(this));
   }
@@ -164,19 +174,39 @@ export class ShellModel extends WidgetModel {
     switch (msg.func) {
       case 'add':
         const { serializedWidget, area, args } = msg.payload;
-        const model = await unpack_models(
-          serializedWidget,
-          this.widget_manager
-        );
-        const view = await this.widget_manager.create_view(model, {});
+        void this.commands.execute('ipylab:open-widget', {
+          modelId: serializedWidget,
+          area,
+          args
+        });
+        break;
+      case 'expandLeft':
+        this.shell.expandLeft();
+        break;
+      case 'expandRight':
+        this.shell.expandRight();
+        break;
+      default:
+        break;
+    }
+  }
 
+  private _registerCommands() {
+    if (ShellModel._commands.hasCommand('ipylab:open-widget')) {
+      return;
+    }
+    this.commands.addCommand('ipylab:open-widget', {
+      execute: async args => {
+        const modelId = args['modelId'];
+        const model = await unpack_models(modelId, this.widget_manager);
+        const view = await this.widget_manager.create_view(model, {});
         const title = await unpack_models(
           model.get('title'),
           this.widget_manager
         );
 
         let pWidget = view.pWidget;
-        pWidget.id = view.id;
+        pWidget.id = DOMUtils.createDomID();
         pWidget.disposed.connect(() => {
           view.remove();
         });
@@ -190,6 +220,7 @@ export class ShellModel extends WidgetModel {
         title.on('change', updateTitle);
         updateTitle();
 
+        const area = args['area'] as ILabShell.Area;
         if (area === 'left' || area === 'right') {
           let handler;
           if (area === 'left') {
@@ -204,18 +235,17 @@ export class ShellModel extends WidgetModel {
           });
 
           pWidget.addClass('jp-SideAreaWidget');
+
+          // if (this.restorer) {
+          //   this.restorer.add(pWidget, pWidget.id);
+          // }
         }
-        this.shell.add(pWidget, area, args);
-        break;
-      case 'expandLeft':
-        this.shell.expandLeft();
-        break;
-      case 'expandRight':
-        this.shell.expandRight();
-        break;
-      default:
-        break;
-    }
+
+        const extraArgs = args['args'] as DocumentRegistry.IOpenOptions;
+        this.shell.add(pWidget, area, extraArgs);
+        return this.tracker.add(pWidget);
+      }
+    });
   }
 
   static serializers: ISerializers = {
@@ -231,6 +261,12 @@ export class ShellModel extends WidgetModel {
 
   private shell: ILabShell;
   static _shell: ILabShell;
+
+  private commands: CommandRegistry;
+  static _commands: CommandRegistry;
+
+  private tracker: WidgetTracker<Widget>;
+  static _tracker: WidgetTracker<Widget>;
 }
 
 export class CommandRegistryModel extends WidgetModel {
