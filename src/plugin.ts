@@ -7,6 +7,8 @@ import {
   ILabShell
 } from '@jupyterlab/application';
 
+import { ICommandPalette } from '@jupyterlab/apputils';
+
 import { IJupyterWidgetRegistry } from '@jupyter-widgets/base';
 
 import * as widgetExports from './widget';
@@ -19,15 +21,18 @@ const extension: JupyterFrontEndPlugin<void> = {
   id: EXTENSION_ID,
   autoStart: true,
   requires: [IJupyterWidgetRegistry, ILabShell],
+  optional: [ICommandPalette],
   activate: (
     app: JupyterFrontEnd,
     registry: IJupyterWidgetRegistry,
-    shell: ILabShell
+    shell: ILabShell,
+    palette: ICommandPalette
   ): void => {
     // add globals
     widgetExports.JupyterFrontEndModel._app = app;
     widgetExports.ShellModel._shell = shell;
     widgetExports.CommandRegistryModel._commands = app.commands;
+    widgetExports.CommandPaletteModel._palette = palette;
 
     registry.registerWidget({
       name: MODULE_NAME,

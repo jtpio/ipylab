@@ -5,6 +5,7 @@
 import '../css/widget.css';
 
 import { CommandRegistryModel } from './widgets/commands';
+import { CommandPaletteModel } from './widgets/palette';
 import { JupyterFrontEndModel } from './widgets/frontend';
 import { PanelModel } from './widgets/panel';
 import { ShellModel } from './widgets/shell';
@@ -13,6 +14,7 @@ import { TitleModel } from './widgets/title';
 
 export {
   CommandRegistryModel,
+  CommandPaletteModel,
   JupyterFrontEndModel,
   PanelModel,
   ShellModel,

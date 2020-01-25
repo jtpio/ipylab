@@ -3,6 +3,8 @@
 
 import { CommandRegistry } from '@phosphor/commands';
 
+import { DisposableSet } from '@phosphor/disposable';
+
 import { ISerializers, WidgetModel } from '@jupyter-widgets/base';
 
 import { MODULE_NAME, MODULE_VERSION } from '../version';
@@ -21,9 +23,14 @@ export class CommandRegistryModel extends WidgetModel {
     this.commands = CommandRegistryModel._commands;
     super.initialize(attributes, options);
     this.on('msg:custom', this._onMessage.bind(this));
-
-    this.set('_commands', this.commands.listCommands());
-    this.save_changes();
+    this.on('comm_live_update', () => {
+      if (this.comm_live) {
+        return;
+      }
+      this._customCommands.dispose();
+      this._sendCommandList();
+    });
+    this._sendCommandList();
   }
 
   private _onMessage(msg: any) {
@@ -32,28 +39,30 @@ export class CommandRegistryModel extends WidgetModel {
         this._execute(msg.payload);
         break;
       case 'addCommand':
-        void this._addComnand(msg.payload);
+        void this._addCommand(msg.payload);
         break;
       default:
         break;
     }
   }
 
-  private _execute(payload: any) {
-    const { id, args } = payload;
-    const name = `${id}-${this.model_id}`;
-    void this.commands.execute(name, args);
+  private _sendCommandList() {
+    this.set('_commands', this.commands.listCommands());
+    this.save_changes();
   }
 
-  private async _addComnand(payload: any): Promise<void> {
-    // TODO: keep track of all the user commands,
-    // and dispose them all when the model is destroyed
+  private _execute(payload: any) {
+    const { id, args } = payload;
+    void this.commands.execute(id, args);
+  }
+
+  private async _addCommand(payload: any): Promise<void> {
     const { id, caption, label, iconClass } = payload;
-    const name = `${id}-${this.model_id}`;
-    if (this.commands.hasCommand(name)) {
+    if (this.commands.hasCommand(id)) {
+      // TODO: handle this?
       return;
     }
-    void this.commands.addCommand(name, {
+    const command = this.commands.addCommand(id, {
       caption,
       label,
       iconClass,
@@ -65,7 +74,9 @@ export class CommandRegistryModel extends WidgetModel {
         this.send({ event: 'execute', id }, {});
       }
     });
+    this._customCommands.add(command);
     this.commands.notifyCommandChanged();
+    this._sendCommandList();
   }
 
   static serializers: ISerializers = {
@@ -81,4 +92,5 @@ export class CommandRegistryModel extends WidgetModel {
 
   private commands: CommandRegistry;
   static _commands: CommandRegistry;
+  private _customCommands = new DisposableSet();
 }
