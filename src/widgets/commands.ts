@@ -1,9 +1,11 @@
 // Copyright (c) Jeremy Tuloup
 // Distributed under the terms of the Modified BSD License.
 
+import { ObservableMap } from '@jupyterlab/observables';
+
 import { CommandRegistry } from '@phosphor/commands';
 
-import { DisposableSet } from '@phosphor/disposable';
+import { IDisposable } from '@phosphor/disposable';
 
 import { ISerializers, WidgetModel } from '@jupyter-widgets/base';
 
@@ -27,7 +29,7 @@ export class CommandRegistryModel extends WidgetModel {
       if (this.comm_live) {
         return;
       }
-      this._customCommands.dispose();
+      this._customCommands.values().forEach(command => command.dispose());
       this._sendCommandList();
     });
     this._sendCommandList();
@@ -41,12 +43,16 @@ export class CommandRegistryModel extends WidgetModel {
       case 'addCommand':
         void this._addCommand(msg.payload);
         break;
+      case 'removeCommand':
+        void this._removeCommand(msg.payload);
+        break;
       default:
         break;
     }
   }
 
   private _sendCommandList() {
+    this.commands.notifyCommandChanged();
     this.set('_commands', this.commands.listCommands());
     this.save_changes();
   }
@@ -74,8 +80,15 @@ export class CommandRegistryModel extends WidgetModel {
         this.send({ event: 'execute', id }, {});
       }
     });
-    this._customCommands.add(command);
-    this.commands.notifyCommandChanged();
+    this._customCommands.set(id, command);
+    this._sendCommandList();
+  }
+
+  private _removeCommand(payload: any) {
+    const { id } = payload;
+    if (this._customCommands.has(id)) {
+      this._customCommands.get(id).dispose();
+    }
     this._sendCommandList();
   }
 
@@ -92,5 +105,5 @@ export class CommandRegistryModel extends WidgetModel {
 
   private commands: CommandRegistry;
   static _commands: CommandRegistry;
-  private _customCommands = new DisposableSet();
+  private _customCommands = new ObservableMap<IDisposable>();
 }

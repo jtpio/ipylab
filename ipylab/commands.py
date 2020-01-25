@@ -57,9 +57,8 @@ class CommandRegistry(Widget):
     def list_commands(self):
         return self._commands
 
-    # TODO: add support for also removing a command
     def add_command(self, command_id, execute, *, caption="", label="", icon_class=""):
-        if command_id in self._execute_callbacks or command_id in self._commands:
+        if command_id in self._commands:
             raise Exception(f"Command {command_id} is already registered")
         # TODO: support other parameters (isEnabled, isVisible...)
         self._execute_callbacks[command_id] = execute
@@ -74,3 +73,7 @@ class CommandRegistry(Widget):
                 },
             }
         )
+
+    def remove_command(self, command_id):
+        # TODO: check whether to keep this method, or return disposables like in lab
+        self.send({"func": "removeCommand", "payload": {"id": command_id}})
