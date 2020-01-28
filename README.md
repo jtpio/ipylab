@@ -24,13 +24,17 @@ Try it in your browser with Binder:
 
 ## Examples
 
+### Widgets and Panels
+
+![widgets-panels](https://user-images.githubusercontent.com/591645/69000410-8f151f00-08cf-11ea-8491-7b8848497b62.gif)
+
 ### Command Registry
 
 ![command-registry](./docs/screencasts/commands.gif)
 
-### Widgets and Panels
+### Custom Python Commands and Command Palette
 
-![widgets-panels](https://user-images.githubusercontent.com/591645/69000410-8f151f00-08cf-11ea-8491-7b8848497b62.gif)
+![custom-commands](https://user-images.githubusercontent.com/591645/73125753-adbc2400-3faa-11ea-95f8-f7060e883ccd.gif)
 
 ## Installation
 
