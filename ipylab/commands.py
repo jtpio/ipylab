@@ -6,6 +6,7 @@ from collections import defaultdict
 from ipywidgets import CallbackDispatcher, Widget
 from traitlets import List, Unicode
 
+from .awaitable import Awaitable
 from ._frontend import module_name, module_version
 
 
@@ -33,7 +34,7 @@ class CommandPalette(Widget):
         )
 
 
-class CommandRegistry(Widget):
+class CommandRegistry(Widget, Awaitable):
     _model_name = Unicode("CommandRegistryModel").tag(sync=True)
     _model_module = Unicode(module_name).tag(sync=True)
     _model_module_version = Unicode(module_version).tag(sync=True)
@@ -49,10 +50,18 @@ class CommandRegistry(Widget):
         if content.get("event", "") == "execute":
             command_id = content.get("id")
             self._execute_callbacks[command_id]()
+        super()._on_frontend_msg(_, content, buffers)
 
     def execute(self, command_id, args=None):
         args = args or {}
-        self.send({"func": "execute", "payload": {"id": command_id, "args": args}})
+        fut_id, fut = super().register_future()
+        self.send(
+            {
+                "func": "execute",
+                "payload": {"id": command_id, "args": args, "future_id": fut_id},
+            }
+        )
+        return fut
 
     def list_commands(self):
         return self._commands

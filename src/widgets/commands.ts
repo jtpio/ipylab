@@ -38,7 +38,7 @@ export class CommandRegistryModel extends WidgetModel {
   private _onMessage(msg: any) {
     switch (msg.func) {
       case 'execute':
-        this._execute(msg.payload);
+        void this._execute(msg.payload);
         break;
       case 'addCommand':
         void this._addCommand(msg.payload);
@@ -57,9 +57,11 @@ export class CommandRegistryModel extends WidgetModel {
     this.save_changes();
   }
 
-  private _execute(payload: any) {
-    const { id, args } = payload;
-    void this.commands.execute(id, args);
+  private async _execute(payload: any) {
+    const { id, args, future_id } = payload;
+    await this.commands.execute(id, args);
+    // TODO: send result back if possible?
+    this.send({ event: 'future', future_id }, {});
   }
 
   private async _addCommand(payload: any): Promise<void> {
