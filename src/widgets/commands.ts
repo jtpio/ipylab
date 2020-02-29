@@ -3,11 +3,11 @@
 
 import { ObservableMap } from '@jupyterlab/observables';
 
-import { CommandRegistry } from '@phosphor/commands';
-
-import { IDisposable } from '@phosphor/disposable';
-
 import { ISerializers, WidgetModel } from '@jupyter-widgets/base';
+
+import { CommandRegistry } from '@lumino/commands';
+
+import { IDisposable } from '@lumino/disposable';
 
 import { MODULE_NAME, MODULE_VERSION } from '../version';
 
