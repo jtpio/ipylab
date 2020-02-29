@@ -1,13 +1,13 @@
 // Copyright (c) Jeremy Tuloup
 // Distributed under the terms of the Modified BSD License.
 
-import { JupyterPhosphorWidget, DOMWidgetView } from '@jupyter-widgets/base';
+import { JupyterLuminoWidget, DOMWidgetView } from '@jupyter-widgets/base';
 
 import { VBoxView } from '@jupyter-widgets/controls';
 
-import { Message } from '@phosphor/messaging';
+import { Message } from '@lumino/messaging';
 
-import { SplitPanel } from '@phosphor/widgets';
+import { SplitPanel } from '@lumino/widgets';
 
 import $ from 'jquery';
 
@@ -15,18 +15,18 @@ import { PanelModel } from './panel';
 
 import { MODULE_NAME, MODULE_VERSION } from '../version';
 
-class JupyterPhosphorSplitPanelWidget extends SplitPanel {
-  constructor(options: JupyterPhosphorWidget.IOptions & SplitPanel.IOptions) {
+class JupyterLuminoSplitPanelWidget extends SplitPanel {
+  constructor(options: JupyterLuminoWidget.IOptions & SplitPanel.IOptions) {
     let view = options.view;
     delete options.view;
     super(options);
-    this.addClass('jp-JupyterPhosphorSplitPanelWidget');
+    this.addClass('jp-JupyterLuminoSplitPanelWidget');
     this._view = view;
   }
 
   processMessage(msg: Message) {
     super.processMessage(msg);
-    this._view.processPhosphorMessage(msg);
+    this._view.processLuminoMessage(msg);
   }
 
   dispose() {
@@ -66,7 +66,7 @@ export class SplitPanelModel extends PanelModel {
 
 export class SplitPanelView extends VBoxView {
   _createElement(tagName: string) {
-    this.pWidget = new JupyterPhosphorSplitPanelWidget({
+    this.pWidget = new JupyterLuminoSplitPanelWidget({
       view: this,
       orientation: this.model.get('orientation')
     }) as any;
@@ -84,7 +84,7 @@ export class SplitPanelView extends VBoxView {
 
   initialize(parameters: any) {
     super.initialize(parameters);
-    const pWidget = (this.pWidget as any) as JupyterPhosphorSplitPanelWidget;
+    const pWidget = (this.pWidget as any) as JupyterLuminoSplitPanelWidget;
     this.model.on('change:orientation', () => {
       const orientation = this.model.get('orientation');
       pWidget.orientation = orientation;

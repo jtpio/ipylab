@@ -11,7 +11,7 @@ Control JupyterLab from Python notebooks.
 The goal is to provide access to most of the JupyterLab environment from Python notebooks. For example:
 
 - Adding widgets to the main area `DockPanel`, left, right or top area
-- Build more advanced interfaces leveraging `SplitPanel`, `Toolbar` and other Phosphor widgets
+- Build more advanced interfaces leveraging `SplitPanel`, `Toolbar` and other Lumino widgets
 - Launch arbitrary commands (new terminal, change theme, open file and so on)
 - Open a workspace with a specific layout
 - Listen to JupyterLab signals (notebook opened, console closed) and trigger Python callbacks
