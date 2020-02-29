@@ -1,7 +1,7 @@
 // Copyright (c) Jeremy Tuloup
 // Distributed under the terms of the Modified BSD License.
 
-import { JupyterLuminoWidget, DOMWidgetView } from '@jupyter-widgets/base';
+import { JupyterPhosphorWidget, DOMWidgetView } from '@jupyter-widgets/base';
 
 import { VBoxView } from '@jupyter-widgets/controls';
 
@@ -16,7 +16,7 @@ import { PanelModel } from './panel';
 import { MODULE_NAME, MODULE_VERSION } from '../version';
 
 class JupyterLuminoSplitPanelWidget extends SplitPanel {
-  constructor(options: JupyterLuminoWidget.IOptions & SplitPanel.IOptions) {
+  constructor(options: JupyterPhosphorWidget.IOptions & SplitPanel.IOptions) {
     let view = options.view;
     delete options.view;
     super(options);
@@ -26,7 +26,7 @@ class JupyterLuminoSplitPanelWidget extends SplitPanel {
 
   processMessage(msg: Message) {
     super.processMessage(msg);
-    this._view.processLuminoMessage(msg);
+    this._view.processPhosphorMessage(msg);
   }
 
   dispose() {
