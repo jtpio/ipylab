@@ -2,8 +2,6 @@ name: ipylab
 channels:
   - conda-forge
 dependencies:
-- jupyterlab=1
+- ipylab=0.2
+- jupyterlab=2
 - nodejs
-- pip
-- pip:
-  - ipylab==0.1.3
