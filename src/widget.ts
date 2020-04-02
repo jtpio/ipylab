@@ -20,5 +20,5 @@ export {
   ShellModel,
   SplitPanelModel,
   SplitPanelView,
-  TitleModel
+  TitleModel,
 };

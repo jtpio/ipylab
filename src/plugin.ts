@@ -4,7 +4,7 @@
 import {
   JupyterFrontEndPlugin,
   JupyterFrontEnd,
-  ILabShell
+  ILabShell,
 } from '@jupyterlab/application';
 
 import { ICommandPalette } from '@jupyterlab/apputils';
@@ -37,9 +37,9 @@ const extension: JupyterFrontEndPlugin<void> = {
     registry.registerWidget({
       name: MODULE_NAME,
       version: MODULE_VERSION,
-      exports: widgetExports
+      exports: widgetExports,
     });
-  }
+  },
 };
 
 export default extension;

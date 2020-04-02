@@ -17,19 +17,19 @@ import { MODULE_NAME, MODULE_VERSION } from '../version';
 
 class JupyterLuminoSplitPanelWidget extends SplitPanel {
   constructor(options: JupyterPhosphorWidget.IOptions & SplitPanel.IOptions) {
-    let view = options.view;
+    const view = options.view;
     delete options.view;
     super(options);
     this.addClass('jp-JupyterLuminoSplitPanelWidget');
     this._view = view;
   }
 
-  processMessage(msg: Message) {
+  processMessage(msg: Message): void {
     super.processMessage(msg);
     this._view.processPhosphorMessage(msg);
   }
 
-  dispose() {
+  dispose(): void {
     if (this.isDisposed) {
       return;
     }
@@ -44,7 +44,7 @@ class JupyterLuminoSplitPanelWidget extends SplitPanel {
 }
 
 export class SplitPanelModel extends PanelModel {
-  defaults() {
+  defaults(): any {
     return {
       ...super.defaults(),
       _model_name: SplitPanelModel.model_name,
@@ -52,7 +52,7 @@ export class SplitPanelModel extends PanelModel {
       _model_module_version: SplitPanelModel.model_module_version,
       _view_name: SplitPanelModel.model_name,
       _view_module: SplitPanelModel.model_module,
-      _view_module_version: SplitPanelModel.model_module_version
+      _view_module_version: SplitPanelModel.model_module_version,
     };
   }
 
@@ -65,15 +65,15 @@ export class SplitPanelModel extends PanelModel {
 }
 
 export class SplitPanelView extends VBoxView {
-  _createElement(tagName: string) {
+  _createElement(tagName: string): HTMLElement {
     this.pWidget = new JupyterLuminoSplitPanelWidget({
       view: this,
-      orientation: this.model.get('orientation')
+      orientation: this.model.get('orientation'),
     }) as any;
     return this.pWidget.node;
   }
 
-  _setElement(el: HTMLElement) {
+  _setElement(el: HTMLElement): void {
     if (this.el || el !== this.pWidget.node) {
       throw new Error('Cannot reset the DOM element.');
     }
@@ -82,7 +82,7 @@ export class SplitPanelView extends VBoxView {
     this.$el = $(this.pWidget.node);
   }
 
-  initialize(parameters: any) {
+  initialize(parameters: any): void {
     super.initialize(parameters);
     const pWidget = (this.pWidget as any) as JupyterLuminoSplitPanelWidget;
     this.model.on('change:orientation', () => {
@@ -91,7 +91,7 @@ export class SplitPanelView extends VBoxView {
     });
   }
 
-  async render() {
+  async render(): Promise<void> {
     super.render();
     const views = await Promise.all(this.children_views.views);
     views.forEach(async (view: DOMWidgetView) => {

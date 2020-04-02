@@ -6,22 +6,22 @@ import { JupyterFrontEnd } from '@jupyterlab/application';
 import {
   DOMWidgetModel,
   ISerializers,
-  WidgetModel
+  WidgetModel,
 } from '@jupyter-widgets/base';
 
 import { MODULE_NAME, MODULE_VERSION } from '../version';
 
 export class JupyterFrontEndModel extends WidgetModel {
-  defaults() {
+  defaults(): any {
     return {
       ...super.defaults(),
       _model_name: JupyterFrontEndModel.model_name,
       _model_module: JupyterFrontEndModel.model_module,
-      _model_module_version: JupyterFrontEndModel.model_module_version
+      _model_module_version: JupyterFrontEndModel.model_module_version,
     };
   }
 
-  initialize(attributes: any, options: any) {
+  initialize(attributes: any, options: any): void {
     this.app = JupyterFrontEndModel._app;
     super.initialize(attributes, options);
     this.send({ event: 'lab_ready' }, {});
@@ -30,7 +30,7 @@ export class JupyterFrontEndModel extends WidgetModel {
   }
 
   static serializers: ISerializers = {
-    ...DOMWidgetModel.serializers
+    ...DOMWidgetModel.serializers,
   };
 
   static model_name = 'JupyterFrontEndModel';

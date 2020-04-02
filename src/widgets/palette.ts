@@ -4,30 +4,30 @@
 import {
   DOMWidgetModel,
   ISerializers,
-  WidgetModel
+  WidgetModel,
 } from '@jupyter-widgets/base';
 
 import { MODULE_NAME, MODULE_VERSION } from '../version';
 import { ICommandPalette } from '@jupyterlab/apputils';
 
 export class CommandPaletteModel extends WidgetModel {
-  defaults() {
+  defaults(): any {
     return {
       ...super.defaults(),
       _model_name: CommandPaletteModel.model_name,
       _model_module: CommandPaletteModel.model_module,
-      _model_module_version: CommandPaletteModel.model_module_version
+      _model_module_version: CommandPaletteModel.model_module_version,
     };
   }
 
-  initialize(attributes: any, options: any) {
+  initialize(attributes: any, options: any): void {
     this.palette = CommandPaletteModel._palette;
     super.initialize(attributes, options);
 
     this.on('msg:custom', this._onMessage.bind(this));
   }
 
-  private _onMessage(msg: any) {
+  private _onMessage(msg: any): void {
     switch (msg.func) {
       case 'addItem':
         this._addItem(msg.payload);
@@ -37,7 +37,7 @@ export class CommandPaletteModel extends WidgetModel {
     }
   }
 
-  private _addItem(payload: any) {
+  private _addItem(payload: any): void {
     if (!this.palette) {
       // no-op if no palette
       return;
@@ -47,7 +47,7 @@ export class CommandPaletteModel extends WidgetModel {
   }
 
   static serializers: ISerializers = {
-    ...DOMWidgetModel.serializers
+    ...DOMWidgetModel.serializers,
   };
 
   static model_name = 'CommandPaletteModel';

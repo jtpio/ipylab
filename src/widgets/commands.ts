@@ -11,17 +11,20 @@ import { IDisposable } from '@lumino/disposable';
 
 import { MODULE_NAME, MODULE_VERSION } from '../version';
 
+/**
+ * The model for a command registry.
+ */
 export class CommandRegistryModel extends WidgetModel {
-  defaults() {
+  defaults(): any {
     return {
       ...super.defaults(),
       _model_name: CommandRegistryModel.model_name,
       _model_module: CommandRegistryModel.model_module,
-      _model_module_version: CommandRegistryModel.model_module_version
+      _model_module_version: CommandRegistryModel.model_module_version,
     };
   }
 
-  initialize(attributes: any, options: any) {
+  initialize(attributes: any, options: any): void {
     this.commands = CommandRegistryModel._commands;
     super.initialize(attributes, options);
     this.on('msg:custom', this._onMessage.bind(this));
@@ -29,13 +32,13 @@ export class CommandRegistryModel extends WidgetModel {
       if (this.comm_live) {
         return;
       }
-      this._customCommands.values().forEach(command => command.dispose());
+      this._customCommands.values().forEach((command) => command.dispose());
       this._sendCommandList();
     });
     this._sendCommandList();
   }
 
-  private _onMessage(msg: any) {
+  private _onMessage(msg: any): void {
     switch (msg.func) {
       case 'execute':
         this._execute(msg.payload);
@@ -51,13 +54,13 @@ export class CommandRegistryModel extends WidgetModel {
     }
   }
 
-  private _sendCommandList() {
+  private _sendCommandList(): void {
     this.commands.notifyCommandChanged();
     this.set('_commands', this.commands.listCommands());
     this.save_changes();
   }
 
-  private _execute(payload: any) {
+  private _execute(payload: any): void {
     const { id, args } = payload;
     void this.commands.execute(id, args);
   }
@@ -78,13 +81,13 @@ export class CommandRegistryModel extends WidgetModel {
           return;
         }
         this.send({ event: 'execute', id }, {});
-      }
+      },
     });
     this._customCommands.set(id, command);
     this._sendCommandList();
   }
 
-  private _removeCommand(payload: any) {
+  private _removeCommand(payload: any): void {
     const { id } = payload;
     if (this._customCommands.has(id)) {
       this._customCommands.get(id).dispose();
@@ -93,7 +96,7 @@ export class CommandRegistryModel extends WidgetModel {
   }
 
   static serializers: ISerializers = {
-    ...WidgetModel.serializers
+    ...WidgetModel.serializers,
   };
 
   static model_name = 'CommandRegistryModel';

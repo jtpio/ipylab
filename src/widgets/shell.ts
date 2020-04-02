@@ -6,30 +6,30 @@ import { ILabShell } from '@jupyterlab/application';
 import {
   ISerializers,
   WidgetModel,
-  unpack_models
+  unpack_models,
 } from '@jupyter-widgets/base';
 
 import { MODULE_NAME, MODULE_VERSION } from '../version';
 
 export class ShellModel extends WidgetModel {
-  defaults() {
+  defaults(): any {
     return {
       ...super.defaults(),
       _model_name: ShellModel.model_name,
       _model_module: ShellModel.model_module,
-      _model_module_version: ShellModel.model_module_version
+      _model_module_version: ShellModel.model_module_version,
     };
   }
 
-  initialize(attributes: any, options: any) {
+  initialize(attributes: any, options: any): void {
     this.shell = ShellModel._shell;
     super.initialize(attributes, options);
     this.on('msg:custom', this.onMessage.bind(this));
   }
 
-  private async onMessage(msg: any) {
+  private async onMessage(msg: any): Promise<void> {
     switch (msg.func) {
-      case 'add':
+      case 'add': {
         const { serializedWidget, area, args } = msg.payload;
         const model = await unpack_models(
           serializedWidget,
@@ -42,13 +42,13 @@ export class ShellModel extends WidgetModel {
           this.widget_manager
         );
 
-        let pWidget = view.pWidget;
+        const pWidget = view.pWidget;
         pWidget.id = view.id;
         pWidget.disposed.connect(() => {
           view.remove();
         });
 
-        const updateTitle = () => {
+        const updateTitle = (): void => {
           pWidget.title.label = title.get('label');
           pWidget.title.iconClass = title.get('icon_class');
           pWidget.title.closable = title.get('closable');
@@ -74,19 +74,22 @@ export class ShellModel extends WidgetModel {
         }
         this.shell.add(pWidget, area, args);
         break;
-      case 'expandLeft':
+      }
+      case 'expandLeft': {
         this.shell.expandLeft();
         break;
-      case 'expandRight':
+      }
+      case 'expandRight': {
         this.shell.expandRight();
         break;
+      }
       default:
         break;
     }
   }
 
   static serializers: ISerializers = {
-    ...WidgetModel.serializers
+    ...WidgetModel.serializers,
   };
 
   static model_name = 'ShellModel';
