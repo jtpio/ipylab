@@ -6,30 +6,47 @@ import { ILabShell } from '@jupyterlab/application';
 import {
   ISerializers,
   WidgetModel,
-  unpack_models
+  unpack_models,
 } from '@jupyter-widgets/base';
 
 import { MODULE_NAME, MODULE_VERSION } from '../version';
 
+/**
+ * The model for a shell.
+ */
 export class ShellModel extends WidgetModel {
-  defaults() {
+  /**
+   * The default attributes.
+   */
+  defaults(): any {
     return {
       ...super.defaults(),
       _model_name: ShellModel.model_name,
       _model_module: ShellModel.model_module,
-      _model_module_version: ShellModel.model_module_version
+      _model_module_version: ShellModel.model_module_version,
     };
   }
 
-  initialize(attributes: any, options: any) {
-    this.shell = ShellModel._shell;
+  /**
+   * Initialize a ShellModel instance.
+   *
+   * @param attributes The base attributes.
+   * @param options The initialization options.
+   */
+  initialize(attributes: any, options: any): void {
+    this._shell = ShellModel.shell;
     super.initialize(attributes, options);
     this.on('msg:custom', this.onMessage.bind(this));
   }
 
-  private async onMessage(msg: any) {
+  /**
+   * Handle a custom message from the backend.
+   *
+   * @param msg The message to handle.
+   */
+  private async onMessage(msg: any): Promise<void> {
     switch (msg.func) {
-      case 'add':
+      case 'add': {
         const { serializedWidget, area, args } = msg.payload;
         const model = await unpack_models(
           serializedWidget,
@@ -42,13 +59,13 @@ export class ShellModel extends WidgetModel {
           this.widget_manager
         );
 
-        let pWidget = view.pWidget;
+        const pWidget = view.pWidget;
         pWidget.id = view.id;
         pWidget.disposed.connect(() => {
           view.remove();
         });
 
-        const updateTitle = () => {
+        const updateTitle = (): void => {
           pWidget.title.label = title.get('label');
           pWidget.title.iconClass = title.get('icon_class');
           pWidget.title.closable = title.get('closable');
@@ -60,9 +77,9 @@ export class ShellModel extends WidgetModel {
         if (area === 'left' || area === 'right') {
           let handler;
           if (area === 'left') {
-            handler = this.shell['_leftHandler'];
+            handler = this._shell['_leftHandler'];
           } else {
-            handler = this.shell['_rightHandler'];
+            handler = this._shell['_rightHandler'];
           }
 
           // handle tab closed event
@@ -72,21 +89,24 @@ export class ShellModel extends WidgetModel {
 
           pWidget.addClass('jp-SideAreaWidget');
         }
-        this.shell.add(pWidget, area, args);
+        this._shell.add(pWidget, area, args);
         break;
-      case 'expandLeft':
-        this.shell.expandLeft();
+      }
+      case 'expandLeft': {
+        this._shell.expandLeft();
         break;
-      case 'expandRight':
-        this.shell.expandRight();
+      }
+      case 'expandRight': {
+        this._shell.expandRight();
         break;
+      }
       default:
         break;
     }
   }
 
   static serializers: ISerializers = {
-    ...WidgetModel.serializers
+    ...WidgetModel.serializers,
   };
 
   static model_name = 'ShellModel';
@@ -96,6 +116,7 @@ export class ShellModel extends WidgetModel {
   static view_module: string = null;
   static view_module_version = MODULE_VERSION;
 
-  private shell: ILabShell;
-  static _shell: ILabShell;
+  private _shell: ILabShell;
+
+  static shell: ILabShell;
 }

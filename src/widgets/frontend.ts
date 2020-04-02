@@ -6,31 +6,43 @@ import { JupyterFrontEnd } from '@jupyterlab/application';
 import {
   DOMWidgetModel,
   ISerializers,
-  WidgetModel
+  WidgetModel,
 } from '@jupyter-widgets/base';
 
 import { MODULE_NAME, MODULE_VERSION } from '../version';
 
+/**
+ * The model for a JupyterFrontEnd.
+ */
 export class JupyterFrontEndModel extends WidgetModel {
-  defaults() {
+  /**
+   * The default attributes.
+   */
+  defaults(): any {
     return {
       ...super.defaults(),
       _model_name: JupyterFrontEndModel.model_name,
       _model_module: JupyterFrontEndModel.model_module,
-      _model_module_version: JupyterFrontEndModel.model_module_version
+      _model_module_version: JupyterFrontEndModel.model_module_version,
     };
   }
 
-  initialize(attributes: any, options: any) {
-    this.app = JupyterFrontEndModel._app;
+  /**
+   * Initialize a JupyterFrontEndModel instance.
+   *
+   * @param attributes The base attributes.
+   * @param options The initialization options.
+   */
+  initialize(attributes: any, options: any): void {
+    this._app = JupyterFrontEndModel.app;
     super.initialize(attributes, options);
     this.send({ event: 'lab_ready' }, {});
-    this.set('version', this.app.version);
+    this.set('version', this._app.version);
     this.save_changes();
   }
 
   static serializers: ISerializers = {
-    ...DOMWidgetModel.serializers
+    ...DOMWidgetModel.serializers,
   };
 
   static model_name = 'JupyterFrontEndModel';
@@ -40,6 +52,6 @@ export class JupyterFrontEndModel extends WidgetModel {
   static view_module: string = null;
   static view_module_version = MODULE_VERSION;
 
-  private app: JupyterFrontEnd;
-  static _app: JupyterFrontEnd;
+  private _app: JupyterFrontEnd;
+  static app: JupyterFrontEnd;
 }

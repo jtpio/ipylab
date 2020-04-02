@@ -5,13 +5,19 @@ import { WidgetModel } from '@jupyter-widgets/base';
 
 import { MODULE_NAME, MODULE_VERSION } from '../version';
 
+/**
+ * The model for a title widget.
+ */
 export class TitleModel extends WidgetModel {
-  defaults() {
+  /**
+   * The default attributes.
+   */
+  defaults(): any {
     return {
       ...super.defaults(),
       _model_name: TitleModel.model_name,
       _model_module: TitleModel.model_module,
-      _model_module_version: TitleModel.model_module_version
+      _model_module_version: TitleModel.model_module_version,
     };
   }
 
