@@ -11,7 +11,13 @@ import {
 
 import { MODULE_NAME, MODULE_VERSION } from '../version';
 
+/**
+ * The model for a JupyterFrontEnd.
+ */
 export class JupyterFrontEndModel extends WidgetModel {
+  /**
+   * The default attributes.
+   */
   defaults(): any {
     return {
       ...super.defaults(),
@@ -21,11 +27,17 @@ export class JupyterFrontEndModel extends WidgetModel {
     };
   }
 
+  /**
+   * Initialize a JupyterFrontEndModel instance.
+   *
+   * @param attributes The base attributes.
+   * @param options The initialization options.
+   */
   initialize(attributes: any, options: any): void {
-    this.app = JupyterFrontEndModel._app;
+    this._app = JupyterFrontEndModel.app;
     super.initialize(attributes, options);
     this.send({ event: 'lab_ready' }, {});
-    this.set('version', this.app.version);
+    this.set('version', this._app.version);
     this.save_changes();
   }
 
@@ -40,6 +52,6 @@ export class JupyterFrontEndModel extends WidgetModel {
   static view_module: string = null;
   static view_module_version = MODULE_VERSION;
 
-  private app: JupyterFrontEnd;
-  static _app: JupyterFrontEnd;
+  private _app: JupyterFrontEnd;
+  static app: JupyterFrontEnd;
 }

@@ -17,6 +17,9 @@ import { MODULE_NAME, MODULE_VERSION } from './version';
 
 const EXTENSION_ID = 'ipylab:plugin';
 
+/**
+ * The default plugin.
+ */
 const extension: JupyterFrontEndPlugin<void> = {
   id: EXTENSION_ID,
   autoStart: true,
@@ -29,10 +32,10 @@ const extension: JupyterFrontEndPlugin<void> = {
     palette: ICommandPalette
   ): void => {
     // add globals
-    widgetExports.JupyterFrontEndModel._app = app;
-    widgetExports.ShellModel._shell = shell;
-    widgetExports.CommandRegistryModel._commands = app.commands;
-    widgetExports.CommandPaletteModel._palette = palette;
+    widgetExports.JupyterFrontEndModel.app = app;
+    widgetExports.ShellModel.shell = shell;
+    widgetExports.CommandRegistryModel.commands = app.commands;
+    widgetExports.CommandPaletteModel.palette = palette;
 
     registry.registerWidget({
       name: MODULE_NAME,

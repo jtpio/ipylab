@@ -15,7 +15,15 @@ import { PanelModel } from './panel';
 
 import { MODULE_NAME, MODULE_VERSION } from '../version';
 
+/**
+ * A Lumino widget for split panels.
+ */
 class JupyterLuminoSplitPanelWidget extends SplitPanel {
+  /**
+   * Construct a new JupyterLuminoSplitPanelWidget.
+   *
+   * @param options The instantiation options for a JupyterLuminoSplitPanelWidget.
+   */
   constructor(options: JupyterPhosphorWidget.IOptions & SplitPanel.IOptions) {
     const view = options.view;
     delete options.view;
@@ -24,11 +32,19 @@ class JupyterLuminoSplitPanelWidget extends SplitPanel {
     this._view = view;
   }
 
+  /**
+   * Handle a lumino message.
+   *
+   * @param msg The message to handle.
+   */
   processMessage(msg: Message): void {
     super.processMessage(msg);
     this._view.processPhosphorMessage(msg);
   }
 
+  /**
+   * Dispose the widget.
+   */
   dispose(): void {
     if (this.isDisposed) {
       return;
@@ -43,7 +59,13 @@ class JupyterLuminoSplitPanelWidget extends SplitPanel {
   private _view: DOMWidgetView;
 }
 
+/**
+ * The model for a split panel.
+ */
 export class SplitPanelModel extends PanelModel {
+  /**
+   * The default attributes.
+   */
   defaults(): any {
     return {
       ...super.defaults(),
@@ -64,7 +86,15 @@ export class SplitPanelModel extends PanelModel {
   static view_module_name = MODULE_VERSION;
 }
 
+/**
+ * The view for a split panel.
+ */
 export class SplitPanelView extends VBoxView {
+  /**
+   * Create the widget and return the DOM element.
+   *
+   * @param tagName the tag name
+   */
   _createElement(tagName: string): HTMLElement {
     this.pWidget = new JupyterLuminoSplitPanelWidget({
       view: this,
@@ -73,6 +103,11 @@ export class SplitPanelView extends VBoxView {
     return this.pWidget.node;
   }
 
+  /**
+   * Set the DOM element.
+   *
+   * @param el The element.
+   */
   _setElement(el: HTMLElement): void {
     if (this.el || el !== this.pWidget.node) {
       throw new Error('Cannot reset the DOM element.');
@@ -82,6 +117,11 @@ export class SplitPanelView extends VBoxView {
     this.$el = $(this.pWidget.node);
   }
 
+  /**
+   * Initialize a SplitPanelView instance.
+   *
+   * @param parameters The view parameters.
+   */
   initialize(parameters: any): void {
     super.initialize(parameters);
     const pWidget = (this.pWidget as any) as JupyterLuminoSplitPanelWidget;
@@ -91,6 +131,9 @@ export class SplitPanelView extends VBoxView {
     });
   }
 
+  /**
+   * Render the view.
+   */
   async render(): Promise<void> {
     super.render();
     const views = await Promise.all(this.children_views.views);

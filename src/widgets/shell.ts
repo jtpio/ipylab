@@ -11,7 +11,13 @@ import {
 
 import { MODULE_NAME, MODULE_VERSION } from '../version';
 
+/**
+ * The model for a shell.
+ */
 export class ShellModel extends WidgetModel {
+  /**
+   * The default attributes.
+   */
   defaults(): any {
     return {
       ...super.defaults(),
@@ -21,12 +27,23 @@ export class ShellModel extends WidgetModel {
     };
   }
 
+  /**
+   * Initialize a ShellModel instance.
+   *
+   * @param attributes The base attributes.
+   * @param options The initialization options.
+   */
   initialize(attributes: any, options: any): void {
-    this.shell = ShellModel._shell;
+    this._shell = ShellModel.shell;
     super.initialize(attributes, options);
     this.on('msg:custom', this.onMessage.bind(this));
   }
 
+  /**
+   * Handle a custom message from the backend.
+   *
+   * @param msg The message to handle.
+   */
   private async onMessage(msg: any): Promise<void> {
     switch (msg.func) {
       case 'add': {
@@ -60,9 +77,9 @@ export class ShellModel extends WidgetModel {
         if (area === 'left' || area === 'right') {
           let handler;
           if (area === 'left') {
-            handler = this.shell['_leftHandler'];
+            handler = this._shell['_leftHandler'];
           } else {
-            handler = this.shell['_rightHandler'];
+            handler = this._shell['_rightHandler'];
           }
 
           // handle tab closed event
@@ -72,15 +89,15 @@ export class ShellModel extends WidgetModel {
 
           pWidget.addClass('jp-SideAreaWidget');
         }
-        this.shell.add(pWidget, area, args);
+        this._shell.add(pWidget, area, args);
         break;
       }
       case 'expandLeft': {
-        this.shell.expandLeft();
+        this._shell.expandLeft();
         break;
       }
       case 'expandRight': {
-        this.shell.expandRight();
+        this._shell.expandRight();
         break;
       }
       default:
@@ -99,6 +116,7 @@ export class ShellModel extends WidgetModel {
   static view_module: string = null;
   static view_module_version = MODULE_VERSION;
 
-  private shell: ILabShell;
-  static _shell: ILabShell;
+  private _shell: ILabShell;
+
+  static shell: ILabShell;
 }

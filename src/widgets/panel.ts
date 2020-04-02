@@ -5,7 +5,13 @@ import { VBoxModel } from '@jupyter-widgets/controls';
 
 import { MODULE_NAME, MODULE_VERSION } from '../version';
 
+/**
+ * The model for a panel.
+ */
 export class PanelModel extends VBoxModel {
+  /**
+   * The default attributes.
+   */
   defaults(): any {
     return {
       ...super.defaults(),

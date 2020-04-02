@@ -5,7 +5,13 @@ import { WidgetModel } from '@jupyter-widgets/base';
 
 import { MODULE_NAME, MODULE_VERSION } from '../version';
 
+/**
+ * The model for a title widget.
+ */
 export class TitleModel extends WidgetModel {
+  /**
+   * The default attributes.
+   */
   defaults(): any {
     return {
       ...super.defaults(),
