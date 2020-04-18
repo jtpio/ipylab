@@ -3,11 +3,17 @@
 
 import { ILabShell } from '@jupyterlab/application';
 
+import { DOMUtils } from '@jupyterlab/apputils';
+
 import {
   ISerializers,
   WidgetModel,
   unpack_models,
 } from '@jupyter-widgets/base';
+
+import { ArrayExt } from '@lumino/algorithm';
+
+import { Message, MessageLoop } from '@lumino/messaging';
 
 import { MODULE_NAME, MODULE_VERSION } from '../version';
 
@@ -24,6 +30,7 @@ export class ShellModel extends WidgetModel {
       _model_name: ShellModel.model_name,
       _model_module: ShellModel.model_module,
       _model_module_version: ShellModel.model_module_version,
+      _widgets: [],
     };
   }
 
@@ -36,7 +43,69 @@ export class ShellModel extends WidgetModel {
   initialize(attributes: any, options: any): void {
     this._shell = ShellModel.shell;
     super.initialize(attributes, options);
-    this.on('msg:custom', this.onMessage.bind(this));
+    this.on('msg:custom', this._onMessage.bind(this));
+
+    // restore existing widgets
+    const widgets = this.get('_widgets');
+    widgets.forEach((w: any) => this._add(w));
+  }
+
+  private _hook(sender: any, msg: Message): boolean {
+    switch (msg.type) {
+      case 'close-request': {
+        const widgets = this.get('_widgets').slice();
+        ArrayExt.removeAllWhere(widgets, (w: any) => w.id === sender.id);
+        this.set('_widgets', widgets);
+        this.save_changes();
+        break;
+      }
+    }
+    return true;
+  }
+
+  /**
+   * Add a widget to the application shell
+   *
+   * @param payload The payload to add
+   */
+  private async _add(payload: any): Promise<string> {
+    const { serializedWidget, area, args, id } = payload;
+    const model = await unpack_models(serializedWidget, this.widget_manager);
+    const view = await this.widget_manager.create_view(model, {});
+    const title = await unpack_models(model.get('title'), this.widget_manager);
+    const pWidget = view.pWidget;
+
+    pWidget.id = id ?? DOMUtils.createDomID();
+
+    MessageLoop.installMessageHook(pWidget, this._hook.bind(this));
+
+    const updateTitle = (): void => {
+      pWidget.title.label = title.get('label');
+      pWidget.title.iconClass = title.get('icon_class');
+      pWidget.title.closable = title.get('closable');
+    };
+
+    title.on('change', updateTitle);
+    updateTitle();
+
+    if (area === 'left' || area === 'right') {
+      let handler;
+      if (area === 'left') {
+        handler = this._shell['_leftHandler'];
+      } else {
+        handler = this._shell['_rightHandler'];
+      }
+
+      // handle tab closed event
+      handler.sideBar.tabCloseRequested.connect((sender: any, tab: any) => {
+        tab.title.owner.close();
+      });
+
+      pWidget.addClass('jp-SideAreaWidget');
+    }
+
+    this._shell.add(pWidget, area, args);
+    return pWidget.id;
   }
 
   /**
@@ -44,52 +113,20 @@ export class ShellModel extends WidgetModel {
    *
    * @param msg The message to handle.
    */
-  private async onMessage(msg: any): Promise<void> {
+  private async _onMessage(msg: any): Promise<void> {
     switch (msg.func) {
       case 'add': {
-        const { serializedWidget, area, args } = msg.payload;
-        const model = await unpack_models(
-          serializedWidget,
-          this.widget_manager
+        const id = await this._add(msg.payload);
+        // keep track of the widgets added to the shell
+        const widgets = this.get('_widgets');
+        this.set(
+          '_widgets',
+          widgets.concat({
+            ...msg.payload,
+            id,
+          })
         );
-        const view = await this.widget_manager.create_view(model, {});
-
-        const title = await unpack_models(
-          model.get('title'),
-          this.widget_manager
-        );
-
-        const pWidget = view.pWidget;
-        pWidget.id = view.id;
-        pWidget.disposed.connect(() => {
-          view.remove();
-        });
-
-        const updateTitle = (): void => {
-          pWidget.title.label = title.get('label');
-          pWidget.title.iconClass = title.get('icon_class');
-          pWidget.title.closable = title.get('closable');
-        };
-
-        title.on('change', updateTitle);
-        updateTitle();
-
-        if (area === 'left' || area === 'right') {
-          let handler;
-          if (area === 'left') {
-            handler = this._shell['_leftHandler'];
-          } else {
-            handler = this._shell['_rightHandler'];
-          }
-
-          // handle tab closed event
-          handler.sideBar.tabCloseRequested.connect((sender: any, tab: any) => {
-            tab.title.owner.close();
-          });
-
-          pWidget.addClass('jp-SideAreaWidget');
-        }
-        this._shell.add(pWidget, area, args);
+        this.save_changes();
         break;
       }
       case 'expandLeft': {
