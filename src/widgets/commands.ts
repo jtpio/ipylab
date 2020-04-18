@@ -12,6 +12,7 @@ import { ReadonlyPartialJSONObject } from '@lumino/coreutils';
 import { IDisposable } from '@lumino/disposable';
 
 import { MODULE_NAME, MODULE_VERSION } from '../version';
+import { ArrayExt } from '@lumino/algorithm';
 
 /**
  * The model for a command registry.
@@ -26,6 +27,8 @@ export class CommandRegistryModel extends WidgetModel {
       _model_name: CommandRegistryModel.model_name,
       _model_module: CommandRegistryModel.model_module,
       _model_module_version: CommandRegistryModel.model_module_version,
+      _command_list: [],
+      _commands: [],
     };
   }
 
@@ -37,6 +40,7 @@ export class CommandRegistryModel extends WidgetModel {
    */
   initialize(attributes: any, options: any): void {
     this._commands = CommandRegistryModel.commands;
+    this._customCommands = new ObservableMap<IDisposable>();
     super.initialize(attributes, options);
     this.on('msg:custom', this._onMessage.bind(this));
     this.on('comm_live_update', () => {
@@ -46,6 +50,10 @@ export class CommandRegistryModel extends WidgetModel {
       this._customCommands.values().forEach((command) => command.dispose());
       this._sendCommandList();
     });
+
+    // restore existing commands
+    const commands = this.get('_commands');
+    commands.forEach((command: any) => this._addCommand(command));
     this._sendCommandList();
   }
 
@@ -59,11 +67,16 @@ export class CommandRegistryModel extends WidgetModel {
       case 'execute':
         this._execute(msg.payload);
         break;
-      case 'addCommand':
-        void this._addCommand(msg.payload);
+      case 'addCommand': {
+        this._addCommand(msg.payload);
+        // keep track of the commands
+        const commands = this.get('_commands');
+        this.set('_commands', commands.concat(msg.payload));
+        this.save_changes();
         break;
+      }
       case 'removeCommand':
-        void this._removeCommand(msg.payload);
+        this._removeCommand(msg.payload);
         break;
       default:
         break;
@@ -75,7 +88,7 @@ export class CommandRegistryModel extends WidgetModel {
    */
   private _sendCommandList(): void {
     this._commands.notifyCommandChanged();
-    this.set('_commands', this._commands.listCommands());
+    this.set('_command_list', this._commands.listCommands());
     this.save_changes();
   }
 
@@ -97,9 +110,9 @@ export class CommandRegistryModel extends WidgetModel {
    *
    * @param options The command options.
    */
-  private async _addCommand(
+  private _addCommand(
     options: CommandRegistry.ICommandOptions & { id: string }
-  ): Promise<void> {
+  ): string {
     const { id, caption, label, iconClass } = options;
     if (this._commands.hasCommand(id)) {
       // TODO: handle this?
@@ -131,6 +144,10 @@ export class CommandRegistryModel extends WidgetModel {
     if (this._customCommands.has(id)) {
       this._customCommands.get(id).dispose();
     }
+    const commands = this.get('_commands').slice();
+    ArrayExt.removeAllWhere(commands, (w: any) => w.id === id);
+    this.set('_commands', commands);
+    this.save_changes();
     this._sendCommandList();
   }
 
@@ -146,7 +163,7 @@ export class CommandRegistryModel extends WidgetModel {
   static view_module_version = MODULE_VERSION;
 
   private _commands: CommandRegistry;
-  private _customCommands = new ObservableMap<IDisposable>();
+  private _customCommands: ObservableMap<IDisposable>;
 
   static commands: CommandRegistry;
 }
