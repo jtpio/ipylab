@@ -3,7 +3,7 @@
 
 from collections import defaultdict
 
-from ipywidgets import CallbackDispatcher, Widget
+from ipywidgets import CallbackDispatcher, Widget, register
 from traitlets import List, Unicode
 
 from ._frontend import module_name, module_version
@@ -13,10 +13,13 @@ def _noop():
     pass
 
 
+@register
 class CommandPalette(Widget):
     _model_name = Unicode("CommandPaletteModel").tag(sync=True)
     _model_module = Unicode(module_name).tag(sync=True)
     _model_module_version = Unicode(module_version).tag(sync=True)
+
+    _items = List([], read_only=True).tag(sync=True)
 
     def add_item(self, command_id, category, *, args=None, rank=None):
         args = args or {}
@@ -33,12 +36,14 @@ class CommandPalette(Widget):
         )
 
 
+@register
 class CommandRegistry(Widget):
     _model_name = Unicode("CommandRegistryModel").tag(sync=True)
     _model_module = Unicode(module_name).tag(sync=True)
     _model_module_version = Unicode(module_version).tag(sync=True)
 
-    _commands = List(Unicode, read_only=True).tag(sync=True)
+    _command_list = List(Unicode, read_only=True).tag(sync=True)
+    _commands = List([], read_only=True).tag(sync=True)
     _execute_callbacks = defaultdict(_noop)
 
     def __init__(self, *args, **kwargs):
@@ -55,10 +60,10 @@ class CommandRegistry(Widget):
         self.send({"func": "execute", "payload": {"id": command_id, "args": args}})
 
     def list_commands(self):
-        return self._commands
+        return self._command_list
 
     def add_command(self, command_id, execute, *, caption="", label="", icon_class=""):
-        if command_id in self._commands:
+        if command_id in self._command_list:
             raise Exception(f"Command {command_id} is already registered")
         # TODO: support other parameters (isEnabled, isVisible...)
         self._execute_callbacks[command_id] = execute

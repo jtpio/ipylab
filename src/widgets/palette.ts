@@ -1,14 +1,19 @@
 // Copyright (c) Jeremy Tuloup
 // Distributed under the terms of the Modified BSD License.
 
+import { ICommandPalette, IPaletteItem } from '@jupyterlab/apputils';
+
+import { ObservableMap } from '@jupyterlab/observables';
+
 import {
   DOMWidgetModel,
   ISerializers,
   WidgetModel,
 } from '@jupyter-widgets/base';
 
+import { IDisposable } from '@lumino/disposable';
+
 import { MODULE_NAME, MODULE_VERSION } from '../version';
-import { ICommandPalette, IPaletteItem } from '@jupyterlab/apputils';
 
 /**
  * The model for a command palette.
@@ -23,6 +28,7 @@ export class CommandPaletteModel extends WidgetModel {
       _model_name: CommandPaletteModel.model_name,
       _model_module: CommandPaletteModel.model_module,
       _model_module_version: CommandPaletteModel.model_module_version,
+      _items: [],
     };
   }
 
@@ -37,6 +43,10 @@ export class CommandPaletteModel extends WidgetModel {
     super.initialize(attributes, options);
 
     this.on('msg:custom', this._onMessage.bind(this));
+
+    // restore existing items
+    const items = this.get('_items');
+    items.forEach((item: any) => this._addItem(item));
   }
 
   /**
@@ -46,9 +56,14 @@ export class CommandPaletteModel extends WidgetModel {
    */
   private _onMessage(msg: any): void {
     switch (msg.func) {
-      case 'addItem':
+      case 'addItem': {
         this._addItem(msg.payload);
+        // keep track of the items
+        const items = this.get('_items');
+        this.set('_items', items.concat(msg.payload));
+        this.save_changes();
         break;
+      }
       default:
         break;
     }
@@ -65,7 +80,13 @@ export class CommandPaletteModel extends WidgetModel {
       return;
     }
     const { id, category, args, rank } = options;
-    void this._palette.addItem({ command: id, category, args, rank });
+    const itemId = `${id}-${category}`;
+    if (Private.customItems.has(itemId)) {
+      // no-op if the item is already in the palette
+      return;
+    }
+    const item = this._palette.addItem({ command: id, category, args, rank });
+    Private.customItems.set(itemId, item);
   }
 
   static serializers: ISerializers = {
@@ -82,4 +103,11 @@ export class CommandPaletteModel extends WidgetModel {
   private _palette: ICommandPalette;
 
   static palette: ICommandPalette;
+}
+
+/**
+ * A namespace for private data
+ */
+namespace Private {
+  export const customItems = new ObservableMap<IDisposable>();
 }
