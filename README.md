@@ -56,11 +56,28 @@ To install the JupyterLab extension:
 jupyter labextension install @jupyter-widgets/jupyterlab-manager ipylab
 ```
 
+## Under the hood
+
+`ipylab` can be seen as a proxy from Python to JupyterLab over Jupyter Widgets:
+
+![ipylab-diagram](./docs/ipylab.png)
+
 ## Development
 
 ```bash
+# create a new conda environment
+conda create -n ipylab -c conda-forge jupyterlab nodejs
+
+# activate the environment
+conda activate ipylab
+
+# install the Python package
 python -m pip install -e ".[dev]"
+
+# compile the extension
 jlpm && jlpm run build
+
+# install the widgets extension and the ipylab extension locally
 jupyter labextension install @jupyter-widgets/jupyterlab-manager . --debug
 ```
 
