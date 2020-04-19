@@ -50,19 +50,6 @@ export class ShellModel extends WidgetModel {
     widgets.forEach((w: any) => this._add(w));
   }
 
-  private _hook(sender: any, msg: Message): boolean {
-    switch (msg.type) {
-      case 'close-request': {
-        const widgets = this.get('_widgets').slice();
-        ArrayExt.removeAllWhere(widgets, (w: any) => w.id === sender.id);
-        this.set('_widgets', widgets);
-        this.save_changes();
-        break;
-      }
-    }
-    return true;
-  }
-
   /**
    * Add a widget to the application shell
    *
@@ -77,7 +64,18 @@ export class ShellModel extends WidgetModel {
 
     pWidget.id = id ?? DOMUtils.createDomID();
 
-    MessageLoop.installMessageHook(pWidget, this._hook.bind(this));
+    MessageLoop.installMessageHook(pWidget, (handler: any, msg: Message) => {
+      switch (msg.type) {
+        case 'close-request': {
+          const widgets = this.get('_widgets').slice();
+          ArrayExt.removeAllWhere(widgets, (w: any) => w.id === handler.id);
+          this.set('_widgets', widgets);
+          this.save_changes();
+          break;
+        }
+      }
+      return true;
+    });
 
     const updateTitle = (): void => {
       pWidget.title.label = title.get('label');
