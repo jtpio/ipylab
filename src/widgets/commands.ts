@@ -5,6 +5,8 @@ import { ObservableMap } from '@jupyterlab/observables';
 
 import { ISerializers, WidgetModel } from '@jupyter-widgets/base';
 
+import { ArrayExt } from '@lumino/algorithm';
+
 import { CommandRegistry } from '@lumino/commands';
 
 import { ReadonlyPartialJSONObject } from '@lumino/coreutils';
@@ -12,7 +14,6 @@ import { ReadonlyPartialJSONObject } from '@lumino/coreutils';
 import { IDisposable } from '@lumino/disposable';
 
 import { MODULE_NAME, MODULE_VERSION } from '../version';
-import { ArrayExt } from '@lumino/algorithm';
 
 /**
  * The model for a command registry.
@@ -40,14 +41,13 @@ export class CommandRegistryModel extends WidgetModel {
    */
   initialize(attributes: any, options: any): void {
     this._commands = CommandRegistryModel.commands;
-    this._customCommands = new ObservableMap<IDisposable>();
     super.initialize(attributes, options);
     this.on('msg:custom', this._onMessage.bind(this));
     this.on('comm_live_update', () => {
       if (this.comm_live) {
         return;
       }
-      this._customCommands.values().forEach((command) => command.dispose());
+      Private.customCommands.values().forEach((command) => command.dispose());
       this._sendCommandList();
     });
 
@@ -112,25 +112,30 @@ export class CommandRegistryModel extends WidgetModel {
    */
   private _addCommand(
     options: CommandRegistry.ICommandOptions & { id: string }
-  ): string {
+  ): void {
     const { id, caption, label, iconClass } = options;
     if (this._commands.hasCommand(id)) {
-      // TODO: handle this?
-      return;
+      Private.customCommands.get(id).dispose();
     }
+
+    const commandEnabled = (command: IDisposable): boolean => {
+      return !command.isDisposed && !!this.comm && this.comm_live;
+    };
     const command = this._commands.addCommand(id, {
       caption,
       label,
       iconClass,
       execute: () => {
         if (!this.comm_live) {
-          console.log('TODO: dispose the command');
+          command.dispose();
           return;
         }
         this.send({ event: 'execute', id }, {});
       },
+      isEnabled: () => commandEnabled(command),
+      isVisible: () => commandEnabled(command),
     });
-    this._customCommands.set(id, command);
+    Private.customCommands.set(id, command);
     this._sendCommandList();
   }
 
@@ -141,8 +146,8 @@ export class CommandRegistryModel extends WidgetModel {
    */
   private _removeCommand(bundle: { id: string }): void {
     const { id } = bundle;
-    if (this._customCommands.has(id)) {
-      this._customCommands.get(id).dispose();
+    if (Private.customCommands.has(id)) {
+      Private.customCommands.get(id).dispose();
     }
     const commands = this.get('_commands').slice();
     ArrayExt.removeAllWhere(commands, (w: any) => w.id === id);
@@ -163,7 +168,13 @@ export class CommandRegistryModel extends WidgetModel {
   static view_module_version = MODULE_VERSION;
 
   private _commands: CommandRegistry;
-  private _customCommands: ObservableMap<IDisposable>;
 
   static commands: CommandRegistry;
+}
+
+/**
+ * A namespace for private data
+ */
+namespace Private {
+  export const customCommands = new ObservableMap<IDisposable>();
 }

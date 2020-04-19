@@ -3,11 +3,15 @@
 
 import { ICommandPalette, IPaletteItem } from '@jupyterlab/apputils';
 
+import { ObservableMap } from '@jupyterlab/observables';
+
 import {
   DOMWidgetModel,
   ISerializers,
   WidgetModel,
 } from '@jupyter-widgets/base';
+
+import { IDisposable } from '@lumino/disposable';
 
 import { MODULE_NAME, MODULE_VERSION } from '../version';
 
@@ -76,7 +80,13 @@ export class CommandPaletteModel extends WidgetModel {
       return;
     }
     const { id, category, args, rank } = options;
-    void this._palette.addItem({ command: id, category, args, rank });
+    const itemId = `${id}-${category}`;
+    if (Private.customItems.has(itemId)) {
+      // no-op if the item is already in the palette
+      return;
+    }
+    const item = this._palette.addItem({ command: id, category, args, rank });
+    Private.customItems.set(itemId, item);
   }
 
   static serializers: ISerializers = {
@@ -93,4 +103,11 @@ export class CommandPaletteModel extends WidgetModel {
   private _palette: ICommandPalette;
 
   static palette: ICommandPalette;
+}
+
+/**
+ * A namespace for private data
+ */
+namespace Private {
+  export const customItems = new ObservableMap<IDisposable>();
 }
