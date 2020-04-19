@@ -6,7 +6,7 @@
 
 import asyncio
 
-from ipywidgets import CallbackDispatcher, Widget, widget_serialization
+from ipywidgets import CallbackDispatcher, Widget, register, widget_serialization
 from traitlets import Instance, Unicode
 from ._frontend import module_name, module_version
 
@@ -14,6 +14,7 @@ from .commands import CommandRegistry
 from .shell import Shell
 
 
+@register
 class JupyterFrontEnd(Widget):
     _model_name = Unicode("JupyterFrontEndModel").tag(sync=True)
     _model_module = Unicode(module_name).tag(sync=True)

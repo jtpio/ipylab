@@ -3,7 +3,7 @@
 
 from collections import defaultdict
 
-from ipywidgets import CallbackDispatcher, Widget
+from ipywidgets import CallbackDispatcher, Widget, register
 from traitlets import List, Unicode
 
 from ._frontend import module_name, module_version
@@ -13,6 +13,7 @@ def _noop():
     pass
 
 
+@register
 class CommandPalette(Widget):
     _model_name = Unicode("CommandPaletteModel").tag(sync=True)
     _model_module = Unicode(module_name).tag(sync=True)
@@ -35,6 +36,7 @@ class CommandPalette(Widget):
         )
 
 
+@register
 class CommandRegistry(Widget):
     _model_name = Unicode("CommandRegistryModel").tag(sync=True)
     _model_module = Unicode(module_name).tag(sync=True)

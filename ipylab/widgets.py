@@ -1,11 +1,12 @@
 # Copyright (c) Jeremy Tuloup.
 # Distributed under the terms of the Modified BSD License.
 
-from ipywidgets import VBox, Widget, widget_serialization
+from ipywidgets import VBox, Widget, register, widget_serialization
 from traitlets import Bool, Instance, Unicode
 from ._frontend import module_name, module_version
 
 
+@register
 class Title(Widget):
     _model_name = Unicode("TitleModel").tag(sync=True)
     _model_module = Unicode(module_name).tag(sync=True)
@@ -16,6 +17,7 @@ class Title(Widget):
     closable = Bool(True).tag(sync=True)
 
 
+@register
 class Panel(VBox):
     _model_name = Unicode("PanelModel").tag(sync=True)
     _model_module = Unicode(module_name).tag(sync=True)
@@ -27,6 +29,7 @@ class Panel(VBox):
         super().__init__(*args, title=Title(), **kwargs)
 
 
+@register
 class SplitPanel(Panel):
     _model_name = Unicode("SplitPanelModel").tag(sync=True)
     _model_module = Unicode(module_name).tag(sync=True)
