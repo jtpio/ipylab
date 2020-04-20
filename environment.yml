@@ -3,5 +3,6 @@ channels:
   - conda-forge
 dependencies:
 - ipylab=0.2.1
+- ipytree=0.1
 - jupyterlab=2
 - nodejs

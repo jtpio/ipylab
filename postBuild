@@ -1,1 +1,3 @@
-jupyter labextension install @jupyter-widgets/jupyterlab-manager ipylab@0.2.1
+jupyter labextension install @jupyter-widgets/jupyterlab-manager \
+                             ipylab@0.2.1 \
+                             ipytree@0.1
