@@ -18,7 +18,6 @@ export class PanelModel extends VBoxModel {
       _model_name: PanelModel.model_name,
       _model_module: PanelModel.model_module,
       _model_module_version: PanelModel.model_module_version,
-      _view_name: null,
     };
   }
 
