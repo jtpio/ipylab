@@ -56,6 +56,19 @@ To install the JupyterLab extension:
 jupyter labextension install @jupyter-widgets/jupyterlab-manager ipylab
 ```
 
+## Running the examples locally
+
+To try out the examples locally, the recommended way is to create a new environment with the dependencies:
+
+```bash
+# create a new conda environment
+conda create -n ipylab-examples -c conda-forge jupyterlab ipylab ipytree bqplot ipywidgets numpy
+conda activate ipylab-examples
+
+# install the JupyterLab extensions
+jupyter labextension install @jupyter-widgets/jupyterlab-manager ipylab bqplot ipytree
+```
+
 ## Under the hood
 
 `ipylab` can be seen as a proxy from Python to JupyterLab over Jupyter Widgets:
