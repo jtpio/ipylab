@@ -67,6 +67,9 @@ conda activate ipylab-examples
 
 # install the JupyterLab extensions
 jupyter labextension install @jupyter-widgets/jupyterlab-manager ipylab bqplot ipytree
+
+# start JupyterLab
+jupyter lab
 ```
 
 ## Under the hood
