@@ -2,7 +2,9 @@ name: ipylab
 channels:
   - conda-forge
 dependencies:
+- bqplot=0.12
 - ipylab=0.2.1
 - ipytree=0.1
 - jupyterlab=2
 - nodejs
+- numpy

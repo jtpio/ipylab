@@ -24,17 +24,21 @@ Try it in your browser with Binder:
 
 ## Examples
 
-### Widgets and Panels
+### Add Jupyter Widgets to the JupyterLab interface
 
-![widgets-panels](https://user-images.githubusercontent.com/591645/69000410-8f151f00-08cf-11ea-8491-7b8848497b62.gif)
+![widgets-panels](https://user-images.githubusercontent.com/591645/80025074-59104280-84e0-11ea-9766-0cb49cba285a.gif)
 
-### Command Registry
+### Execute Commands
 
-![command-registry](./docs/screencasts/commands.gif)
+![command-registry](https://user-images.githubusercontent.com/591645/80026017-beb0fe80-84e1-11ea-842d-fa3bf5bc4a9b.gif)
 
 ### Custom Python Commands and Command Palette
 
-![custom-commands](https://user-images.githubusercontent.com/591645/73125753-adbc2400-3faa-11ea-95f8-f7060e883ccd.gif)
+![custom-commands](https://user-images.githubusercontent.com/591645/80026023-c1135880-84e1-11ea-9e83-fdb739659357.gif)
+
+### Building small UI applications
+
+![ipytree-example](https://user-images.githubusercontent.com/591645/80026006-b8bb1d80-84e1-11ea-87cc-86495186b938.gif)
 
 ## Installation
 
@@ -54,6 +58,22 @@ To install the JupyterLab extension:
 
 ```bash
 jupyter labextension install @jupyter-widgets/jupyterlab-manager ipylab
+```
+
+## Running the examples locally
+
+To try out the examples locally, the recommended way is to create a new environment with the dependencies:
+
+```bash
+# create a new conda environment
+conda create -n ipylab-examples -c conda-forge jupyterlab ipylab ipytree bqplot ipywidgets numpy
+conda activate ipylab-examples
+
+# install the JupyterLab extensions
+jupyter labextension install @jupyter-widgets/jupyterlab-manager ipylab bqplot ipytree
+
+# start JupyterLab
+jupyter lab
 ```
 
 ## Under the hood
