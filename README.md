@@ -36,7 +36,7 @@ Try it in your browser with Binder:
 
 ![custom-commands](https://user-images.githubusercontent.com/591645/80026023-c1135880-84e1-11ea-9e83-fdb739659357.gif)
 
-### Building small UI applications
+### Build small applications
 
 ![ipytree-example](https://user-images.githubusercontent.com/591645/80026006-b8bb1d80-84e1-11ea-87cc-86495186b938.gif)
 
