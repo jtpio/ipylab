@@ -1,4 +1,9 @@
-from collections import defaultdict
+'''Expose current and all sessions to python kernel
+
+Copyright (c) Tingkai Liu
+Distributed under the terms of the Modified BSD License.
+'''
+
 from ipywidgets import Widget, register, widget_serialization
 from traitlets import List, Unicode, Bool, Instance, HasTraits, Dict
 
@@ -11,7 +16,7 @@ def _noop():
 
 class Kernel(HasTraits):
     '''Maps Kernel.IModel
-    
+
     TODO: Not Used Currently
     '''
     _id = Unicode(readonly=True)
@@ -20,7 +25,7 @@ class Kernel(HasTraits):
 
 class KernelPreference(HasTraits):
     '''Maps ISessionContext.IKernelPreference
-    
+
     TODO: Not Used Currently
     '''
     _id = Unicode(read_only=True)
