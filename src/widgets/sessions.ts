@@ -1,6 +1,4 @@
 // SessionManager exposes `JupyterLab.serviceManager.sessions` to user python kernel
-// Copyright (c) Tingkai Liu
-// Distributed under the terms of the Modified BSD License.
 
 import { SessionManager } from '@jupyterlab/services';
 import { ISerializers, WidgetModel } from '@jupyter-widgets/base';

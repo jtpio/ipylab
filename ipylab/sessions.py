@@ -1,7 +1,4 @@
 '''Expose current and all sessions to python kernel
-
-Copyright (c) Tingkai Liu
-Distributed under the terms of the Modified BSD License.
 '''
 
 from ipywidgets import Widget, register, widget_serialization
