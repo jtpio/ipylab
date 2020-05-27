@@ -1,12 +1,14 @@
 // SessionManager exposes `JupyterLab.serviceManager.sessions` to user python kernel
 
-import { SessionManager, Session } from '@jupyterlab/services';
+import { SessionManager } from '@jupyterlab/services';
 import { ISerializers, WidgetModel } from '@jupyter-widgets/base';
 import { toArray } from '@lumino/algorithm';
+import { FocusTracker } from '@lumino/widgets';
 import { MODULE_NAME, MODULE_VERSION } from '../version';
+import { Session } from '@jupyterlab/services';
 
 /**
- * The model for a command registry.
+ * The model for a Session Manager
  */
 export class SessionManagerModel extends WidgetModel {
   /**
@@ -31,9 +33,12 @@ export class SessionManagerModel extends WidgetModel {
    */
   initialize(attributes: any, options: any): void {
     this._sessions = SessionManagerModel.sessions;
+    this._tracker = SessionManagerModel.tracker;
     super.initialize(attributes, options);
     this.on('msg:custom', this._onMessage.bind(this));
     this._sessions.runningChanged.connect(this._sendSessions, this);
+    this._tracker.currentChanged.connect(this._currentChanged, this);
+    this._tracker.activeChanged.connect(this._currentChanged, this);
     this._sendSessions();
     this._sendCurrent();
   }
@@ -53,6 +58,38 @@ export class SessionManagerModel extends WidgetModel {
     }
   }
 
+
+  /**
+   * get sessionContext from a given widget instance
+   * @param widget 
+   */
+  private _getSessionContext(widget: any): Session.IModel | {} {
+    if (widget?.sessionContext) { // covers both ConsolePanel and NotebookPanle
+      if (widget.sessionContext.session?.model){
+        return widget.sessionContext.session.model;
+      }
+    } 
+    return {}; // empty object serializes to empty dict in python
+  }
+
+  /**
+   * Handle focus change in JLab
+   * 
+   * NOTE: currentChange fires on two situations that we are concerned about here:
+   * 1. when user focuses on a widget in browser, which the `change.newValue` will 
+   *  be the current Widget
+   * 2. when user executes a code in console/notebook, where the `changed.newValue` will be null since
+   *  we lost focus due to execution.
+   * To solve this problem, we interrogate `this._tracker.currentWidget` directly.
+   * We also added a simple fencing to reduce the number of Comm sync calls between Python/JS
+   */
+  private _currentChanged(): void {
+    this._current_session = this._getSessionContext(this._tracker.currentWidget);
+    this.set('current_session', this._current_session);
+    this.set('sessions', toArray(this._sessions.running()));
+    this.save_changes();
+  }
+
   /**
    * Send the list of commands to the backend.
    */
@@ -62,21 +99,11 @@ export class SessionManagerModel extends WidgetModel {
   }
 
   /**
-   * get current session to the backend.
-   * TODO: need to implement
-   */
-  private _getCurrent(): void {
-    this._current_session = undefined;
-  }
-
-  /**
    * send current session to backend
    */
   private _sendCurrent(): void {
-    if (!this._current_session) {
-      this._getCurrent();
-    }
-    this.set('current_sessions', this._current_session);
+    this._current_session = this._getSessionContext(this._tracker.currentWidget);
+    this.set('current_session', this._current_session);
     this.save_changes();
   }
 
@@ -91,8 +118,9 @@ export class SessionManagerModel extends WidgetModel {
   static view_module: string = null;
   static view_module_version = MODULE_VERSION;
 
-  private _current_session: Session.IModel;
-
+  private _current_session: Session.IModel | {};
   private _sessions: SessionManager;
   static sessions: SessionManager;
+  private _tracker: FocusTracker<any>;
+  static tracker: FocusTracker<any>;
 }

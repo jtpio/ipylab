@@ -10,13 +10,19 @@ def _noop():
 
 
 class Kernel(HasTraits):
-    '''Maps Kernel.IModel'''
+    '''Maps Kernel.IModel
+    
+    TODO: Not Used Currently
+    '''
     _id = Unicode(readonly=True)
     name = Unicode(readonly=True)
 
 
 class KernelPreference(HasTraits):
-    '''Maps ISessionContext.IKernelPreference'''
+    '''Maps ISessionContext.IKernelPreference
+    
+    TODO: Not Used Currently
+    '''
     _id = Unicode(read_only=True)
     name = Unicode(read_only=True)
     language = Unicode(read_only=True)
@@ -27,7 +33,10 @@ class KernelPreference(HasTraits):
 
 
 class SessionContext(HasTraits):
-    '''Partially Map @jupyterlab/apputils SessionContext.IOptions'''
+    '''Partially Map @jupyterlab/apputils SessionContext.IOptions
+
+    TODO: Not Used Currently
+    '''
     path = Unicode(read_only=True)
     basePath = Unicode(read_only=True)
     name = Unicode(read_only=True)
@@ -35,7 +44,10 @@ class SessionContext(HasTraits):
 
 
 class Session(HasTraits):
-    '''Maps @jupyterlab/services Session.IModel'''
+    '''Maps @jupyterlab/services Session.IModel
+
+    TODO: Not Used Currently
+    '''
     _id = Unicode(readonly=True)
     name = Unicode(readonly=True)
     path = Unicode(readonly=True)
