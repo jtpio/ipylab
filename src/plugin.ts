@@ -36,6 +36,7 @@ const extension: JupyterFrontEndPlugin<void> = {
     widgetExports.ShellModel.shell = shell;
     widgetExports.CommandRegistryModel.commands = app.commands;
     widgetExports.CommandPaletteModel.palette = palette;
+    widgetExports.SessionManagerModel.sessions = app.serviceManager.sessions;
 
     registry.registerWidget({
       name: MODULE_NAME,
