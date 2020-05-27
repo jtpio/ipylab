@@ -39,7 +39,7 @@ const extension: JupyterFrontEndPlugin<void> = {
     widgetExports.CommandRegistryModel.commands = app.commands;
     widgetExports.CommandPaletteModel.palette = palette;
     widgetExports.SessionManagerModel.sessions = app.serviceManager.sessions;
-    let focusTracker: FocusTracker<any> = (app.shell as any)._tracker;
+    const focusTracker: FocusTracker<any> = (app.shell as any)._tracker;
     widgetExports.SessionManagerModel.tracker = focusTracker;
 
     registry.registerWidget({

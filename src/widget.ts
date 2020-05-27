@@ -13,7 +13,6 @@ import { ShellModel } from './widgets/shell';
 import { SplitPanelModel, SplitPanelView } from './widgets/split_panel';
 import { TitleModel } from './widgets/title';
 
-
 export {
   CommandRegistryModel,
   CommandPaletteModel,
@@ -23,5 +22,5 @@ export {
   SplitPanelModel,
   SplitPanelView,
   TitleModel,
-  SessionManagerModel
+  SessionManagerModel,
 };

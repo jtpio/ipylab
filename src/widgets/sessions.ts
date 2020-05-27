@@ -58,25 +58,26 @@ export class SessionManagerModel extends WidgetModel {
     }
   }
 
-
   /**
    * get sessionContext from a given widget instance
-   * @param widget 
+   *
+   * @param widget widget tracked by app.shell._track (FocusTracker)
    */
   private _getSessionContext(widget: any): Session.IModel | {} {
-    if (widget?.sessionContext) { // covers both ConsolePanel and NotebookPanle
-      if (widget.sessionContext.session?.model){
+    if (widget?.sessionContext) {
+      // covers both ConsolePanel and NotebookPanle
+      if (widget.sessionContext.session?.model) {
         return widget.sessionContext.session.model;
       }
-    } 
+    }
     return {}; // empty object serializes to empty dict in python
   }
 
   /**
    * Handle focus change in JLab
-   * 
+   *
    * NOTE: currentChange fires on two situations that we are concerned about here:
-   * 1. when user focuses on a widget in browser, which the `change.newValue` will 
+   * 1. when user focuses on a widget in browser, which the `change.newValue` will
    *  be the current Widget
    * 2. when user executes a code in console/notebook, where the `changed.newValue` will be null since
    *  we lost focus due to execution.
@@ -84,7 +85,9 @@ export class SessionManagerModel extends WidgetModel {
    * We also added a simple fencing to reduce the number of Comm sync calls between Python/JS
    */
   private _currentChanged(): void {
-    this._current_session = this._getSessionContext(this._tracker.currentWidget);
+    this._current_session = this._getSessionContext(
+      this._tracker.currentWidget
+    );
     this.set('current_session', this._current_session);
     this.set('sessions', toArray(this._sessions.running()));
     this.save_changes();
@@ -102,7 +105,9 @@ export class SessionManagerModel extends WidgetModel {
    * send current session to backend
    */
   private _sendCurrent(): void {
-    this._current_session = this._getSessionContext(this._tracker.currentWidget);
+    this._current_session = this._getSessionContext(
+      this._tracker.currentWidget
+    );
     this.set('current_session', this._current_session);
     this.save_changes();
   }
