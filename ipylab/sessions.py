@@ -1,5 +1,5 @@
-'''Expose current and all sessions to python kernel
-'''
+"""Expose current and all sessions to python kernel
+"""
 
 from ipywidgets import Widget, register, widget_serialization
 from traitlets import List, Unicode, Bool, Instance, HasTraits, Dict
@@ -12,19 +12,21 @@ def _noop():
 
 
 class Kernel(HasTraits):
-    '''Maps Kernel.IModel
+    """Maps Kernel.IModel
 
     TODO: Not Used Currently
-    '''
+    """
+
     _id = Unicode(readonly=True)
     name = Unicode(readonly=True)
 
 
 class KernelPreference(HasTraits):
-    '''Maps ISessionContext.IKernelPreference
+    """Maps ISessionContext.IKernelPreference
 
     TODO: Not Used Currently
-    '''
+    """
+
     _id = Unicode(read_only=True)
     name = Unicode(read_only=True)
     language = Unicode(read_only=True)
@@ -35,10 +37,11 @@ class KernelPreference(HasTraits):
 
 
 class SessionContext(HasTraits):
-    '''Partially Map @jupyterlab/apputils SessionContext.IOptions
+    """Partially Map @jupyterlab/apputils SessionContext.IOptions
 
     TODO: Not Used Currently
-    '''
+    """
+
     path = Unicode(read_only=True)
     basePath = Unicode(read_only=True)
     name = Unicode(read_only=True)
@@ -46,10 +49,11 @@ class SessionContext(HasTraits):
 
 
 class Session(HasTraits):
-    '''Maps @jupyterlab/services Session.IModel
+    """Maps @jupyterlab/services Session.IModel
 
     TODO: Not Used Currently
-    '''
+    """
+
     _id = Unicode(readonly=True)
     name = Unicode(readonly=True)
     path = Unicode(readonly=True)
@@ -59,7 +63,8 @@ class Session(HasTraits):
 
 @register
 class SessionManager(Widget):
-    '''Expose JupyterFrontEnd.serviceManager.sessions'''
+    """Expose JupyterFrontEnd.serviceManager.sessions"""
+
     _model_name = Unicode("SessionManagerModel").tag(sync=True)
     _model_module = Unicode(module_name).tag(sync=True)
     _model_module_version = Unicode(module_version).tag(sync=True)
@@ -69,9 +74,9 @@ class SessionManager(Widget):
     sessions = List([], read_only=True).tag(sync=True)
 
     def get_current_session(self):
-        '''Force a call to update current session'''
-        self.send({"func":"get_current"})
+        """Force a call to update current session"""
+        self.send({"func": "get_current"})
 
     def list_sessions(self):
-        '''List all running sessions managed in the manager'''
+        """List all running sessions managed in the manager"""
         return self.sessions
