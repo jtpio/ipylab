@@ -43,7 +43,7 @@ export class SessionManagerModel extends WidgetModel {
     this._shell.activeChanged.connect(this._currentChanged, this);
     this._sendSessions();
     this._sendCurrent();
-    this.send({event: "sessions_initialized"}, {});
+    this.send({ event: 'sessions_initialized' }, {});
   }
 
   /**
@@ -54,9 +54,9 @@ export class SessionManagerModel extends WidgetModel {
   private _onMessage(msg: any): void {
     switch (msg.func) {
       case 'refreshRunning':
-        this._sessions.refreshRunning().then(()=>{
+        this._sessions.refreshRunning().then(() => {
           this.send({ event: 'sessions_refreshed' }, {});
-        })
+        });
         break;
       default:
         break;

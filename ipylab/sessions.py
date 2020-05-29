@@ -8,6 +8,7 @@ from traitlets import List, Unicode, Dict
 
 from ._frontend import module_name, module_version
 
+
 @register
 class SessionManager(Widget):
     """Expose JupyterFrontEnd.serviceManager.sessions"""
@@ -21,7 +22,6 @@ class SessionManager(Widget):
     # keeps track of the list of sessions
     sessions = List([], read_only=True).tag(sync=True)
 
-
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self._refreshed_event = None
@@ -32,7 +32,6 @@ class SessionManager(Widget):
         if content.get("event", "") == "sessions_refreshed":
             self._refreshed_event.set()
             self._on_refresh_callbacks()
-
 
     async def refresh_running(self):
         """Force a call to refresh running sessions
