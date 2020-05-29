@@ -1,7 +1,7 @@
 {
-  "name": "ipyfbl",
-  "version": "0.1.0",
-  "description": "IPywidget interface for FBLClient",
+  "name": "ipylab",
+  "version": "0.3.0",
+  "description": "Control JupyterLab from Python notebooks",
   "keywords": [
     "jupyter",
     "jupyterlab",
@@ -13,9 +13,9 @@
     "dist/*.js",
     "css/*.css"
   ],
-  "homepage": "https://github.com/TK-21st/ipyfbl",
+  "homepage": "https://github.com/jtpio/ipylab",
   "bugs": {
-    "url": "https://github.com/TK-21st/ipyfbl/issues"
+    "url": "https://github.com/jtpio/ipylab/issues"
   },
   "license": "BSD-3-Clause",
   "author": {
@@ -26,13 +26,13 @@
   "types": "./lib/index.d.ts",
   "repository": {
     "type": "git",
-    "url": "https://github.com/TK-21st/ipyfbl"
+    "url": "https://github.com/jtpio/ipylab"
   },
   "scripts": {
     "build": "tsc",
-    "build:labextension": "npm run clean:labextension && mkdirp ipyfbl/labextension && cd ipyfbl/labextension && npm pack ../..",
+    "build:labextension": "npm run clean:labextension && mkdirp ipylab/labextension && cd ipylab/labextension && npm pack ../..",
     "clean": "rimraf lib tsconfig.tsbuildinfo",
-    "clean:labextension": "rimraf ipyfbl/labextension",
+    "clean:labextension": "rimraf ipylab/labextension",
     "eslint": "eslint . --ext .ts,.tsx --fix",
     "eslint:check": "eslint . --ext .ts,.tsx",
     "lint": "jlpm && jlpm run prettier && jlpm run eslint",

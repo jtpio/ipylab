@@ -1,38 +1,110 @@
-# IPyFBL
-Provides automatic model synchronization between JLab Widgets and Python Kernel via IPyWidget middleman.
-Inspired by [IPyLab](https://github.com/jtpio/ipylab).
+# ipylab
+
+![Github Actions Status](https://github.com/jtpio/ipylab/workflows/Build/badge.svg)
+[![Binder](https://mybinder.org/badge_logo.svg)](https://mybinder.org/v2/gh/jtpio/ipylab/stable?urlpath=lab/tree/examples/widgets.ipynb)
+[![Conda Version](https://img.shields.io/conda/vn/conda-forge/ipylab.svg)](https://anaconda.org/conda-forge/ipylab)
+[![pypi](https://img.shields.io/pypi/v/ipylab.svg)](https://pypi.python.org/pypi/ipylab)
+[![npm](https://img.shields.io/npm/v/ipylab.svg)](https://www.npmjs.com/package/ipylab)
+
+Control JupyterLab from Python notebooks.
+
+The goal is to provide access to most of the JupyterLab environment from Python notebooks. For example:
+
+- Adding widgets to the main area `DockPanel`, left, right or top area
+- Build more advanced interfaces leveraging `SplitPanel`, `Toolbar` and other Lumino widgets
+- Launch arbitrary commands (new terminal, change theme, open file and so on)
+- Open a workspace with a specific layout
+- Listen to JupyterLab signals (notebook opened, console closed) and trigger Python callbacks
+
+## Try it online
+
+Try it in your browser with Binder:
+
+[![Binder](https://mybinder.org/badge_logo.svg)](https://mybinder.org/v2/gh/jtpio/ipylab/stable?urlpath=lab/tree/examples/widgets.ipynb)
+
+## Examples
+
+### Add Jupyter Widgets to the JupyterLab interface
+
+![widgets-panels](https://user-images.githubusercontent.com/591645/80025074-59104280-84e0-11ea-9766-0cb49cba285a.gif)
+
+### Execute Commands
+
+![command-registry](https://user-images.githubusercontent.com/591645/80026017-beb0fe80-84e1-11ea-842d-fa3bf5bc4a9b.gif)
+
+### Custom Python Commands and Command Palette
+
+![custom-commands](https://user-images.githubusercontent.com/591645/80026023-c1135880-84e1-11ea-9e83-fdb739659357.gif)
+
+### Build small applications
+
+![ipytree-example](https://user-images.githubusercontent.com/591645/80026006-b8bb1d80-84e1-11ea-87cc-86495186b938.gif)
 
 ## Installation
-```bash
-conda create -n ipyfbl python=3.7 nodejs -y
-conda activate ipyfbl
-pip install jupyter jupyterlab
-pip install -e. ".[dev]"
-jlpm && jlpm run build
-# if you do not have jupyterlab-manager installed already
-jupyter labextension install @jupyter-widgets/jupyterlab-manager
-jupyter labextension link .
 
-npm run watch
-# in a separate browser
-# unfortunately JLab watch mode does not work yet. 
-# we will have to resort to 
+You can install using `pip`:
+
+```bash
+pip install ipylab
+```
+
+Or with `conda`:
+
+```bash
+conda install -c conda-forge ipylab
+```
+
+To install the JupyterLab extension:
+
+```bash
+jupyter labextension install @jupyter-widgets/jupyterlab-manager ipylab
+```
+
+## Running the examples locally
+
+To try out the examples locally, the recommended way is to create a new environment with the dependencies:
+
+```bash
+# create a new conda environment
+conda create -n ipylab-examples -c conda-forge jupyterlab ipylab ipytree bqplot ipywidgets numpy
+conda activate ipylab-examples
+
+# install the JupyterLab extensions
+jupyter labextension install @jupyter-widgets/jupyterlab-manager ipylab bqplot ipytree
+
+# start JupyterLab
 jupyter lab
 ```
 
+## Under the hood
 
-# Overview
-![](flybrainlab_v2.png)
+`ipylab` can be seen as a proxy from Python to JupyterLab over Jupyter Widgets:
 
-## Note on WorkFlow
-1. By default, in the JLab entry point FBL widgets are instantiated without a kernel and is used for pure visualization purposes.
-2. If the FBL Widget then connects to a kernel, the model of the FBL Widget will be passed to the FBLClient's DataModel and shared to make sure the data is in sync.
-3. Models in Client's DataModel are key-ed by Widget's unique global ID, which avoids conflict between models.
+![ipylab-diagram](./docs/ipylab.png)
 
-## Note on Model
+## Development
 
-1. Model data need to be JSON serializable. (i.e. Number, string, object in JS)
-2. A set of serializable types have been implemented in ipywigdet, int, List, Dict, etc.
-3. Mutable Types (List, Dict, Set) have issue with triggering change event since their ids remain unchanged. Either manually trigger change events or avoid using them
-4. Custom Type/Serialization can be implemented for (for instance) sync partial data.
-5. DataModel should be able to pool data from widgets together.
+```bash
+# create a new conda environment
+conda create -n ipylab -c conda-forge jupyterlab nodejs
+
+# activate the environment
+conda activate ipylab
+
+# install the Python package
+python -m pip install -e ".[dev]"
+
+# compile the extension
+jlpm && jlpm run build
+
+# install the widgets extension and the ipylab extension locally
+jupyter labextension install @jupyter-widgets/jupyterlab-manager . --debug
+```
+
+## Related projects
+
+There are a couple of projects that also enable interacting with the JupyterLab environment from Python notebooks:
+
+- [wxyz](https://github.com/deathbeds/wxyz): experimental widgets (including `DockPanel`)
+- [jupyterlab-sidecar](https://github.com/jupyter-widgets/jupyterlab-sidecar): add widgets to the JupyterLab right area
+- [jupyterlab_commands](https://github.com/timkpaine/jupyterlab_commands): add arbitrary Python commands to the jupyterlab command palette
