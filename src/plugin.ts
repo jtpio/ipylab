@@ -1,6 +1,3 @@
-// Copyright (c) Jeremy Tuloup
-// Distributed under the terms of the Modified BSD License.
-
 import {
   JupyterFrontEndPlugin,
   JupyterFrontEnd,
@@ -15,7 +12,7 @@ import * as widgetExports from './widget';
 
 import { MODULE_NAME, MODULE_VERSION } from './version';
 
-const EXTENSION_ID = 'ipylab:plugin';
+const EXTENSION_ID = 'ipyfbl:plugin';
 
 /**
  * The default plugin.
@@ -35,7 +32,6 @@ const extension: JupyterFrontEndPlugin<void> = {
     widgetExports.JupyterFrontEndModel.app = app;
     widgetExports.ShellModel.shell = shell;
     widgetExports.CommandRegistryModel.commands = app.commands;
-    widgetExports.CommandPaletteModel.palette = palette;
     widgetExports.SessionManagerModel.sessions = app.serviceManager.sessions;
     widgetExports.SessionManagerModel.shell = shell;
 

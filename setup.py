@@ -24,7 +24,7 @@ from setuptools import setup
 
 
 # The name of the project
-name = "ipylab"
+name = "ipyfbl"
 
 # Ensure a valid python version
 ensure_python(">=3.4")
@@ -56,14 +56,14 @@ cmdclass["jsdeps"] = combine_commands(
 
 setup_args = dict(
     name=name,
-    description="Control JupyterLab from Python notebooks",
+    description="Ipywidget interface for FBLClient",
     version=version,
     scripts=glob(pjoin("scripts", "*")),
     cmdclass=cmdclass,
     packages=find_packages(),
-    author="Jeremy Tuloup",
-    author_email="jeremy@jtp.io",
-    url="https://github.com/jtpio/ipylab",
+    author="Tingkai Liu",
+    author_email="tl2747@columbia.edu",
+    url="https://github.com/TK-21st/ipyfbl",
     license="BSD",
     platforms="Linux, Mac OS X, Windows",
     keywords=["Jupyter", "Widgets", "IPython"],

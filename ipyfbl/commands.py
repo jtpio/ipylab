@@ -1,6 +1,3 @@
-# Copyright (c) Jeremy Tuloup.
-# Distributed under the terms of the Modified BSD License.
-
 from collections import defaultdict
 
 from ipywidgets import CallbackDispatcher, Widget, register

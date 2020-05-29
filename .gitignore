@@ -145,15 +145,15 @@ $RECYCLE.BIN/
 # ----
 
 **/node_modules/
-ipylab/nbextension/static/index.*
-ipylab/labextension/*.tgz
+ipyfbl/nbextension/static/index.*
+ipyfbl/labextension/*.tgz
 
 # Coverage data
 # -------------
 **/coverage/
 
 # Packed lab extensions
-ipylab/labextension
+ipyfbl/labextension
 
 package-lock.json
 yarn.lock
