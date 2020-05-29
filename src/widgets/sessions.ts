@@ -32,7 +32,7 @@ export class SessionManagerModel extends WidgetModel {
    * @param options The initialization options.
    */
   initialize(attributes: any, options: any): void {
-    let {sessions, shell} = SessionManagerModel;
+    const { sessions, shell } = SessionManagerModel;
     this._sessions = sessions;
     this._shell = shell;
     sessions.runningChanged.connect(this._sendSessions, this);
