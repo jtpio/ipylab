@@ -1,65 +1,14 @@
 """Expose current and all sessions to python kernel
 """
 
-from ipywidgets import Widget, register, widget_serialization
-from traitlets import List, Unicode, Bool, Instance, HasTraits, Dict
+from ipywidgets import Widget, register
+from traitlets import List, Unicode, Dict
 
 from ._frontend import module_name, module_version
 
 
 def _noop():
     pass
-
-
-class Kernel(HasTraits):
-    """Maps Kernel.IModel
-
-    TODO: Not Used Currently
-    """
-
-    _id = Unicode(readonly=True)
-    name = Unicode(readonly=True)
-
-
-class KernelPreference(HasTraits):
-    """Maps ISessionContext.IKernelPreference
-
-    TODO: Not Used Currently
-    """
-
-    _id = Unicode(read_only=True)
-    name = Unicode(read_only=True)
-    language = Unicode(read_only=True)
-    shouldStart = Bool(True, read_only=True)
-    canStart = Bool(True, read_only=True)
-    shutdownOnDispose = Bool(False, read_only=True)
-    autoStartDefault = Bool(True, read_only=True)
-
-
-class SessionContext(HasTraits):
-    """Partially Map @jupyterlab/apputils SessionContext.IOptions
-
-    TODO: Not Used Currently
-    """
-
-    path = Unicode(read_only=True)
-    basePath = Unicode(read_only=True)
-    name = Unicode(read_only=True)
-    kernelPreference = Instance(KernelPreference).tag(**widget_serialization)
-
-
-class Session(HasTraits):
-    """Maps @jupyterlab/services Session.IModel
-
-    TODO: Not Used Currently
-    """
-
-    _id = Unicode(readonly=True)
-    name = Unicode(readonly=True)
-    path = Unicode(readonly=True)
-    _type = Unicode(readonly=True)
-    kernel = Instance(Kernel).tag(**widget_serialization)
-
 
 @register
 class SessionManager(Widget):
