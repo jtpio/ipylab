@@ -10,6 +10,7 @@ from ._frontend import module_name, module_version
 def _noop():
     pass
 
+
 @register
 class SessionManager(Widget):
     """Expose JupyterFrontEnd.serviceManager.sessions"""
