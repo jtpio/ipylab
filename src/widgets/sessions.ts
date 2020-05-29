@@ -3,9 +3,9 @@
 import { SessionManager } from '@jupyterlab/services';
 import { ISerializers, WidgetModel } from '@jupyter-widgets/base';
 import { toArray } from '@lumino/algorithm';
-import { FocusTracker } from '@lumino/widgets';
 import { MODULE_NAME, MODULE_VERSION } from '../version';
 import { Session } from '@jupyterlab/services';
+import { ILabShell } from '@jupyterlab/application';
 
 /**
  * The model for a Session Manager
@@ -32,13 +32,15 @@ export class SessionManagerModel extends WidgetModel {
    * @param options The initialization options.
    */
   initialize(attributes: any, options: any): void {
-    this._sessions = SessionManagerModel.sessions;
-    this._tracker = SessionManagerModel.tracker;
+    let {sessions, shell} = SessionManagerModel;
+    this._sessions = sessions;
+    this._shell = shell;
+    sessions.runningChanged.connect(this._sendSessions, this);
+    shell.currentChanged.connect(this._currentChanged, this);
+
     super.initialize(attributes, options);
     this.on('msg:custom', this._onMessage.bind(this));
-    this._sessions.runningChanged.connect(this._sendSessions, this);
-    this._tracker.currentChanged.connect(this._currentChanged, this);
-    this._tracker.activeChanged.connect(this._currentChanged, this);
+    this._shell.activeChanged.connect(this._currentChanged, this);
     this._sendSessions();
     this._sendCurrent();
   }
@@ -64,13 +66,7 @@ export class SessionManagerModel extends WidgetModel {
    * @param widget widget tracked by app.shell._track (FocusTracker)
    */
   private _getSessionContext(widget: any): Session.IModel | {} {
-    if (widget?.sessionContext) {
-      // covers both ConsolePanel and NotebookPanle
-      if (widget.sessionContext.session?.model) {
-        return widget.sessionContext.session.model;
-      }
-    }
-    return {}; // empty object serializes to empty dict in python
+    return widget?.sessionContext?.session?.model ?? {};
   }
 
   /**
@@ -85,9 +81,7 @@ export class SessionManagerModel extends WidgetModel {
    * We also added a simple fencing to reduce the number of Comm sync calls between Python/JS
    */
   private _currentChanged(): void {
-    this._current_session = this._getSessionContext(
-      this._tracker.currentWidget
-    );
+    this._current_session = this._getSessionContext(this._shell.currentWidget);
     this.set('current_session', this._current_session);
     this.set('sessions', toArray(this._sessions.running()));
     this.save_changes();
@@ -105,9 +99,7 @@ export class SessionManagerModel extends WidgetModel {
    * send current session to backend
    */
   private _sendCurrent(): void {
-    this._current_session = this._getSessionContext(
-      this._tracker.currentWidget
-    );
+    this._current_session = this._getSessionContext(this._shell.currentWidget);
     this.set('current_session', this._current_session);
     this.save_changes();
   }
@@ -126,6 +118,6 @@ export class SessionManagerModel extends WidgetModel {
   private _current_session: Session.IModel | {};
   private _sessions: SessionManager;
   static sessions: SessionManager;
-  private _tracker: FocusTracker<any>;
-  static tracker: FocusTracker<any>;
+  private _shell: ILabShell;
+  static shell: ILabShell;
 }
