@@ -26,7 +26,7 @@ export class SessionManagerModel extends WidgetModel {
   }
 
   /**
-   * Initialize a CommandRegistryModel instance.
+   * Initialize a SessionManagerModel instance.
    *
    * @param attributes The base attributes.
    * @param options The initialization options.
@@ -43,6 +43,7 @@ export class SessionManagerModel extends WidgetModel {
     this._shell.activeChanged.connect(this._currentChanged, this);
     this._sendSessions();
     this._sendCurrent();
+    this.send({event: "sessions_initialized"}, {});
   }
 
   /**
@@ -52,8 +53,10 @@ export class SessionManagerModel extends WidgetModel {
    */
   private _onMessage(msg: any): void {
     switch (msg.func) {
-      case 'get_current':
-        this._sendCurrent();
+      case 'refreshRunning':
+        this._sessions.refreshRunning().then(()=>{
+          this.send({ event: 'sessions_refreshed' }, {});
+        })
         break;
       default:
         break;
@@ -88,7 +91,7 @@ export class SessionManagerModel extends WidgetModel {
   }
 
   /**
-   * Send the list of commands to the backend.
+   * Send the list of sessions to the backend.
    */
   private _sendSessions(): void {
     this.set('sessions', toArray(this._sessions.running()));

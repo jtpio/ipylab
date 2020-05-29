@@ -1,15 +1,12 @@
 """Expose current and all sessions to python kernel
 """
 
-from ipywidgets import Widget, register
+import asyncio
+
+from ipywidgets import CallbackDispatcher, Widget, register, widget_serialization
 from traitlets import List, Unicode, Dict
 
 from ._frontend import module_name, module_version
-
-
-def _noop():
-    pass
-
 
 @register
 class SessionManager(Widget):
@@ -19,14 +16,33 @@ class SessionManager(Widget):
     _model_module = Unicode(module_name).tag(sync=True)
     _model_module_version = Unicode(module_version).tag(sync=True)
 
-    # keeps track of alist of sessions
+    # information of the current session
     current_session = Dict(read_only=True).tag(sync=True)
+    # keeps track of the list of sessions
     sessions = List([], read_only=True).tag(sync=True)
 
-    def get_current_session(self):
-        """Force a call to update current session"""
-        self.send({"func": "get_current"})
 
-    def list_sessions(self):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._refreshed_event = None
+        self._on_refresh_callbacks = CallbackDispatcher()
+        self.on_msg(self._on_frontend_msg)
+
+    def _on_frontend_msg(self, _, content, buffers):
+        if content.get("event", "") == "sessions_refreshed":
+            self._refreshed_event.set()
+            self._on_refresh_callbacks()
+
+
+    async def refresh_running(self):
+        """Force a call to refresh running sessions
+        
+        Resolved when `SessionManager.runnigSession` resolves
+        """
+        self.send({"func": "refreshRunning"})
+        self._refreshed_event = asyncio.Event()
+        await self._refreshed_event.wait()
+
+    def running(self):
         """List all running sessions managed in the manager"""
         return self.sessions
