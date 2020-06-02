@@ -1,5 +1,8 @@
-"""Expose current and all sessions to python kernel
-"""
+#!/usr/bin/env python
+# coding: utf-8
+
+# Copyright (c) ipylab contributors.
+# Distributed under the terms of the Modified BSD License.
 
 import asyncio
 
@@ -35,7 +38,7 @@ class SessionManager(Widget):
 
     async def refresh_running(self):
         """Force a call to refresh running sessions
-        
+
         Resolved when `SessionManager.runnigSession` resolves
         """
         self.send({"func": "refreshRunning"})
