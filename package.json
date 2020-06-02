@@ -19,7 +19,7 @@
   },
   "license": "BSD-3-Clause",
   "author": {
-    "name": "Jeremy Tuloup",
+    "name": "ipylab contributors",
     "email": "jeremy@jtp.io"
   },
   "main": "lib/index.js",

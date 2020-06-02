@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-# Copyright (c) Jeremy Tuloup.
+# Copyright (c) ipylab contributors.
 # Distributed under the terms of the Modified BSD License.
 
 import asyncio

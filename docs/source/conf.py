@@ -56,8 +56,8 @@ master_doc = "index"
 
 # General information about the project.
 project = "ipylab"
-copyright = "2019, Jeremy Tuloup"
-author = "Jeremy Tuloup"
+copyright = "2019, ipylab contributors"
+author = "ipylab contributors"
 
 # The version info for the project you're documenting, acts as replacement for
 # |version| and |release|, also used in various other places throughout the
@@ -142,7 +142,7 @@ latex_elements = {
 # (source start file, target name, title,
 #  author, documentclass [howto, manual, or own class]).
 latex_documents = [
-    (master_doc, "ipylab.tex", "ipylab Documentation", "Jeremy Tuloup", "manual"),
+    (master_doc, "ipylab.tex", "ipylab Documentation", "ipylab contributors", "manual"),
 ]
 
 

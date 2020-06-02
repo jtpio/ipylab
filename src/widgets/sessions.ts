@@ -1,3 +1,6 @@
+// Copyright (c) ipylab contributors
+// Distributed under the terms of the Modified BSD License.
+
 // SessionManager exposes `JupyterLab.serviceManager.sessions` to user python kernel
 
 import { SessionManager } from '@jupyterlab/services';

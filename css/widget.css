@@ -1,3 +1,8 @@
+/*-----------------------------------------------------------------------------
+| Copyright (c) ipylab contributors.
+| Distributed under the terms of the Modified BSD License.
+|----------------------------------------------------------------------------*/
+
 /* Default Split Handle Color*/
 .jp-JupyterLuminoSplitPanelWidget .p-SplitPanel-handle {
   background-color: var(--jp-border-color2);
