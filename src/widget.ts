@@ -6,6 +6,7 @@ import '../css/widget.css';
 
 import { CommandRegistryModel } from './widgets/commands';
 import { CommandPaletteModel } from './widgets/palette';
+import { SessionManagerModel } from './widgets/sessions';
 import { JupyterFrontEndModel } from './widgets/frontend';
 import { PanelModel } from './widgets/panel';
 import { ShellModel } from './widgets/shell';
@@ -21,4 +22,5 @@ export {
   SplitPanelModel,
   SplitPanelView,
   TitleModel,
+  SessionManagerModel,
 };

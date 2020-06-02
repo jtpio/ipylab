@@ -12,6 +12,7 @@ from ._frontend import module_name, module_version
 
 from .commands import CommandRegistry
 from .shell import Shell
+from .sessions import SessionManager
 
 
 @register
@@ -23,9 +24,16 @@ class JupyterFrontEnd(Widget):
     version = Unicode(read_only=True).tag(sync=True)
     shell = Instance(Shell).tag(sync=True, **widget_serialization)
     commands = Instance(CommandRegistry).tag(sync=True, **widget_serialization)
+    sessions = Instance(SessionManager).tag(sync=True, **widget_serialization)
 
     def __init__(self, *args, **kwargs):
-        super().__init__(*args, shell=Shell(), commands=CommandRegistry(), **kwargs)
+        super().__init__(
+            *args,
+            shell=Shell(),
+            commands=CommandRegistry(),
+            sessions=SessionManager(),
+            **kwargs
+        )
         self._ready_event = asyncio.Event()
         self._on_ready_callbacks = CallbackDispatcher()
         self.on_msg(self._on_frontend_msg)
