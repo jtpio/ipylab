@@ -1,4 +1,4 @@
-# Copyright (c) Jeremy Tuloup.
+# Copyright (c) ipylab contributors.
 # Distributed under the terms of the Modified BSD License.
 
 from ipywidgets import Widget, register, widget_serialization

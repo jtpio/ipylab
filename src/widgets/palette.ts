@@ -1,4 +1,4 @@
-// Copyright (c) Jeremy Tuloup
+// Copyright (c) ipylab contributors
 // Distributed under the terms of the Modified BSD License.
 
 import { ICommandPalette, IPaletteItem } from '@jupyterlab/apputils';

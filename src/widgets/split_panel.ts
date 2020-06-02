@@ -1,4 +1,4 @@
-// Copyright (c) Jeremy Tuloup
+// Copyright (c) ipylab contributors
 // Distributed under the terms of the Modified BSD License.
 
 import { JupyterPhosphorWidget, DOMWidgetView } from '@jupyter-widgets/base';
