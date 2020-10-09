@@ -156,6 +156,5 @@ ipylab/labextension/*.tgz
 ipylab/labextension
 
 package-lock.json
-yarn.lock
 
 .vscode
