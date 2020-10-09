@@ -80,7 +80,7 @@ jupyter lab
 
 ```bash
 # create a new conda environment
-conda create -n ipylab -c conda-forge jupyterlab nodejs
+conda create -n ipylab -c conda-forge/label/jupyterlab_rc -c conda-forge/label/jupyterlab_server_rc -c conda-forge/label/jupyterlab_widgets_rc -c conda-forge jupyterlab=3 ipywidgets=7 jupyterlab_widgets=1 jupyter-packaging nodejs python -y
 
 # activate the environment
 conda activate ipylab
