@@ -8,7 +8,6 @@ include .coverage.rc
 
 include tsconfig.json
 include package.json
-include ipylab/labextension/*.tgz
 
 # Documentation
 graft docs

@@ -39,10 +39,16 @@ jstargets = [
     pjoin(HERE, "lib", "plugin.js"),
 ]
 
-package_data_spec = {name: ["labextension/*.tgz"]}
+package_data_spec = {
+    name: [
+        "labextension/*"
+    ]
+}
+
+labext_name = "ipylab"
 
 data_files_spec = [
-    ("share/jupyter/lab/extensions", lab_path, "*.tgz"),
+    ("share/jupyter/labextensions/%s" % labext_name, lab_path, "*.*"),
 ]
 
 
@@ -73,8 +79,6 @@ setup_args = dict(
         "License :: OSI Approved :: BSD License",
         "Programming Language :: Python",
         "Programming Language :: Python :: 3",
-        "Programming Language :: Python :: 3.4",
-        "Programming Language :: Python :: 3.5",
         "Programming Language :: Python :: 3.6",
         "Programming Language :: Python :: 3.7",
         "Programming Language :: Python :: 3.8",

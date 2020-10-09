@@ -88,11 +88,11 @@ conda activate ipylab
 # install the Python package
 python -m pip install -e ".[dev]"
 
+# link the extension files
+jupyter labextension develop . --overwrite
+
 # compile the extension
 jlpm && jlpm run build
-
-# install the widgets extension and the ipylab extension locally
-jupyter labextension install @jupyter-widgets/jupyterlab-manager . --debug
 ```
 
 ## Related projects
