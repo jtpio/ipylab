@@ -39,11 +39,7 @@ jstargets = [
     pjoin(HERE, "lib", "plugin.js"),
 ]
 
-package_data_spec = {
-    name: [
-        "labextension/*"
-    ]
-}
+package_data_spec = {name: ["labextension/*"]}
 
 labext_name = "ipylab"
 
@@ -56,7 +52,8 @@ cmdclass = create_cmdclass(
     "jsdeps", package_data_spec=package_data_spec, data_files_spec=data_files_spec
 )
 cmdclass["jsdeps"] = combine_commands(
-    install_npm(HERE, build_cmd="build"), ensure_targets(jstargets),
+    install_npm(HERE, build_cmd="build"),
+    ensure_targets(jstargets),
 )
 
 
@@ -85,9 +82,15 @@ setup_args = dict(
         "Framework :: Jupyter",
     ],
     include_package_data=True,
-    install_requires=["ipywidgets>=7.0.0",],
+    install_requires=[
+        "ipywidgets>=7.0.0",
+    ],
     extras_require={
-        "test": ["pytest>=3.6", "pytest-cov", "nbval",],
+        "test": [
+            "pytest>=3.6",
+            "pytest-cov",
+            "nbval",
+        ],
         "dev": ["pre-commit", "black"],
         "examples": [
             # Any requirements for the examples to run

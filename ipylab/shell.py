@@ -30,10 +30,16 @@ class Shell(Widget):
 
     def expand_left(self):
         self.send(
-            {"func": "expandLeft", "payload": {},}
+            {
+                "func": "expandLeft",
+                "payload": {},
+            }
         )
 
     def expand_right(self):
         self.send(
-            {"func": "expandRight", "payload": {},}
+            {
+                "func": "expandRight",
+                "payload": {},
+            }
         )

@@ -10,26 +10,26 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-    - name: TMP fix - install libgbm1
-      run: sudo apt install -y libgbm1
     - name: Checkout
-      uses: actions/checkout@v1
+      uses: actions/checkout@v2
     - name: Install node
       uses: actions/setup-node@v1
       with:
        node-version: '10.x'
     - name: Install Python
-      uses: actions/setup-python@v1
+      uses: actions/setup-python@v2
       with:
         python-version: '3.7'
         architecture: 'x64'
-    - name: Install JupyterLab
-      run: python -m pip install jupyterlab
-    - name: Install the ipylab Python package
-      run: python -m pip install -e .
-    - name: Install the ipylab JupyterLab extension
+    - name: Install dependencies
       run: |
-        jlpm && jlpm run build
-        jupyter labextension install .
+        python -m pip install --upgrade pip
+        python -m pip install jupyter_packaging
+        python -m pip install --pre jupyterlab
+    - name: Install the ipylab Python package and JupyterLab extension
+      run: |
+        python -m pip install .
+        jupyter labextension list 2>&1 | grep -ie "ipylab.*enabled.*ok" -
     - name: Browser check
-      run: python -m jupyterlab.browser_check
+      run: |
+        python -m jupyterlab.browser_check
