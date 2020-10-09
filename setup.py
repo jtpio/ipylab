@@ -4,30 +4,30 @@
 # Copyright (c) Jupyter Development Team.
 # Distributed under the terms of the Modified BSD License.
 
-from __future__ import print_function
+import os
+
 from glob import glob
 from os.path import join as pjoin
 
-
-from setupbase import (
+from jupyter_packaging import (
     create_cmdclass,
     install_npm,
     ensure_targets,
-    find_packages,
     combine_commands,
     ensure_python,
     get_version,
-    HERE,
 )
 
-from setuptools import setup
+from setuptools import setup, find_packages
+
+HERE = os.path.abspath(os.path.dirname(__file__))
 
 
 # The name of the project
 name = "ipylab"
 
 # Ensure a valid python version
-ensure_python(">=3.4")
+ensure_python(">=3.6")
 
 # Get our version
 version = get_version(pjoin(name, "_version.py"))

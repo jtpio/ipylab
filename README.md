@@ -54,12 +54,6 @@ Or with `conda`:
 conda install -c conda-forge ipylab
 ```
 
-To install the JupyterLab extension:
-
-```bash
-jupyter labextension install @jupyter-widgets/jupyterlab-manager ipylab
-```
-
 ## Running the examples locally
 
 To try out the examples locally, the recommended way is to create a new environment with the dependencies:
