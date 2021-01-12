@@ -1,10 +1,10 @@
 name: ipylab
 channels:
-  - conda-forge
+- conda-forge
 dependencies:
 - bqplot=0.12
-- ipylab=0.3.0
+- ipylab=0.4.0
 - ipytree=0.1
-- jupyterlab=2
+- jupyterlab=3
 - nodejs
 - numpy

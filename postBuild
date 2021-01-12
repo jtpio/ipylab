@@ -1,4 +1,0 @@
-jupyter labextension install @jupyter-widgets/jupyterlab-manager \
-                             ipylab@0.3.0 \
-                             bqplot@0.5.6 \
-                             ipytree@0.1
