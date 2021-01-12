@@ -11,7 +11,7 @@
   "files": [
     "lib/**/*.js",
     "dist/*.js",
-    "css/*.css"
+    "style/*.css"
   ],
   "homepage": "https://github.com/jtpio/ipylab",
   "bugs": {
@@ -23,11 +23,12 @@
     "email": "jeremy@jtp.io"
   },
   "main": "lib/index.js",
-  "style": "css/widget.css",
-  "styleModule": "css/style.js",
+  "style": "style/widget.css",
+  "styleModule": "style/style.js",
   "types": "./lib/index.d.ts",
   "sideEffects": [
-    "css/*.css"
+    "style/*.css",
+    "style/style.js"
   ],
   "repository": {
     "type": "git",

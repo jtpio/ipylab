@@ -26,6 +26,7 @@ prune tests/build
 # Javascript files
 graft ipylab/labextension
 graft src
+graft style
 prune **/node_modules
 prune coverage
 prune lib
