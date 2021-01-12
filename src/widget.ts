@@ -1,9 +1,6 @@
 // Copyright (c) ipylab contributors
 // Distributed under the terms of the Modified BSD License.
 
-// Import the CSS
-import '../css/widget.css';
-
 import { CommandRegistryModel } from './widgets/commands';
 import { CommandPaletteModel } from './widgets/palette';
 import { SessionManagerModel } from './widgets/sessions';

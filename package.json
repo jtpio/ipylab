@@ -23,7 +23,11 @@
     "email": "jeremy@jtp.io"
   },
   "main": "lib/index.js",
+  "style": "css/widget.css",
   "types": "./lib/index.d.ts",
+  "sideEffects": [
+    "css/*.css"
+  ],
   "repository": {
     "type": "git",
     "url": "https://github.com/jtpio/ipylab"
