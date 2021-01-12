@@ -80,7 +80,11 @@ jobs:
           path: ./dist
       - name: Install the prerequisites
         run: |
-          ${{ matrix.py_cmd }} -m pip install pip wheel
+          ${{ matrix.py_cmd }} -m pip install --upgrade pip
+          ${{ matrix.py_cmd }} -m pip install jupyter-packaging==0.7.9
+      - name: TMP
+        run: |
+          ls -lisah dist
       - name: Install the package
         run: |
           cd dist
