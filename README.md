@@ -48,10 +48,10 @@ You can install using `pip`:
 pip install ipylab
 ```
 
-Or with `conda`:
+Or with `mamba` / `conda`:
 
 ```bash
-conda install -c conda-forge ipylab
+mamba install -c conda-forge ipylab
 ```
 
 ## Running the examples locally
@@ -62,9 +62,6 @@ To try out the examples locally, the recommended way is to create a new environm
 # create a new conda environment
 conda create -n ipylab-examples -c conda-forge jupyterlab ipylab ipytree bqplot ipywidgets numpy
 conda activate ipylab-examples
-
-# install the JupyterLab extensions
-jupyter labextension install @jupyter-widgets/jupyterlab-manager ipylab bqplot ipytree
 
 # start JupyterLab
 jupyter lab
