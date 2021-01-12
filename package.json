@@ -24,6 +24,7 @@
   },
   "main": "lib/index.js",
   "style": "css/widget.css",
+  "styleModule": "css/style.js",
   "types": "./lib/index.d.ts",
   "sideEffects": [
     "css/*.css"
