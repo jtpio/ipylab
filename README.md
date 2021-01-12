@@ -48,16 +48,10 @@ You can install using `pip`:
 pip install ipylab
 ```
 
-Or with `conda`:
+Or with `mamba` / `conda`:
 
 ```bash
-conda install -c conda-forge ipylab
-```
-
-To install the JupyterLab extension:
-
-```bash
-jupyter labextension install @jupyter-widgets/jupyterlab-manager ipylab
+mamba install -c conda-forge ipylab
 ```
 
 ## Running the examples locally
@@ -68,9 +62,6 @@ To try out the examples locally, the recommended way is to create a new environm
 # create a new conda environment
 conda create -n ipylab-examples -c conda-forge jupyterlab ipylab ipytree bqplot ipywidgets numpy
 conda activate ipylab-examples
-
-# install the JupyterLab extensions
-jupyter labextension install @jupyter-widgets/jupyterlab-manager ipylab bqplot ipytree
 
 # start JupyterLab
 jupyter lab
@@ -86,7 +77,7 @@ jupyter lab
 
 ```bash
 # create a new conda environment
-conda create -n ipylab -c conda-forge jupyterlab nodejs
+mamba create -n ipylab -c conda-forge jupyter-packaging nodejs python -y
 
 # activate the environment
 conda activate ipylab
@@ -94,11 +85,11 @@ conda activate ipylab
 # install the Python package
 python -m pip install -e ".[dev]"
 
+# link the extension files
+jupyter labextension develop . --overwrite
+
 # compile the extension
 jlpm && jlpm run build
-
-# install the widgets extension and the ipylab extension locally
-jupyter labextension install @jupyter-widgets/jupyterlab-manager . --debug
 ```
 
 ## Related projects
