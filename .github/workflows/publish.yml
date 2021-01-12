@@ -8,20 +8,20 @@ jobs:
   deploy:
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v1
+    - uses: actions/checkout@v2
     - name: Install node
       uses: actions/setup-node@v1
       with:
-       node-version: '10.x'
+       node-version: '12.x'
        registry-url: 'https://registry.npmjs.org'
     - name: Set up Python
-      uses: actions/setup-python@v1
+      uses: actions/setup-python@v2
       with:
         python-version: '3.x'
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
-        pip install setuptools wheel twine
+        pip install setuptools wheel twine jupyter-packaging jupyterlab
     - name: Build and publish to PyPI
       env:
         TWINE_USERNAME: ${{ secrets.PYPI_USERNAME }}
@@ -31,7 +31,7 @@ jobs:
         twine upload dist/*
     - uses: actions/setup-node@v1
       with:
-       node-version: '10.x'
+       node-version: '12.x'
        registry-url: 'https://registry.npmjs.org'
     - name: Publish to npm
       env:
@@ -39,4 +39,4 @@ jobs:
       run: |
         echo "//registry.npmjs.org/:_authToken=${{ secrets.NPM_TOKEN }}" > ~/.npmrc
         npm publish
-        
+
