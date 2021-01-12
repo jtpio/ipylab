@@ -3,7 +3,7 @@ channels:
 - conda-forge
 dependencies:
 - bqplot=0.12
-- ipylab=0.4.0
+- ipylab=0.4.1
 - ipytree=0.1
 - jupyterlab=3
 - nodejs
