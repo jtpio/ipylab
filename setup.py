@@ -37,7 +37,7 @@ lab_path = pjoin(HERE, name, "labextension")
 
 # Representative files that should exist after a successful build
 jstargets = [
-    pjoin(HERE, "lib", "plugin.js"),
+    pjoin(lab_path, "package.json"),
 ]
 
 package_data_spec = {name: ["labextension/*"]}
