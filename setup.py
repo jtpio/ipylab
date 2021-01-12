@@ -16,6 +16,7 @@ from jupyter_packaging import (
     combine_commands,
     ensure_python,
     get_version,
+    skip_if_exists,
 )
 
 from setuptools import setup, find_packages
@@ -44,24 +45,34 @@ package_data_spec = {name: ["labextension/*"]}
 labext_name = "ipylab"
 
 data_files_spec = [
-    ("share/jupyter/labextensions/%s" % labext_name, lab_path, "*.*"),
+    ("share/jupyter/labextensions/%s" % labext_name, lab_path, "**"),
 ]
 
-
-cmdclass = create_cmdclass(
-    "jsdeps", package_data_spec=package_data_spec, data_files_spec=data_files_spec
-)
-cmdclass["jsdeps"] = combine_commands(
-    install_npm(HERE, build_cmd="build:prod"),
+js_command = combine_commands(
+    install_npm(HERE, build_cmd="build:prod", npm=["jlpm"]),
     ensure_targets(jstargets),
 )
 
+cmdclass = create_cmdclass("jsdeps",
+    package_data_spec=package_data_spec,
+    data_files_spec=data_files_spec
+)
+
+is_repo = os.path.exists(os.path.join(HERE, ".git"))
+if is_repo:
+    cmdclass["jsdeps"] = js_command
+else:
+    cmdclass["jsdeps"] = skip_if_exists(jstargets, js_command)
+
+with open("README.md", "r") as fh:
+    long_description = fh.read()
 
 setup_args = dict(
     name=name,
-    description="Control JupyterLab from Python notebooks",
     version=version,
-    scripts=glob(pjoin("scripts", "*")),
+    description="Control JupyterLab from Python Notebooks",
+    long_description=long_description,
+    long_description_content_type="text/markdown",
     cmdclass=cmdclass,
     packages=find_packages(),
     author="ipylab contributors",
@@ -83,7 +94,8 @@ setup_args = dict(
     ],
     include_package_data=True,
     install_requires=[
-        "ipywidgets>=7.0.0",
+        "ipywidgets>=7.6.0",
+        "jupyterlab~=3.0"
     ],
     extras_require={
         "test": [
