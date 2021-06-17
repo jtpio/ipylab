@@ -12,7 +12,7 @@
     "lib/**/*.js",
     "dist/*.js",
     "style/*.css",
-    "style/*.js",
+    "style/*.js"
   ],
   "homepage": "https://github.com/jtpio/ipylab",
   "bugs": {
