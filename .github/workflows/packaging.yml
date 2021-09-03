@@ -80,7 +80,7 @@ jobs:
           path: ./dist
       - name: Install the prerequisites
         run: |
-          ${{ matrix.py_cmd }} -m pip install pip wheel jupyterlab~=3.0
+          ${{ matrix.py_cmd }} -m pip install --upgrade pip wheel jupyterlab~=3.0
       - name: Install the package
         run: |
           cd dist
