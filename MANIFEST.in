@@ -8,6 +8,7 @@ include .coverage.rc
 
 include tsconfig.json
 include package.json
+include install.json
 
 # Documentation
 graft docs
