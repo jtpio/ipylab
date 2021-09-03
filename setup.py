@@ -19,6 +19,7 @@ ensured_targets = [str(lab_path / "package.json")]
 
 data_files_spec = [
     ("share/jupyter/labextensions/%s" % NAME, str(lab_path), "**"),
+    ("share/jupyter/labextensions/%s" % NAME, str(HERE), "install.json"),
 ]
 
 try:
