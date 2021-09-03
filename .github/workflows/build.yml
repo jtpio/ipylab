@@ -16,11 +16,11 @@ jobs:
     - name: Install node
       uses: actions/setup-node@v1
       with:
-       node-version: '12.x'
+       node-version: '14.x'
     - name: Install Python
       uses: actions/setup-python@v2
       with:
-        python-version: '3.7'
+        python-version: '3.9'
         architecture: 'x64'
     - name: Install dependencies
       run: |

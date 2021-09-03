@@ -12,7 +12,7 @@ jobs:
     - name: Install node
       uses: actions/setup-node@v1
       with:
-       node-version: '12.x'
+       node-version: '14.x'
        registry-url: 'https://registry.npmjs.org'
     - name: Set up Python
       uses: actions/setup-python@v2
@@ -31,7 +31,7 @@ jobs:
         twine upload dist/*
     - uses: actions/setup-node@v1
       with:
-       node-version: '12.x'
+       node-version: '14.x'
        registry-url: 'https://registry.npmjs.org'
     - name: Publish to npm
       env:
