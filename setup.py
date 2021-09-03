@@ -15,9 +15,7 @@ NAME = "ipylab"
 lab_path = HERE / NAME / "labextension"
 
 # Representative files that should exist after a successful build
-ensured_targets = [
-    str(lab_path / "package.json")
-]
+ensured_targets = [str(lab_path / "package.json")]
 
 data_files_spec = [
     ("share/jupyter/labextensions/%s" % NAME, str(lab_path), "**"),
