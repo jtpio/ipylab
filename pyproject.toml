@@ -17,4 +17,4 @@ build_cmd = "build:prod"
 npm = ["jlpm"]
 
 [tool.check-manifest]
-ignore = [".binder/**", "*.json", "yarn.lock", "readthedocs.yml", ".*", "ipylab/labextension/**"]
+ignore = [".binder/**", "*.json", "docs/**", "yarn.lock", "readthedocs.yml", ".*", "ipylab/labextension/**"]
