@@ -124,7 +124,7 @@ export class SplitPanelView extends VBoxView {
    */
   initialize(parameters: any): void {
     super.initialize(parameters);
-    const pWidget = (this.pWidget as any) as JupyterLuminoSplitPanelWidget;
+    const pWidget = this.pWidget as any as JupyterLuminoSplitPanelWidget;
     this.model.on('change:orientation', () => {
       const orientation = this.model.get('orientation');
       pWidget.orientation = orientation;
