@@ -12,10 +12,6 @@ graft ipylab/labextension
 # Examples
 graft examples
 
-# Tests
-graft tests
-prune tests/build
-
 # Javascript files
 graft src
 graft style
