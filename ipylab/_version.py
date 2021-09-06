@@ -33,3 +33,6 @@ parts = [int(match[part]) for part in ["major", "minor", "patch"]]
 if match["rest"]:
     parts.append(match["rest"])
 version_info = tuple(parts)
+
+module_name = "ipylab"
+module_version = f"^{__version__}"
