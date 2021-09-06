@@ -33,7 +33,7 @@ jobs:
         uses: actions/cache@v1
         with:
           path: ${{ steps.pip-cache.outputs.dir }}
-          key: ${{ runner.os }}-pip-${{ hashFiles('setup.py') }}
+          key: ${{ runner.os }}-pip-${{ hashFiles('setup.cfg', 'setup.py') }}
           restore-keys: |
             ${{ runner.os }}-pip-
       - name: Cache checked links
