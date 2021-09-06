@@ -8,14 +8,14 @@
 from ._version import __version__, version_info
 
 import json
-import os.path as osp
+from pathlib import Path
 
 from .jupyterfrontend import JupyterFrontEnd
 from .widgets import Panel, SplitPanel
 
-HERE = osp.abspath(osp.dirname(__file__))
+HERE = Path(__file__).parent.resolve()
 
-with open(osp.join(HERE, "labextension", "package.json")) as fid:
+with open(str(HERE / "labextension" / "package.json")) as fid:
     data = json.load(fid)
 
 
