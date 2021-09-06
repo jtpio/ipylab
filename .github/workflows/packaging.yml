@@ -68,6 +68,9 @@ jobs:
             py_cmd: python3
           - os: ubuntu
             py_cmd: python
+          # TODO: test on Python 3.6 on Windows
+          - os: windows
+            python: 3.9
     steps:
       - name: Install Python
         uses: actions/setup-python@v2
