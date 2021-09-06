@@ -27,6 +27,7 @@ jobs:
         python -m pip install --upgrade pip jupyterlab~=3.0 jupyter_packaging~=0.10
     - name: Install the ipylab Python package and JupyterLab extension
       run: |
+        jlpm
         python -m pip install .
         jupyter labextension list 2>&1 | grep -ie "ipylab.*enabled.*ok" -
     - name: Browser check
