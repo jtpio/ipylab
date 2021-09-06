@@ -18,8 +18,8 @@ lab_path = HERE / NAME / "labextension"
 ensured_targets = [str(lab_path / "static" / "style.js")]
 
 data_files_spec = [
-    ("share/jupyter/labextensions/%s" % NAME, str(lab_path), "**"),
-    ("share/jupyter/labextensions/%s" % NAME, str(HERE), "install.json"),
+    (f"share/jupyter/labextensions/{NAME}", str(lab_path), "**"),
+    (f"share/jupyter/labextensions/{NAME}", str(HERE), "install.json"),
 ]
 
 try:
