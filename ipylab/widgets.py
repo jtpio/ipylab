@@ -3,7 +3,7 @@
 
 from ipywidgets import VBox, Widget, register, widget_serialization
 from traitlets import Bool, Instance, Unicode
-from ._frontend import module_name, module_version
+from ._version import module_name, module_version
 
 
 @register
