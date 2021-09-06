@@ -7,7 +7,7 @@ file="LICENSE"
 
 [tool.jupyter-packaging.options]
 skip-if-exists = ["ipylab/labextension/static/style.js"]
-ensured-targets = ["ipylab/labextension/static/style.js"]
+ensured-targets = ["ipylab/labextension/static/style.js", "ipylab/labextension/package.json"]
 
 [tool.jupyter-packaging.builder]
 factory = "jupyter_packaging.npm_builder"
