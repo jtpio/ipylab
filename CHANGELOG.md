@@ -2,6 +2,22 @@
 
 <!-- <START NEW CHANGELOG ENTRY> -->
 
+## 0.5.1
+
+([Full Changelog](https://github.com/jtpio/ipylab/compare/v0.5.0...5cf3ffefa009e782c4fa952e251b642450fdb388))
+
+### Bugs fixed
+
+- Fix handling of frontend version [#76](https://github.com/jtpio/ipylab/pull/76) ([@jtpio](https://github.com/jtpio))
+
+### Contributors to this release
+
+([GitHub contributors page for this release](https://github.com/jtpio/ipylab/graphs/contributors?from=2021-09-06&to=2021-09-06&type=c))
+
+[@jtpio](https://github.com/search?q=repo%3Ajtpio%2Fipylab+involves%3Ajtpio+updated%3A2021-09-06..2021-09-06&type=Issues)
+
+<!-- <END NEW CHANGELOG ENTRY> -->
+
 ## 0.5.0
 
 ([Full Changelog](https://github.com/jtpio/ipylab/compare/0.4.1...1c614527d2647906a2d1e91c71b698b72ae6643b))
@@ -35,8 +51,6 @@
 ([GitHub contributors page for this release](https://github.com/jtpio/ipylab/graphs/contributors?from=2021-01-12&to=2021-09-06&type=c))
 
 [@dependabot](https://github.com/search?q=repo%3Ajtpio%2Fipylab+involves%3Adependabot+updated%3A2021-01-12..2021-09-06&type=Issues) | [@github-actions](https://github.com/search?q=repo%3Ajtpio%2Fipylab+involves%3Agithub-actions+updated%3A2021-01-12..2021-09-06&type=Issues) | [@jtpio](https://github.com/search?q=repo%3Ajtpio%2Fipylab+involves%3Ajtpio+updated%3A2021-01-12..2021-09-06&type=Issues) | [@vidartf](https://github.com/search?q=repo%3Ajtpio%2Fipylab+involves%3Avidartf+updated%3A2021-01-12..2021-09-06&type=Issues)
-
-<!-- <END NEW CHANGELOG ENTRY> -->
 
 ## 0.4.1
 
