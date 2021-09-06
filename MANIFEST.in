@@ -1,20 +1,13 @@
-include LICENSE.txt
-include README.md
-
-include setup.py
+include LICENSE
+include *.md
 include pyproject.toml
-include pytest.ini
-include .coverage.rc
+include setup.py
 
-include tsconfig.json
 include package.json
+include install.json
+include ts*.json
 
-# Documentation
-graft docs
-exclude docs/\#*
-prune docs/build
-prune docs/gh-pages
-prune docs/dist
+graft ipylab/labextension
 
 # Examples
 graft examples
@@ -24,11 +17,9 @@ graft tests
 prune tests/build
 
 # Javascript files
-graft ipylab/labextension
 graft src
 graft style
 prune **/node_modules
-prune coverage
 prune lib
 
 # Patterns to exclude from any directory
