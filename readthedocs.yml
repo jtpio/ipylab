@@ -1,9 +1,8 @@
-type: sphinx
+version: 2
 python:
-  version: 3.5
-  pip_install: true
-  extra_requirements:
-    - examples
-    - docs
+  version: "3.7"
+  install:
+      - method: pip
+        path: .
 conda:
-  file: docs/environment.yml
+  environment: docs/environment.yml
