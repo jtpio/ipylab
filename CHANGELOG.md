@@ -2,6 +2,26 @@
 
 <!-- <START NEW CHANGELOG ENTRY> -->
 
+## 0.5.2
+
+([Full Changelog](https://github.com/jtpio/ipylab/compare/v0.5.1...2c0735a4d5bad5986a60fcf48533bd7c41d34fcc))
+
+### Enhancements made
+
+- Support other lab-based applications [#79](https://github.com/jtpio/ipylab/pull/79) ([@jtpio](https://github.com/jtpio))
+
+### Other merged PRs
+
+- Bump jquery-ui from 1.12.1 to 1.13.0 [#78](https://github.com/jtpio/ipylab/pull/78) ([@dependabot](https://github.com/dependabot))
+
+### Contributors to this release
+
+([GitHub contributors page for this release](https://github.com/jtpio/ipylab/graphs/contributors?from=2021-09-06&to=2021-11-13&type=c))
+
+[@dependabot](https://github.com/search?q=repo%3Ajtpio%2Fipylab+involves%3Adependabot+updated%3A2021-09-06..2021-11-13&type=Issues) | [@github-actions](https://github.com/search?q=repo%3Ajtpio%2Fipylab+involves%3Agithub-actions+updated%3A2021-09-06..2021-11-13&type=Issues) | [@jtpio](https://github.com/search?q=repo%3Ajtpio%2Fipylab+involves%3Ajtpio+updated%3A2021-09-06..2021-11-13&type=Issues)
+
+<!-- <END NEW CHANGELOG ENTRY> -->
+
 ## 0.5.1
 
 ([Full Changelog](https://github.com/jtpio/ipylab/compare/v0.5.0...5cf3ffefa009e782c4fa952e251b642450fdb388))
@@ -15,8 +35,6 @@
 ([GitHub contributors page for this release](https://github.com/jtpio/ipylab/graphs/contributors?from=2021-09-06&to=2021-09-06&type=c))
 
 [@jtpio](https://github.com/search?q=repo%3Ajtpio%2Fipylab+involves%3Ajtpio+updated%3A2021-09-06..2021-09-06&type=Issues)
-
-<!-- <END NEW CHANGELOG ENTRY> -->
 
 ## 0.5.0
 
