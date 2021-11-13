@@ -8,7 +8,7 @@ import { ISerializers, WidgetModel } from '@jupyter-widgets/base';
 import { toArray } from '@lumino/algorithm';
 import { MODULE_NAME, MODULE_VERSION } from '../version';
 import { Session } from '@jupyterlab/services';
-import { ILabShell } from '@jupyterlab/application';
+import { ILabShell, JupyterFrontEnd } from '@jupyterlab/application';
 
 /**
  * The model for a Session Manager
@@ -35,15 +35,23 @@ export class SessionManagerModel extends WidgetModel {
    * @param options The initialization options.
    */
   initialize(attributes: any, options: any): void {
-    const { sessions, shell } = SessionManagerModel;
+    const { labShell, sessions, shell } = SessionManagerModel;
     this._sessions = sessions;
     this._shell = shell;
+    this._labShell = labShell;
+
     sessions.runningChanged.connect(this._sendSessions, this);
-    shell.currentChanged.connect(this._currentChanged, this);
 
     super.initialize(attributes, options);
     this.on('msg:custom', this._onMessage.bind(this));
-    this._shell.activeChanged.connect(this._currentChanged, this);
+
+    if (this._labShell) {
+      this._labShell.currentChanged.connect(this._currentChanged, this);
+      this._labShell.activeChanged.connect(this._currentChanged, this);
+    } else {
+      this._currentChanged();
+    }
+
     this._sendSessions();
     this._sendCurrent();
     this.send({ event: 'sessions_initialized' }, {});
@@ -124,6 +132,8 @@ export class SessionManagerModel extends WidgetModel {
   private _current_session: Session.IModel | {};
   private _sessions: SessionManager;
   static sessions: SessionManager;
-  private _shell: ILabShell;
-  static shell: ILabShell;
+  private _shell: JupyterFrontEnd.IShell;
+  private _labShell: ILabShell | null;
+  static shell: JupyterFrontEnd.IShell;
+  static labShell: ILabShell | null;
 }

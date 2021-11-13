@@ -1,7 +1,7 @@
 // Copyright (c) ipylab contributors
 // Distributed under the terms of the Modified BSD License.
 
-import { ILabShell } from '@jupyterlab/application';
+import { JupyterFrontEnd, ILabShell } from '@jupyterlab/application';
 
 import { DOMUtils } from '@jupyterlab/apputils';
 
@@ -42,6 +42,8 @@ export class ShellModel extends WidgetModel {
    */
   initialize(attributes: any, options: any): void {
     this._shell = ShellModel.shell;
+    this._labShell = ShellModel.labShell;
+
     super.initialize(attributes, options);
     this.on('msg:custom', this._onMessage.bind(this));
 
@@ -86,12 +88,12 @@ export class ShellModel extends WidgetModel {
     title.on('change', updateTitle);
     updateTitle();
 
-    if (area === 'left' || area === 'right') {
+    if ((area === 'left' || area === 'right') && this._labShell) {
       let handler;
       if (area === 'left') {
-        handler = this._shell['_leftHandler'];
+        handler = this._labShell['_leftHandler'];
       } else {
-        handler = this._shell['_rightHandler'];
+        handler = this._labShell['_rightHandler'];
       }
 
       // handle tab closed event
@@ -128,11 +130,15 @@ export class ShellModel extends WidgetModel {
         break;
       }
       case 'expandLeft': {
-        this._shell.expandLeft();
+        if (this._labShell) {
+          this._labShell.expandLeft();
+        }
         break;
       }
       case 'expandRight': {
-        this._shell.expandRight();
+        if (this._labShell) {
+          this._labShell.expandRight();
+        }
         break;
       }
       default:
@@ -151,7 +157,9 @@ export class ShellModel extends WidgetModel {
   static view_module: string = null;
   static view_module_version = MODULE_VERSION;
 
-  private _shell: ILabShell;
+  private _shell: JupyterFrontEnd.IShell;
+  private _labShell: ILabShell;
 
-  static shell: ILabShell;
+  static shell: JupyterFrontEnd.IShell;
+  static labShell: ILabShell;
 }
