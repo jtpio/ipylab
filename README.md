@@ -40,6 +40,12 @@ Try it in your browser with Binder:
 
 ![ipytree-example](https://user-images.githubusercontent.com/591645/80026006-b8bb1d80-84e1-11ea-87cc-86495186b938.gif)
 
+### Compatibility with RetroLab
+
+A subset of the features can be used in RetroLab:
+
+![retrolab-example](https://user-images.githubusercontent.com/591645/141700044-3c39661a-8a9a-4e6b-a031-03724e0df25b.gif)
+
 ## Installation
 
 You can install using `pip`:
