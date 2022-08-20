@@ -66,18 +66,21 @@ export class ShellModel extends WidgetModel {
 
     luminoWidget.id = id ?? DOMUtils.createDomID();
 
-    MessageLoop.installMessageHook(luminoWidget, (handler: any, msg: Message) => {
-      switch (msg.type) {
-        case 'close-request': {
-          const widgets = this.get('_widgets').slice();
-          ArrayExt.removeAllWhere(widgets, (w: any) => w.id === handler.id);
-          this.set('_widgets', widgets);
-          this.save_changes();
-          break;
+    MessageLoop.installMessageHook(
+      luminoWidget,
+      (handler: any, msg: Message) => {
+        switch (msg.type) {
+          case 'close-request': {
+            const widgets = this.get('_widgets').slice();
+            ArrayExt.removeAllWhere(widgets, (w: any) => w.id === handler.id);
+            this.set('_widgets', widgets);
+            this.save_changes();
+            break;
+          }
         }
+        return true;
       }
-      return true;
-    });
+    );
 
     const updateTitle = (): void => {
       luminoWidget.title.label = title.get('label');

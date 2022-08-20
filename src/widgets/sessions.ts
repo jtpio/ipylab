@@ -79,7 +79,9 @@ export class SessionManagerModel extends WidgetModel {
    *
    * @param widget widget tracked by app.shell._track (FocusTracker)
    */
-  private _getSessionContext(widget: any): Session.IModel | {} {
+  private _getSessionContext(
+    widget: any
+  ): Session.IModel | Record<string, unknown> {
     return widget?.sessionContext?.session?.model ?? {};
   }
 
@@ -129,7 +131,7 @@ export class SessionManagerModel extends WidgetModel {
   static view_module: string = null;
   static view_module_version = MODULE_VERSION;
 
-  private _current_session: Session.IModel | {};
+  private _current_session: Session.IModel | Record<string, unknown>;
   private _sessions: SessionManager;
   static sessions: SessionManager;
   private _shell: JupyterFrontEnd.IShell;
