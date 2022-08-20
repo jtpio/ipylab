@@ -18,11 +18,12 @@ tasks:
       export MAMBA_ROOT_PREFIX=/workspace/.micromamba
       export MAMBA_EXE=/workspace/bin/micromamba
       $(/workspace/bin/micromamba shell hook --shell=bash)
+      micromamba config append channels conda-forge
       export JUPYTER_PREFER_ENV_PATH=1
       micromamba activate
       EOT
       source /workspace/bin/activate-env.sh
-      micromamba install -n base -y -c conda-forge python=3.10 nodejs=14 yarn
+      micromamba install -n base -y python=3.10 nodejs=14 jupyterlab=3 yarn
       python -m pip install -e ".[dev,test]" && jlpm && jlpm run build
       gp sync-done setup
     command: |
