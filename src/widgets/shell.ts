@@ -62,11 +62,11 @@ export class ShellModel extends WidgetModel {
     const model = await unpack_models(serializedWidget, this.widget_manager);
     const view = await this.widget_manager.create_view(model, {});
     const title = await unpack_models(model.get('title'), this.widget_manager);
-    const pWidget = view.pWidget;
+    const luminoWidget = view.luminoWidget;
 
-    pWidget.id = id ?? DOMUtils.createDomID();
+    luminoWidget.id = id ?? DOMUtils.createDomID();
 
-    MessageLoop.installMessageHook(pWidget, (handler: any, msg: Message) => {
+    MessageLoop.installMessageHook(luminoWidget, (handler: any, msg: Message) => {
       switch (msg.type) {
         case 'close-request': {
           const widgets = this.get('_widgets').slice();
@@ -80,9 +80,9 @@ export class ShellModel extends WidgetModel {
     });
 
     const updateTitle = (): void => {
-      pWidget.title.label = title.get('label');
-      pWidget.title.iconClass = title.get('icon_class');
-      pWidget.title.closable = title.get('closable');
+      luminoWidget.title.label = title.get('label');
+      luminoWidget.title.iconClass = title.get('icon_class');
+      luminoWidget.title.closable = title.get('closable');
     };
 
     title.on('change', updateTitle);
@@ -101,11 +101,11 @@ export class ShellModel extends WidgetModel {
         tab.title.owner.close();
       });
 
-      pWidget.addClass('jp-SideAreaWidget');
+      luminoWidget.addClass('jp-SideAreaWidget');
     }
 
-    this._shell.add(pWidget, area, args);
-    return pWidget.id;
+    this._shell.add(luminoWidget, area, args);
+    return luminoWidget.id;
   }
 
   /**
