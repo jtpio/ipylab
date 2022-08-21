@@ -64,10 +64,13 @@ jobs:
             dist: 'ipylab*.whl'
           - os: windows
             py_cmd: python
+            pip_cmd: python -m pip
           - os: macos
             py_cmd: python3
+            pip_cmd: pip
           - os: ubuntu
             py_cmd: python
+            pip_cmd: python -m pip
 
     steps:
       - name: Install Python
@@ -81,15 +84,15 @@ jobs:
           path: ./dist
       - name: Install the prerequisites
         run: |
-          ${{ matrix.py_cmd }} -m pip install --upgrade pip wheel jupyterlab~=3.0
+          ${{ matrix.pip_cmd }} install --upgrade pip wheel jupyterlab~=3.0
       - name: Install the package
         run: |
           cd dist
-          ${{ matrix.py_cmd }} -m pip install -vv ${{ matrix.dist }}
+          ${{ matrix.pip_cmd }} install -vv ${{ matrix.dist }}
       - name: Validate environment
         run: |
-          ${{ matrix.py_cmd }} -m pip freeze
-          ${{ matrix.py_cmd }} -m pip check
+          ${{ matrix.pip_cmd }} freeze
+          ${{ matrix.pip_cmd }} check
       - name: Validate the install
         run: |
           jupyter labextension list
