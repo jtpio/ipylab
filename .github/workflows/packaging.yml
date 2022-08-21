@@ -79,12 +79,7 @@ jobs:
         with:
           name: dist ${{ github.run_number }}
           path: ./dist
-      - name: Install the prerequisites (mac)
-        if: ${{ matrix.os }} == 'macos-latest'
-        run: |
-          pip3 install --upgrade pip wheel jupyterlab~=3.0
       - name: Install the prerequisites
-        if: ${{ matrix.os }} != 'macos-latest'
         run: |
           ${{ matrix.py_cmd }} -m pip install --upgrade pip wheel jupyterlab~=3.0
       - name: Install the package
