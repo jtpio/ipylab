@@ -67,7 +67,7 @@ jobs:
             pip_cmd: python -m pip
           - os: macos
             py_cmd: python3
-            pip_cmd: pip
+            pip_cmd: pip3
           - os: ubuntu
             py_cmd: python
             pip_cmd: python -m pip
