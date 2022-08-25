@@ -2,6 +2,38 @@
 
 <!-- <START NEW CHANGELOG ENTRY> -->
 
+## 0.6.0
+
+([Full Changelog](https://github.com/jtpio/ipylab/compare/v0.5.2...9e0c50198b959d6f3bd09f25c809f10d9f8be379))
+
+### Enhancements made
+
+- Drop Python 3.6, update to ipywidgets 8 [#100](https://github.com/jtpio/ipylab/pull/100) ([@jtpio](https://github.com/jtpio))
+
+### Maintenance and upkeep improvements
+
+- Drop Python 3.6, update to ipywidgets 8 [#100](https://github.com/jtpio/ipylab/pull/100) ([@jtpio](https://github.com/jtpio))
+- Bump url-parse from 1.5.7 to 1.5.10 [#89](https://github.com/jtpio/ipylab/pull/89) ([@dependabot](https://github.com/dependabot))
+- Bump node-fetch from 2.6.2 to 2.6.7 [#87](https://github.com/jtpio/ipylab/pull/87) ([@dependabot](https://github.com/dependabot))
+- Bump url-parse from 1.5.3 to 1.5.7 [#86](https://github.com/jtpio/ipylab/pull/86) ([@dependabot](https://github.com/dependabot))
+
+### Documentation improvements
+
+- Add RetroLab example to the README [#81](https://github.com/jtpio/ipylab/pull/81) ([@jtpio](https://github.com/jtpio))
+
+### Other merged PRs
+
+- Bump nanoid from 3.1.25 to 3.2.0 [#84](https://github.com/jtpio/ipylab/pull/84) ([@dependabot](https://github.com/dependabot))
+- Update Read the Docs configuration (automatic) [#83](https://github.com/jtpio/ipylab/pull/83) ([@readthedocs-assistant](https://github.com/readthedocs-assistant))
+
+### Contributors to this release
+
+([GitHub contributors page for this release](https://github.com/jtpio/ipylab/graphs/contributors?from=2021-11-13&to=2022-08-25&type=c))
+
+[@dependabot](https://github.com/search?q=repo%3Ajtpio%2Fipylab+involves%3Adependabot+updated%3A2021-11-13..2022-08-25&type=Issues) | [@github-actions](https://github.com/search?q=repo%3Ajtpio%2Fipylab+involves%3Agithub-actions+updated%3A2021-11-13..2022-08-25&type=Issues) | [@jtpio](https://github.com/search?q=repo%3Ajtpio%2Fipylab+involves%3Ajtpio+updated%3A2021-11-13..2022-08-25&type=Issues) | [@readthedocs-assistant](https://github.com/search?q=repo%3Ajtpio%2Fipylab+involves%3Areadthedocs-assistant+updated%3A2021-11-13..2022-08-25&type=Issues)
+
+<!-- <END NEW CHANGELOG ENTRY> -->
+
 ## 0.5.2
 
 ([Full Changelog](https://github.com/jtpio/ipylab/compare/v0.5.1...2c0735a4d5bad5986a60fcf48533bd7c41d34fcc))
@@ -19,8 +51,6 @@
 ([GitHub contributors page for this release](https://github.com/jtpio/ipylab/graphs/contributors?from=2021-09-06&to=2021-11-13&type=c))
 
 [@dependabot](https://github.com/search?q=repo%3Ajtpio%2Fipylab+involves%3Adependabot+updated%3A2021-09-06..2021-11-13&type=Issues) | [@github-actions](https://github.com/search?q=repo%3Ajtpio%2Fipylab+involves%3Agithub-actions+updated%3A2021-09-06..2021-11-13&type=Issues) | [@jtpio](https://github.com/search?q=repo%3Ajtpio%2Fipylab+involves%3Ajtpio+updated%3A2021-09-06..2021-11-13&type=Issues)
-
-<!-- <END NEW CHANGELOG ENTRY> -->
 
 ## 0.5.1
 
