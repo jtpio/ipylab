@@ -96,6 +96,8 @@ export class CommandRegistryModel extends WidgetModel {
    * Execute a command
    *
    * @param bundle The command bundle.
+   * @param bundle.id
+   * @param bundle.args
    */
   private _execute(bundle: {
     id: string;
@@ -143,6 +145,7 @@ export class CommandRegistryModel extends WidgetModel {
    * Remove a command from the command registry.
    *
    * @param bundle The command bundle.
+   * @param bundle.id
    */
   private _removeCommand(bundle: { id: string }): void {
     const { id } = bundle;

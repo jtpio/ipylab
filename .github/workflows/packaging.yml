@@ -11,7 +11,7 @@ env:
 
 defaults:
   run:
-    shell: bash -l {0}
+    shell: bash -e {0}
 
 jobs:
   build:
@@ -24,9 +24,9 @@ jobs:
       with:
        node-version: '14.x'
     - name: Install Python
-      uses: actions/setup-python@v2
+      uses: actions/setup-python@v4
       with:
-        python-version: '3.9'
+        python-version: '3.10'
         architecture: 'x64'
     - name: Install dependencies
       run: |
@@ -56,22 +56,25 @@ jobs:
       fail-fast: false
       matrix:
         os: [ubuntu, macos, windows]
-        python: ['3.6', '3.9']
+        python: ['3.7', '3.10']
         include:
-          - python: '3.6'
+          - python: '3.7'
             dist: 'ipylab*.tar.gz'
-          - python: '3.9'
+          - python: '3.10'
             dist: 'ipylab*.whl'
           - os: windows
             py_cmd: python
+            pip_cmd: python -m pip
           - os: macos
             py_cmd: python3
+            pip_cmd: pip3
           - os: ubuntu
             py_cmd: python
+            pip_cmd: python -m pip
 
     steps:
       - name: Install Python
-        uses: actions/setup-python@v2
+        uses: actions/setup-python@v4
         with:
           python-version: ${{ matrix.python }}
           architecture: 'x64'
@@ -81,15 +84,15 @@ jobs:
           path: ./dist
       - name: Install the prerequisites
         run: |
-          ${{ matrix.py_cmd }} -m pip install --upgrade pip wheel jupyterlab~=3.0
+          ${{ matrix.pip_cmd }} install --upgrade pip wheel jupyterlab~=3.0
       - name: Install the package
         run: |
           cd dist
-          ${{ matrix.py_cmd }} -m pip install -vv ${{ matrix.dist }}
+          ${{ matrix.pip_cmd }} install -vv ${{ matrix.dist }}
       - name: Validate environment
         run: |
-          ${{ matrix.py_cmd }} -m pip freeze
-          ${{ matrix.py_cmd }} -m pip check
+          ${{ matrix.pip_cmd }} freeze
+          ${{ matrix.pip_cmd }} check
       - name: Validate the install
         run: |
           jupyter labextension list

@@ -1,7 +1,7 @@
 // Copyright (c) ipylab contributors
 // Distributed under the terms of the Modified BSD License.
 
-import { JupyterPhosphorWidget, DOMWidgetView } from '@jupyter-widgets/base';
+import { JupyterLuminoWidget, DOMWidgetView } from '@jupyter-widgets/base';
 
 import { VBoxView } from '@jupyter-widgets/controls';
 
@@ -24,7 +24,7 @@ class JupyterLuminoSplitPanelWidget extends SplitPanel {
    *
    * @param options The instantiation options for a JupyterLuminoSplitPanelWidget.
    */
-  constructor(options: JupyterPhosphorWidget.IOptions & SplitPanel.IOptions) {
+  constructor(options: JupyterLuminoWidget.IOptions & SplitPanel.IOptions) {
     const view = options.view;
     delete options.view;
     super(options);
@@ -39,7 +39,7 @@ class JupyterLuminoSplitPanelWidget extends SplitPanel {
    */
   processMessage(msg: Message): void {
     super.processMessage(msg);
-    this._view.processPhosphorMessage(msg);
+    this._view.processLuminoMessage(msg);
   }
 
   /**
@@ -96,11 +96,11 @@ export class SplitPanelView extends VBoxView {
    * @param tagName the tag name
    */
   _createElement(tagName: string): HTMLElement {
-    this.pWidget = new JupyterLuminoSplitPanelWidget({
+    this.luminoWidget = new JupyterLuminoSplitPanelWidget({
       view: this,
       orientation: this.model.get('orientation'),
     }) as any;
-    return this.pWidget.node;
+    return this.luminoWidget.node;
   }
 
   /**
@@ -109,12 +109,12 @@ export class SplitPanelView extends VBoxView {
    * @param el The element.
    */
   _setElement(el: HTMLElement): void {
-    if (this.el || el !== this.pWidget.node) {
+    if (this.el || el !== this.luminoWidget.node) {
       throw new Error('Cannot reset the DOM element.');
     }
 
-    this.el = this.pWidget.node;
-    this.$el = $(this.pWidget.node);
+    this.el = this.luminoWidget.node;
+    this.$el = $(this.luminoWidget.node);
   }
 
   /**
@@ -124,10 +124,11 @@ export class SplitPanelView extends VBoxView {
    */
   initialize(parameters: any): void {
     super.initialize(parameters);
-    const pWidget = this.pWidget as any as JupyterLuminoSplitPanelWidget;
+    const luminoWidget = this
+      .luminoWidget as any as JupyterLuminoSplitPanelWidget;
     this.model.on('change:orientation', () => {
       const orientation = this.model.get('orientation');
-      pWidget.orientation = orientation;
+      luminoWidget.orientation = orientation;
     });
   }
 
@@ -138,7 +139,7 @@ export class SplitPanelView extends VBoxView {
     super.render();
     const views = await Promise.all(this.children_views.views);
     views.forEach(async (view: DOMWidgetView) => {
-      this.pWidget.addWidget(view.pWidget);
+      this.luminoWidget.addWidget(view.luminoWidget);
     });
   }
 }
