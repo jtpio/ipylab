@@ -82,14 +82,16 @@ export class ShellModel extends WidgetModel {
       }
     );
 
-    const updateTitle = (): void => {
+    const updateTitle = async (): Promise<void> => {
+      const icon = await unpack_models(title.get('icon'), this.widget_manager);
       luminoWidget.title.label = title.get('label');
-      luminoWidget.title.iconClass = title.get('icon_class');
+      luminoWidget.title.iconClass = icon ? null : title.get('icon_class');
+      luminoWidget.title.icon = icon ? icon.labIcon : null;
       luminoWidget.title.closable = title.get('closable');
     };
 
     title.on('change', updateTitle);
-    updateTitle();
+    void updateTitle();
 
     if ((area === 'left' || area === 'right') && this._labShell) {
       let handler;

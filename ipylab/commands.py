@@ -62,7 +62,9 @@ class CommandRegistry(Widget):
     def list_commands(self):
         return self._command_list
 
-    def add_command(self, command_id, execute, *, caption="", label="", icon_class=""):
+    def add_command(
+        self, command_id, execute, *, caption="", label="", icon_class="", icon=None
+    ):
         if command_id in self._command_list:
             raise Exception(f"Command {command_id} is already registered")
         # TODO: support other parameters (isEnabled, isVisible...)
@@ -75,6 +77,7 @@ class CommandRegistry(Widget):
                     "caption": caption,
                     "label": label,
                     "iconClass": icon_class,
+                    "icon": f"IPY_MODEL_{icon.model_id}" if icon else None,
                 },
             }
         )

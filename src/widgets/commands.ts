@@ -2,8 +2,12 @@
 // Distributed under the terms of the Modified BSD License.
 
 import { ObservableMap } from '@jupyterlab/observables';
-
-import { ISerializers, WidgetModel } from '@jupyter-widgets/base';
+import { LabIcon } from '@jupyterlab/ui-components';
+import {
+  ISerializers,
+  unpack_models,
+  WidgetModel,
+} from '@jupyter-widgets/base';
 
 import { ArrayExt } from '@lumino/algorithm';
 
@@ -53,8 +57,9 @@ export class CommandRegistryModel extends WidgetModel {
 
     // restore existing commands
     const commands = this.get('_commands');
-    commands.forEach((command: any) => this._addCommand(command));
-    this._sendCommandList();
+    Promise.all(commands.map((command: any) => this._addCommand(command)))
+      .then(() => this._sendCommandList())
+      .catch(console.warn);
   }
 
   /**
@@ -62,13 +67,13 @@ export class CommandRegistryModel extends WidgetModel {
    *
    * @param msg The message to handle.
    */
-  private _onMessage(msg: any): void {
+  private async _onMessage(msg: any): Promise<void> {
     switch (msg.func) {
       case 'execute':
         this._execute(msg.payload);
         break;
       case 'addCommand': {
-        this._addCommand(msg.payload);
+        await this._addCommand(msg.payload);
         // keep track of the commands
         const commands = this.get('_commands');
         this.set('_commands', commands.concat(msg.payload));
@@ -112,12 +117,17 @@ export class CommandRegistryModel extends WidgetModel {
    *
    * @param options The command options.
    */
-  private _addCommand(
+  private async _addCommand(
     options: CommandRegistry.ICommandOptions & { id: string }
-  ): void {
-    const { id, caption, label, iconClass } = options;
+  ): Promise<void> {
+    const { id, caption, label, iconClass, icon } = options;
     if (this._commands.hasCommand(id)) {
       Private.customCommands.get(id).dispose();
+    }
+
+    let labIcon: LabIcon | null = null;
+    if (icon) {
+      labIcon = (await unpack_models(icon, this.widget_manager))?.labIcon;
     }
 
     const commandEnabled = (command: IDisposable): boolean => {
@@ -127,6 +137,7 @@ export class CommandRegistryModel extends WidgetModel {
       caption,
       label,
       iconClass,
+      icon: labIcon,
       execute: () => {
         if (!this.comm_live) {
           command.dispose();

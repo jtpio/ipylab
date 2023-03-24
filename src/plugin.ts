@@ -11,8 +11,6 @@ import { ICommandPalette } from '@jupyterlab/apputils';
 
 import { IJupyterWidgetRegistry } from '@jupyter-widgets/base';
 
-import * as widgetExports from './widget';
-
 import { MODULE_NAME, MODULE_VERSION } from './version';
 
 const EXTENSION_ID = 'ipylab:plugin';
@@ -31,20 +29,25 @@ const extension: JupyterFrontEndPlugin<void> = {
     palette: ICommandPalette,
     labShell: ILabShell | null
   ): void => {
-    // add globals
-    widgetExports.JupyterFrontEndModel.app = app;
-    widgetExports.ShellModel.shell = app.shell;
-    widgetExports.ShellModel.labShell = labShell;
-    widgetExports.CommandRegistryModel.commands = app.commands;
-    widgetExports.CommandPaletteModel.palette = palette;
-    widgetExports.SessionManagerModel.sessions = app.serviceManager.sessions;
-    widgetExports.SessionManagerModel.shell = app.shell;
-    widgetExports.SessionManagerModel.labShell = labShell;
-
     registry.registerWidget({
       name: MODULE_NAME,
       version: MODULE_VERSION,
-      exports: widgetExports,
+      exports: async () => {
+        const widgetExports = await import('./widget');
+
+        // add globals
+        widgetExports.JupyterFrontEndModel.app = app;
+        widgetExports.ShellModel.shell = app.shell;
+        widgetExports.ShellModel.labShell = labShell;
+        widgetExports.CommandRegistryModel.commands = app.commands;
+        widgetExports.CommandPaletteModel.palette = palette;
+        widgetExports.SessionManagerModel.sessions =
+          app.serviceManager.sessions;
+        widgetExports.SessionManagerModel.shell = app.shell;
+        widgetExports.SessionManagerModel.labShell = labShell;
+
+        return widgetExports;
+      },
     });
   },
 };
