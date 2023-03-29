@@ -9,7 +9,7 @@ source_suffix = ".md"
 
 # General information about the project.
 project = "ipylab"
-author = "Jeremy Tuloup"
+author = "ipylab contributors"
 
 exclude_patterns = []
 highlight_language = "python"
