@@ -36,7 +36,7 @@ jobs:
         cd dist
         sha256sum * | tee SHA256SUMS
     - name: Upload distributions
-      uses: actions/upload-artifact@v2
+      uses: actions/upload-artifact@v3
       with:
         name: dist ${{ github.run_number }}
         path: ./dist
