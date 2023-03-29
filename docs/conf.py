@@ -2,7 +2,7 @@ extensions = ["myst_parser", "jupyterlite_sphinx"]
 
 jupyterlite_config = "jupyter_lite_config.json"
 jupyterlite_dir = "."
-jupyterlite_contents = "content"
+jupyterlite_contents = "../examples"
 
 master_doc = "index"
 source_suffix = ".md"
