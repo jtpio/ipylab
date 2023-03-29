@@ -19,20 +19,3 @@ html_theme = "pydata_sphinx_theme"
 html_static_path = ["_static"]
 
 html_css_files = ["custom.css"]
-
-
-def on_config_inited(*args):
-    import sys
-    import subprocess
-    from pathlib import Path
-
-    HERE = Path(__file__)
-    ROOT = HERE.parent.parent
-    subprocess.check_call(["jlpm"], cwd=str(ROOT))
-    subprocess.check_call(["jlpm", "build"], cwd=str(ROOT))
-
-    subprocess.check_call([sys.executable, "-m", "build"], cwd=str(ROOT))
-
-
-def setup(app):
-    app.connect("config-inited", on_config_inited)
