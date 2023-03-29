@@ -21,7 +21,7 @@
   "license": "BSD-3-Clause",
   "author": {
     "name": "ipylab contributors",
-    "email": "jeremy@jtp.io"
+    "email": ""
   },
   "main": "lib/index.js",
   "style": "style/widget.css",
@@ -41,7 +41,8 @@
     "build:lib": "tsc",
     "build:labextension": "jupyter labextension build .",
     "build:labextension:dev": "jupyter labextension build --development True .",
-    "clean": "rimraf lib tsconfig.tsbuildinfo ipylab/labextension",
+    "clean": "jlpm run clean:lib ipylab/labextension",
+    "clean:lib": "rimraf lib tsconfig.tsbuildinfo",
     "clean:all": "jlpm run clean:lib && jlpm run clean:labextension",
     "clean:labextension": "rimraf ipylab/labextension",
     "eslint": "eslint . --ext .ts,.tsx --fix",
@@ -111,14 +112,6 @@
         "bundled": false,
         "singleton": true
       }
-    }
-  },
-  "jupyter-releaser": {
-    "hooks": {
-      "before-build-npm": [
-        "python -m pip install jupyterlab~=3.0",
-        "jlpm"
-      ]
     }
   }
 }

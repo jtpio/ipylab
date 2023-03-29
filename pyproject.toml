@@ -1,20 +1,118 @@
 [build-system]
-requires = ["jupyter_packaging~=0.10", "jupyterlab~=3.1"]
-build-backend = "jupyter_packaging.build_api"
+requires = [
+    "hatchling",
+    "jupyterlab~=3.1",
+    "hatch-nodejs-version",
+]
+build-backend = "hatchling.build"
 
-[license]
-file="LICENSE"
+[project]
+name = "ipylab"
+readme = "README.md"
+license = { file = "LICENSE" }
+requires-python = ">=3.8"
+classifiers = [
+    "Framework :: Jupyter",
+    "Framework :: Jupyter :: JupyterLab",
+    "Framework :: Jupyter :: JupyterLab :: 3",
+    "Framework :: Jupyter :: JupyterLab :: Extensions",
+    "Framework :: Jupyter :: JupyterLab :: Extensions :: Prebuilt",
+    "Intended Audience :: Developers",
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: BSD License",
+    "Programming Language :: Python",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+]
+dependencies = [
+    "ipywidgets>=7.6.0,<9",
+]
+dynamic = ["version", "description", "authors", "urls", "keywords"]
 
-[tool.jupyter-packaging.options]
-skip-if-exists = ["ipylab/labextension/static/style.js"]
-ensured-targets = ["ipylab/labextension/static/style.js", "ipylab/labextension/package.json"]
+[tool.hatch.version]
+source = "nodejs"
 
-[tool.jupyter-packaging.builder]
-factory = "jupyter_packaging.npm_builder"
+[tool.hatch.build.hooks.version]
+path = "ipylab/_version.py"
 
-[tool.jupyter-packaging.build-args]
+[tool.hatch.metadata.hooks.nodejs]
+fields = ["description", "authors", "urls"]
+
+[project.optional-dependencies]
+dev = [
+    "black",
+    "pre-commit",
+]
+docs = [
+    "jupyter_sphinx",
+    "nbsphinx-link",
+    "nbsphinx>=0.2.13,<0.4.0",
+    "pypandoc",
+    "pytest_check_links",
+    "recommonmark",
+    "sphinx>=1.5",
+    "sphinx_rtd_theme",
+]
+test = [
+    "pytest",
+    "pytest-cov",
+]
+
+[tool.hatch.build]
+artifacts = [
+    "ipylab/nbextension/static/index.*",
+    "ipylab/labextension/*.tgz",
+    "ipylab/labextension",
+]
+
+[tool.hatch.build.targets.wheel.shared-data]
+"ipylab/labextension/static" = "share/jupyter/labextensions/ipylab/static"
+"install.json" = "share/jupyter/labextensions/ipylab/install.json"
+"ipylab/labextension/build_log.json" = "share/jupyter/labextensions/ipylab/build_log.json"
+"ipylab/labextension/package.json" = "share/jupyter/labextensions/ipylab/package.json"
+
+[tool.hatch.build.targets.sdist]
+exclude = [
+    ".binder",
+    ".github",
+]
+
+[tool.hatch.build.hooks.jupyter-builder]
+dependencies = [
+    "hatch-jupyter-builder>=0.8.2",
+]
+build-function = "hatch_jupyter_builder.npm_builder"
+ensured-targets = [
+    "ipylab/labextension/static/style.js",
+    "ipylab/labextension/package.json",
+]
+skip-if-exists = [
+    "ipylab/labextension/static/style.js",
+]
+
+[tool.hatch.build.hooks.jupyter-builder.editable-build-kwargs]
+build_dir = "ipylab/labextension"
+source_dir = "src"
+build_cmd = "build"
+npm = [
+    "jlpm",
+]
+
+[tool.hatch.build.hooks.jupyter-builder.build-kwargs]
 build_cmd = "build:prod"
-npm = ["jlpm"]
+npm = [
+    "jlpm",
+]
 
-[tool.check-manifest]
-ignore = [".binder/**", "*.json", "docs/**", "yarn.lock", "readthedocs.yml", ".*", "ipylab/labextension/**"]
+[tool.jupyter-releaser.options]
+version_cmd = "hatch version"
+
+[tool.jupyter-releaser.hooks]
+before-build-npm = ["python -m pip install jupyterlab~=3.1", "jlpm", "jlpm build:prod"]
+before-build-python = ["jlpm clean:all"]
+
+[tool.check-wheel-contents]
+ignore = ["W002"]

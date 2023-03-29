@@ -8,7 +8,7 @@ import asyncio
 
 from ipywidgets import CallbackDispatcher, Widget, register, widget_serialization
 from traitlets import Instance, Unicode
-from ._version import module_name, module_version
+from ._frontend import module_name, module_version
 
 from .commands import CommandRegistry
 from .shell import Shell
@@ -32,7 +32,7 @@ class JupyterFrontEnd(Widget):
             shell=Shell(),
             commands=CommandRegistry(),
             sessions=SessionManager(),
-            **kwargs
+            **kwargs,
         )
         self._ready_event = asyncio.Event()
         self._on_ready_callbacks = CallbackDispatcher()

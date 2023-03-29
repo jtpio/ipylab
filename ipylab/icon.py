@@ -3,7 +3,7 @@
 
 from ipywidgets import DOMWidget, register
 from traitlets import Unicode, Float
-from ._version import module_name, module_version
+from ._frontend import module_name, module_version
 
 
 @register
