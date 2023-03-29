@@ -25,3 +25,6 @@ jobs:
     - name: Browser check
       run: |
         python -m jupyterlab.browser_check
+    - name: Check ipylab can be imported
+      run: |
+        python -c "from ipylab import JupyterFrontEnd"
