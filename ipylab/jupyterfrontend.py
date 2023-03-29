@@ -32,7 +32,7 @@ class JupyterFrontEnd(Widget):
             shell=Shell(),
             commands=CommandRegistry(),
             sessions=SessionManager(),
-            **kwargs
+            **kwargs,
         )
         self._ready_event = asyncio.Event()
         self._on_ready_callbacks = CallbackDispatcher()
