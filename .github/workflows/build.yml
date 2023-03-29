@@ -15,11 +15,13 @@ jobs:
       uses: actions/checkout@v3
     - name: Base Setup
       uses: jupyterlab/maintainer-tools/.github/actions/base-setup@v1
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip jupyterlab~=3.0
     - name: Install the ipylab Python package and JupyterLab extension
       run: |
         python -m pip install .
         jupyter labextension list 2>&1 | grep -ie "ipylab.*enabled.*ok" -
     - name: Browser check
       run: |
-        python -m pip install --upgrade pip jupyterlab~=3.0
         python -m jupyterlab.browser_check
