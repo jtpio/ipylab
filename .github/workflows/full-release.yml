@@ -1,4 +1,4 @@
-name: "Full Release"
+name: "Steps 1 + 2: Full Release"
 on:
   workflow_dispatch:
     inputs:
