@@ -7,7 +7,7 @@ build:
     pre_build:
       - jlpm
       - jlpm build
-      - python -m build
+      - python -m build --wheel
 python:
   install:
   - method: pip

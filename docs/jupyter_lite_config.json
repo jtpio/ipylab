@@ -1,0 +1,7 @@
+{
+    "PipliteAddon": {
+        "piplite_urls": [
+          "../dist"
+        ]
+      }
+}
