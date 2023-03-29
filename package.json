@@ -21,7 +21,7 @@
   "license": "BSD-3-Clause",
   "author": {
     "name": "ipylab contributors",
-    "email": "jeremy@jtp.io"
+    "email": ""
   },
   "main": "lib/index.js",
   "style": "style/widget.css",
