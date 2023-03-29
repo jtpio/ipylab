@@ -154,6 +154,8 @@ ipylab/labextension/*.tgz
 
 # Packed lab extensions
 ipylab/labextension
+# generated
+ipylab/_version.py
 
 package-lock.json
 
