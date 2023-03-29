@@ -6,7 +6,7 @@ from collections import defaultdict
 from ipywidgets import CallbackDispatcher, Widget, register
 from traitlets import List, Unicode
 
-from ._version import module_name, module_version
+from ._frontend import module_name, module_version
 
 
 def _noop():
