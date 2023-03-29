@@ -52,7 +52,8 @@
     "prettier": "prettier --write \"**/*{.ts,.tsx,.js,.jsx,.css,.json,.md}\" \"!dist/**\" \"!docs/**\"",
     "prettier:check": "prettier --list-different \"**/*{.ts,.tsx,.js,.jsx,.css,.json,.md}\" \"!dist/**\" \"!docs/**\"",
     "watch": "npm-run-all -p watch:*",
-    "watch:lib": "tsc -w"
+    "watch:lib": "tsc -w",
+    "watch:labextension": "jupyter labextension watch ."
   },
   "husky": {
     "hooks": {

@@ -11,7 +11,8 @@ from pathlib import Path
 from ._version import __version__, version_info
 
 from .jupyterfrontend import JupyterFrontEnd
-from .widgets import Panel, SplitPanel
+from .widgets import Panel, SplitPanel, Icon
+from .icon import Icon
 
 HERE = Path(__file__).parent.resolve()
 

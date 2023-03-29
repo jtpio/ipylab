@@ -4,6 +4,7 @@
 from ipywidgets import VBox, Widget, register, widget_serialization
 from traitlets import Bool, Instance, Unicode
 from ._version import module_name, module_version
+from .icon import Icon
 
 
 @register
@@ -15,6 +16,7 @@ class Title(Widget):
     label = Unicode().tag(sync=True)
     icon_class = Unicode().tag(sync=True)
     closable = Bool(True).tag(sync=True)
+    icon = Instance(Icon, allow_none=True).tag(sync=True, **widget_serialization)
 
 
 @register

@@ -1,7 +1,7 @@
 // Copyright (c) ipylab contributors
 // Distributed under the terms of the Modified BSD License.
 
-import { WidgetModel } from '@jupyter-widgets/base';
+import { WidgetModel, unpack_models } from '@jupyter-widgets/base';
 
 import { MODULE_NAME, MODULE_VERSION } from '../version';
 
@@ -19,6 +19,27 @@ export class TitleModel extends WidgetModel {
       _model_module: TitleModel.model_module,
       _model_module_version: TitleModel.model_module_version,
     };
+  }
+
+  /**
+   * Initialize a LabIcon instance.
+   *
+   * @param attributes The base attributes.
+   * @param options The initialization options.
+   */
+  initialize(attributes: any, options: any): void {
+    super.initialize(attributes, options);
+    this.on('change:icon', this.iconChanged);
+  }
+
+  /**
+   * Pass on changes from the icon.
+   */
+  async iconChanged() {
+    const icon = await unpack_models(this.get('icon'), this.widget_manager);
+    if (icon) {
+      icon.on('change', () => this.trigger('change'));
+    }
   }
 
   static model_name = 'TitleModel';
