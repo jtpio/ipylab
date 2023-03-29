@@ -23,6 +23,11 @@ Try it in your browser with Binder:
 
 [![Binder](https://mybinder.org/badge_logo.svg)](https://mybinder.org/v2/gh/jtpio/ipylab/main?urlpath=lab/tree/examples/widgets.ipynb)
 
+Or with [JupyterLite](https://github.com/jupyterlite/jupyterlite):
+
+[![JupyterLite](https://jupyterlite.rtfd.io/en/latest/_static/badge-launch.svg)](https://ipylab.readthedocs.io/en/latest/lite/lab)
+
+
 ## Examples
 
 ### Add Jupyter Widgets to the JupyterLab interface
