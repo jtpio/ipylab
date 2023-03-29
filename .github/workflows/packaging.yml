@@ -48,11 +48,11 @@ jobs:
       fail-fast: false
       matrix:
         os: [ubuntu, macos, windows]
-        python: ['3.7', '3.10']
+        python: ['3.8', '3.11']
         include:
-          - python: '3.7'
+          - python: '3.8'
             dist: 'ipylab*.tar.gz'
-          - python: '3.10'
+          - python: '3.11'
             dist: 'ipylab*.whl'
           - os: windows
             py_cmd: python
