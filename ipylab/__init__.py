@@ -7,8 +7,7 @@
 import json
 from pathlib import Path
 
-# import version first: https://github.com/pypa/setuptools/issues/1724#issuecomment-627241822
-from ._version import __version__, version_info
+from ._version import __version__
 
 from .jupyterfrontend import JupyterFrontEnd
 from .widgets import Panel, SplitPanel, Icon
