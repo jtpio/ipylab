@@ -1,0 +1,5 @@
+{
+  "LiteBuildConfig": {
+    "federated_extensions": ["../ipylab/labextension"]
+  }
+}
