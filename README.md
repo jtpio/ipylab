@@ -27,7 +27,6 @@ Or with [JupyterLite](https://github.com/jupyterlite/jupyterlite):
 
 [![JupyterLite](https://jupyterlite.rtfd.io/en/latest/_static/badge-launch.svg)](https://ipylab.readthedocs.io/en/latest/lite/lab)
 
-
 ## Examples
 
 ### Add Jupyter Widgets to the JupyterLab interface
