@@ -3,6 +3,11 @@ build:
   os: ubuntu-20.04
   tools:
     python: mambaforge-4.10
+  jobs:
+    pre_build:
+      - jlpm
+      - jlpm build
+      - python -m build --wheel
 python:
   install:
   - method: pip

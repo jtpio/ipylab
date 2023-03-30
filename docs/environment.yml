@@ -1,11 +1,17 @@
-
-name: ipylab_docs
+name: ipylab-lite
 channels:
-  - conda-forge
+- conda-forge
 dependencies:
-- python=3.9
-- nodejs
-- numpy
-- sphinx
-- nbsphinx
-- jupyter_sphinx
+- build
+- python=3.11
+- mamba
+- pydata-sphinx-theme
+- myst-parser
+- ipywidgets>=8.0,<9
+- jupyterlab>=3.5.0,<4
+- nodejs=18
+- pip:
+  - jupyterlite-sphinx
+  - jupyterlite-core==0.1.0b22
+  - jupyterlite-pyodide-kernel==0.0.5
+  - ..

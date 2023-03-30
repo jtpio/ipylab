@@ -1,0 +1,8 @@
+{
+    "PipliteAddon": {
+        "piplite_urls": [
+          "../dist",
+          "https://files.pythonhosted.org/packages/py3/i/ipywidgets/ipywidgets-8.0.4-py3-none-any.whl"
+        ]
+      }
+}
