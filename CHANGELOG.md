@@ -2,6 +2,23 @@
 
 <!-- <START NEW CHANGELOG ENTRY> -->
 
+## 0.7.1
+
+([Full Changelog](https://github.com/jtpio/ipylab/compare/v0.7.0...2de9db4c1780a86beabb78fcdaa4cbd7ae6271a6))
+
+### Documentation improvements
+
+- Add files for JupyterLite [#118](https://github.com/jtpio/ipylab/pull/118) ([@jtpio](https://github.com/jtpio))
+- Add a Full Release workflow [#117](https://github.com/jtpio/ipylab/pull/117) ([@jtpio](https://github.com/jtpio))
+
+### Contributors to this release
+
+([GitHub contributors page for this release](https://github.com/jtpio/ipylab/graphs/contributors?from=2023-03-29&to=2023-03-30&type=c))
+
+[@github-actions](https://github.com/search?q=repo%3Ajtpio%2Fipylab+involves%3Agithub-actions+updated%3A2023-03-29..2023-03-30&type=Issues) | [@jtpio](https://github.com/search?q=repo%3Ajtpio%2Fipylab+involves%3Ajtpio+updated%3A2023-03-29..2023-03-30&type=Issues)
+
+<!-- <END NEW CHANGELOG ENTRY> -->
+
 ## 0.7.0
 
 ([Full Changelog](https://github.com/jtpio/ipylab/compare/v0.6.0...33d8e3d91832645106f87e6dcb4dac88180f1fa7))
@@ -29,8 +46,6 @@
 ([GitHub contributors page for this release](https://github.com/jtpio/ipylab/graphs/contributors?from=2022-08-25&to=2023-03-29&type=c))
 
 [@bollwyvl](https://github.com/search?q=repo%3Ajtpio%2Fipylab+involves%3Abollwyvl+updated%3A2022-08-25..2023-03-29&type=Issues) | [@dependabot](https://github.com/search?q=repo%3Ajtpio%2Fipylab+involves%3Adependabot+updated%3A2022-08-25..2023-03-29&type=Issues) | [@github-actions](https://github.com/search?q=repo%3Ajtpio%2Fipylab+involves%3Agithub-actions+updated%3A2022-08-25..2023-03-29&type=Issues) | [@jtpio](https://github.com/search?q=repo%3Ajtpio%2Fipylab+involves%3Ajtpio+updated%3A2022-08-25..2023-03-29&type=Issues)
-
-<!-- <END NEW CHANGELOG ENTRY> -->
 
 ## 0.6.0
 
