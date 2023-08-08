@@ -88,7 +88,6 @@ export class ShellModel extends WidgetModel {
       luminoWidget.title.closable = title.get('closable');
       luminoWidget.title.label = title.get('label');
       luminoWidget.title.dataset = title.get('dataset');
-      luminoWidget.title.mnemonic = title.get('mnemonic');
       luminoWidget.title.iconLabel = title.get('icon_label');
 
       const icon = await unpack_models(title.get('icon'), this.widget_manager);

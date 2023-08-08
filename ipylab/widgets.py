@@ -20,7 +20,6 @@ class Title(Widget):
     closable = Bool(True).tag(sync=True)
     dataset = Dict().tag(sync=True)
     icon_label = Unicode().tag(sync=True)
-    mnemonic = Unicode().tag(sync=True)
 
     icon = Instance(Icon, allow_none=True).tag(sync=True, **widget_serialization)
 
