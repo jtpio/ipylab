@@ -2,7 +2,7 @@
 # Distributed under the terms of the Modified BSD License.
 
 from ipywidgets import VBox, Widget, register, widget_serialization
-from traitlets import Bool, Instance, Unicode
+from traitlets import Bool, Dict, Instance, Unicode
 from ._frontend import module_name, module_version
 from .icon import Icon
 
@@ -15,7 +15,13 @@ class Title(Widget):
 
     label = Unicode().tag(sync=True)
     icon_class = Unicode().tag(sync=True)
+    caption = Unicode().tag(sync=True)
+    class_name = Unicode().tag(sync=True)
     closable = Bool(True).tag(sync=True)
+    dataset = Dict().tag(sync=True)
+    icon_label = Unicode().tag(sync=True)
+    mnemonic = Unicode().tag(sync=True)
+
     icon = Instance(Icon, allow_none=True).tag(sync=True, **widget_serialization)
 
 
