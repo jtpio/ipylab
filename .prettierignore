@@ -2,5 +2,5 @@ node_modules
 **/node_modules
 **/lib
 **/package.json
-ipylab/labextension
-docs
+!/package.json
+ipylab

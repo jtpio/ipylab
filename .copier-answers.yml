@@ -1,0 +1,14 @@
+# Changes here will be overwritten by Copier; NEVER EDIT MANUALLY
+_commit: v4.1.0
+_src_path: https://github.com/jupyterlab/extension-template
+author_email: ''
+author_name: ipylab contributors
+has_binder: false
+has_settings: false
+kind: frontend
+labextension_name: ipylab
+project_short_description: Control JupyterLab from Python notebooks
+python_name: ipylab
+repository: https://github.com/jtpio/ipylab
+test: false
+
