@@ -83,11 +83,16 @@ export class ShellModel extends WidgetModel {
     );
 
     const updateTitle = async (): Promise<void> => {
-      const icon = await unpack_models(title.get('icon'), this.widget_manager);
-      luminoWidget.title.label = title.get('label');
-      luminoWidget.title.iconClass = icon ? null : title.get('icon_class');
-      luminoWidget.title.icon = icon ? icon.labIcon : null;
+      luminoWidget.title.caption = title.get('caption');
+      luminoWidget.title.className = title.get('class_name');
       luminoWidget.title.closable = title.get('closable');
+      luminoWidget.title.label = title.get('label');
+      luminoWidget.title.dataset = title.get('dataset');
+      luminoWidget.title.iconLabel = title.get('icon_label');
+
+      const icon = await unpack_models(title.get('icon'), this.widget_manager);
+      luminoWidget.title.icon = icon ? icon.labIcon : null;
+      luminoWidget.title.iconClass = icon ? null : title.get('icon_class');
     };
 
     title.on('change', updateTitle);
