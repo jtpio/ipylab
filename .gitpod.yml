@@ -23,13 +23,13 @@ tasks:
       micromamba activate
       EOT
       source /workspace/bin/activate-env.sh
-      micromamba install -n base -y python=3.11 nodejs=14 jupyterlab=3 yarn
+      micromamba install -n base -y python=3.11 nodejs=14 jupyterlab=4 yarn
       python -m pip install -e ".[dev,test]" && jlpm && jlpm run build && jupyter labextension develop . --overwrite
       gp sync-done setup
     command: |
       gp sync-done setup
       source /workspace/bin/activate-env.sh
-      jupyter lab --no-browser --LabApp.token='' --LabApp.allow_origin=* --LabApp.tornado_settings='{"headers": {"Content-Security-Policy": "frame-ancestors *"}}'
+      jupyter lab --no-browser --ServerApp.allow_remote_access=True --ServerApp.token=''
 
   - name: watch
     command: |
