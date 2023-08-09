@@ -19,7 +19,7 @@ export class IconView extends DOMWidgetView {
     const { labIcon } = this.model;
     if (labIcon) {
       labIcon.render(this.iconElement, {
-        props: { tag: 'div' },
+        props: { tag: 'div' }
       });
     }
   }
@@ -43,7 +43,7 @@ export class IconModel extends DOMWidgetModel {
       _model_module_version: IconModel.model_module_version,
       _view_name: IconModel.view_name,
       _view_module: IconModel.view_module,
-      _view_module_version: IconModel.view_module_version,
+      _view_module_version: IconModel.view_module_version
     };
   }
 

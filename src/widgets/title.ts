@@ -17,7 +17,7 @@ export class TitleModel extends WidgetModel {
       ...super.defaults(),
       _model_name: TitleModel.model_name,
       _model_module: TitleModel.model_module,
-      _model_module_version: TitleModel.model_module_version,
+      _model_module_version: TitleModel.model_module_version
     };
   }
 

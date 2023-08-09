@@ -8,7 +8,7 @@ import { ObservableMap } from '@jupyterlab/observables';
 import {
   DOMWidgetModel,
   ISerializers,
-  WidgetModel,
+  WidgetModel
 } from '@jupyter-widgets/base';
 
 import { IDisposable } from '@lumino/disposable';
@@ -28,7 +28,7 @@ export class CommandPaletteModel extends WidgetModel {
       _model_name: CommandPaletteModel.model_name,
       _model_module: CommandPaletteModel.model_module,
       _model_module_version: CommandPaletteModel.model_module_version,
-      _items: [],
+      _items: []
     };
   }
 
@@ -90,7 +90,7 @@ export class CommandPaletteModel extends WidgetModel {
   }
 
   static serializers: ISerializers = {
-    ...DOMWidgetModel.serializers,
+    ...DOMWidgetModel.serializers
   };
 
   static model_name = 'CommandPaletteModel';

@@ -24,7 +24,7 @@ export class SessionManagerModel extends WidgetModel {
       _model_module: SessionManagerModel.model_module,
       _model_module_version: SessionManagerModel.model_module_version,
       current_session: null,
-      sessions: [],
+      sessions: []
     };
   }
 
@@ -121,7 +121,7 @@ export class SessionManagerModel extends WidgetModel {
   }
 
   static serializers: ISerializers = {
-    ...WidgetModel.serializers,
+    ...WidgetModel.serializers
   };
 
   static model_name = 'SessionManagerModel';

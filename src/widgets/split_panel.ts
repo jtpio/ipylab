@@ -74,7 +74,7 @@ export class SplitPanelModel extends PanelModel {
       _model_module_version: SplitPanelModel.model_module_version,
       _view_name: SplitPanelModel.model_name,
       _view_module: SplitPanelModel.model_module,
-      _view_module_version: SplitPanelModel.model_module_version,
+      _view_module_version: SplitPanelModel.model_module_version
     };
   }
 
@@ -98,7 +98,7 @@ export class SplitPanelView extends VBoxView {
   _createElement(tagName: string): HTMLElement {
     this.luminoWidget = new JupyterLuminoSplitPanelWidget({
       view: this,
-      orientation: this.model.get('orientation'),
+      orientation: this.model.get('orientation')
     }) as any;
     return this.luminoWidget.node;
   }
