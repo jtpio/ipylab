@@ -2,6 +2,27 @@
 
 <!-- <START NEW CHANGELOG ENTRY> -->
 
+## 1.0.0
+
+([Full Changelog](https://github.com/jtpio/ipylab/compare/v0.7.1...0f4e2a141ef68e7d6f3957c3250b300919b3d2d7))
+
+### Enhancements made
+
+- Add rest of Title API [#125](https://github.com/jtpio/ipylab/pull/125) ([@bollwyvl](https://github.com/bollwyvl))
+
+### Maintenance and upkeep improvements
+
+- Update to JupyterLab 4 [#126](https://github.com/jtpio/ipylab/pull/126) ([@jtpio](https://github.com/jtpio))
+- Bump yaml from 2.1.1 to 2.2.2 [#119](https://github.com/jtpio/ipylab/pull/119) ([@dependabot](https://github.com/dependabot))
+
+### Contributors to this release
+
+([GitHub contributors page for this release](https://github.com/jtpio/ipylab/graphs/contributors?from=2023-03-30&to=2023-08-11&type=c))
+
+[@bollwyvl](https://github.com/search?q=repo%3Ajtpio%2Fipylab+involves%3Abollwyvl+updated%3A2023-03-30..2023-08-11&type=Issues) | [@dependabot](https://github.com/search?q=repo%3Ajtpio%2Fipylab+involves%3Adependabot+updated%3A2023-03-30..2023-08-11&type=Issues) | [@github-actions](https://github.com/search?q=repo%3Ajtpio%2Fipylab+involves%3Agithub-actions+updated%3A2023-03-30..2023-08-11&type=Issues) | [@jtpio](https://github.com/search?q=repo%3Ajtpio%2Fipylab+involves%3Ajtpio+updated%3A2023-03-30..2023-08-11&type=Issues)
+
+<!-- <END NEW CHANGELOG ENTRY> -->
+
 ## 0.7.1
 
 ([Full Changelog](https://github.com/jtpio/ipylab/compare/v0.7.0...2de9db4c1780a86beabb78fcdaa4cbd7ae6271a6))
@@ -16,8 +37,6 @@
 ([GitHub contributors page for this release](https://github.com/jtpio/ipylab/graphs/contributors?from=2023-03-29&to=2023-03-30&type=c))
 
 [@github-actions](https://github.com/search?q=repo%3Ajtpio%2Fipylab+involves%3Agithub-actions+updated%3A2023-03-29..2023-03-30&type=Issues) | [@jtpio](https://github.com/search?q=repo%3Ajtpio%2Fipylab+involves%3Ajtpio+updated%3A2023-03-29..2023-03-30&type=Issues)
-
-<!-- <END NEW CHANGELOG ENTRY> -->
 
 ## 0.7.0
 
