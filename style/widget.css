@@ -1,9 +1,9 @@
-/*-----------------------------------------------------------------------------
+/* -----------------------------------------------------------------------------
 | Copyright (c) ipylab contributors.
 | Distributed under the terms of the Modified BSD License.
-|----------------------------------------------------------------------------*/
+|---------------------------------------------------------------------------- */
 
-/* Default Split Handle Color*/
+/* Default Split Handle Color */
 .jp-JupyterLuminoSplitPanelWidget .p-SplitPanel-handle {
   background-color: var(--jp-border-color2);
 }
@@ -15,7 +15,7 @@
 
 .jp-SideBar.jp-mod-left .p-mod-closable .p-TabBar-tabCloseIcon,
 .jp-SideBar.jp-mod-right .p-mod-closable .p-TabBar-tabCloseIcon {
-  padding: 4px 0px 4px 4px;
+  padding: 4px 0 4px 4px;
   background-size: 16px;
   height: 16px;
   width: 16px;

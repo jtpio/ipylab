@@ -6,7 +6,7 @@ import { LabIcon } from '@jupyterlab/ui-components';
 import {
   ISerializers,
   unpack_models,
-  WidgetModel,
+  WidgetModel
 } from '@jupyter-widgets/base';
 
 import { ArrayExt } from '@lumino/algorithm';
@@ -33,7 +33,7 @@ export class CommandRegistryModel extends WidgetModel {
       _model_module: CommandRegistryModel.model_module,
       _model_module_version: CommandRegistryModel.model_module_version,
       _command_list: [],
-      _commands: [],
+      _commands: []
     };
   }
 
@@ -51,7 +51,7 @@ export class CommandRegistryModel extends WidgetModel {
       if (this.comm_live) {
         return;
       }
-      Private.customCommands.values().forEach((command) => command.dispose());
+      Private.customCommands.values().forEach(command => command.dispose());
       this._sendCommandList();
     });
 
@@ -146,7 +146,7 @@ export class CommandRegistryModel extends WidgetModel {
         this.send({ event: 'execute', id }, {});
       },
       isEnabled: () => commandEnabled(command),
-      isVisible: () => commandEnabled(command),
+      isVisible: () => commandEnabled(command)
     });
     Private.customCommands.set(id, command);
     this._sendCommandList();
@@ -171,7 +171,7 @@ export class CommandRegistryModel extends WidgetModel {
   }
 
   static serializers: ISerializers = {
-    ...WidgetModel.serializers,
+    ...WidgetModel.serializers
   };
 
   static model_name = 'CommandRegistryModel';

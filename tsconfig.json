@@ -14,7 +14,7 @@
     "strict": true,
     "strictNullChecks": false,
     "strictPropertyInitialization": false,
-    "target": "es2017"
+    "target": "ES2018"
   },
   "include": ["src/**/*.ts", "src/**/*.tsx"]
 }

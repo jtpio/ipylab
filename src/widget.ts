@@ -22,5 +22,5 @@ export {
   TitleModel,
   SessionManagerModel,
   IconModel,
-  IconView,
+  IconView
 };

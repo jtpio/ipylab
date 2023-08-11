@@ -8,7 +8,7 @@ import { DOMUtils } from '@jupyterlab/apputils';
 import {
   ISerializers,
   WidgetModel,
-  unpack_models,
+  unpack_models
 } from '@jupyter-widgets/base';
 
 import { ArrayExt } from '@lumino/algorithm';
@@ -30,7 +30,7 @@ export class ShellModel extends WidgetModel {
       _model_name: ShellModel.model_name,
       _model_module: ShellModel.model_module,
       _model_module_version: ShellModel.model_module_version,
-      _widgets: [],
+      _widgets: []
     };
   }
 
@@ -133,7 +133,7 @@ export class ShellModel extends WidgetModel {
           '_widgets',
           widgets.concat({
             ...msg.payload,
-            id,
+            id
           })
         );
         this.save_changes();
@@ -157,7 +157,7 @@ export class ShellModel extends WidgetModel {
   }
 
   static serializers: ISerializers = {
-    ...WidgetModel.serializers,
+    ...WidgetModel.serializers
   };
 
   static model_name = 'ShellModel';

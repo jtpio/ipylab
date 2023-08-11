@@ -4,7 +4,7 @@ channels:
 dependencies:
 - bqplot=0.12
 - ipytree=0.2
-- jupyterlab=3
-- retrolab=0.3
-- nodejs
+- jupyterlab=4
+- notebook=7
+- nodejs=18
 - numpy

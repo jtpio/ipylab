@@ -3,7 +3,6 @@
 
 // SessionManager exposes `JupyterLab.serviceManager.sessions` to user python kernel
 
-import { SessionManager } from '@jupyterlab/services';
 import { ISerializers, WidgetModel } from '@jupyter-widgets/base';
 import { toArray } from '@lumino/algorithm';
 import { MODULE_NAME, MODULE_VERSION } from '../version';
@@ -24,7 +23,7 @@ export class SessionManagerModel extends WidgetModel {
       _model_module: SessionManagerModel.model_module,
       _model_module_version: SessionManagerModel.model_module_version,
       current_session: null,
-      sessions: [],
+      sessions: []
     };
   }
 
@@ -121,7 +120,7 @@ export class SessionManagerModel extends WidgetModel {
   }
 
   static serializers: ISerializers = {
-    ...WidgetModel.serializers,
+    ...WidgetModel.serializers
   };
 
   static model_name = 'SessionManagerModel';
@@ -132,8 +131,8 @@ export class SessionManagerModel extends WidgetModel {
   static view_module_version = MODULE_VERSION;
 
   private _current_session: Session.IModel | Record<string, unknown>;
-  private _sessions: SessionManager;
-  static sessions: SessionManager;
+  private _sessions: Session.IManager;
+  static sessions: Session.IManager;
   private _shell: JupyterFrontEnd.IShell;
   private _labShell: ILabShell | null;
   static shell: JupyterFrontEnd.IShell;
