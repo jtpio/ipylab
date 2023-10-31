@@ -25,11 +25,10 @@ class ContentsManager(Widget):
         self.on_msg(self._on_frontend_msg)
 
     def _on_frontend_msg(self, _, content, buffers):
-        if content.get("event", "") == "got":
-            _id = content.get("_id")
-            callback = self._requests.pop(_id, None)
-            if callback:
-                callback(content)
+        _id = content.get("_id")
+        callback = self._requests.pop(_id, None)
+        if callback:
+            callback(content)
 
     def get(self, path: str, content: t.Optional[bool] = None) -> "ContentsModel":
         _id = str(uuid4())
@@ -56,9 +55,11 @@ class ContentsManager(Widget):
                 "payload": {
                     "path": model.path,
                     "options": {
-                        "content": model.content,
-                        "type": model.type,
-                        "format": model.format,
+                        k: getattr(model, k)
+                        for k in model.class_trait_names()
+                        if not (
+                            k.startswith("_") or k == "error" or k in Widget._traits
+                        )
                     },
                 },
             }
@@ -75,23 +76,38 @@ class ContentsModel(Widget):
     _model_module = Unicode(module_name).tag(sync=True)
     _model_module_version = Unicode(module_version).tag(sync=True)
     _contents_manager = Instance(ContentsManager)
+    _syncing: t.Optional[bool]
 
-    name = Unicode()
-    path = Unicode()
-    last_modified = Unicode()
-    created = Unicode()
-    format = Unicode()
-    mimetype = Unicode()
-    size = Int()
-    writeable = Bool()
-    type = Unicode()
-    content = Any()
+    error = Unicode(allow_none=True)
 
-    def _on_get(self, content):
-        with self.hold_trait_notifications():
-            for key, value in content.get("model", {}).items():
-                setattr(self, key, value)
+    name = Unicode(allow_none=True)
+    path = Unicode(allow_none=True).tag(sync=True)
+    last_modified = Unicode(allow_none=True)
+    created = Unicode(allow_none=True)
+    format = Unicode(allow_none=True)
+    mimetype = Unicode(allow_none=True)
+    size = Int(allow_none=True)
+    writeable = Bool(allow_none=True)
+    type = Unicode(allow_none=True)
+    content = Any(allow_none=True)
 
-    @observe("content")
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        self.observe(self._on_content, "content")
+
+    def _on_get(self, msg):
+        if "error" in msg:
+            self.error = msg["error"]
+            return
+        func = msg.get("func")
+        self._syncing = True
+        for key, value in msg.get("model", {}).items():
+            if func == "save" and key == "content":
+                continue
+            setattr(self, key, value)
+        self._syncing = False
+
     def _on_content(self, change) -> None:
+        if self._syncing:
+            return
         self._contents_manager.save(self)
