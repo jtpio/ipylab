@@ -37,6 +37,8 @@ const extension: JupyterFrontEndPlugin<void> = {
 
         // add globals
         widgetExports.JupyterFrontEndModel.app = app;
+        widgetExports.ContentsManagerModel.contentsManager =
+          app.serviceManager.contents;
         widgetExports.ShellModel.shell = app.shell;
         widgetExports.ShellModel.labShell = labShell;
         widgetExports.CommandRegistryModel.commands = app.commands;

@@ -5,6 +5,7 @@ import { CommandRegistryModel } from './widgets/commands';
 import { CommandPaletteModel } from './widgets/palette';
 import { SessionManagerModel } from './widgets/sessions';
 import { JupyterFrontEndModel } from './widgets/frontend';
+import { ContentsManagerModel, ContentsModelModel } from './widgets/contents';
 import { PanelModel } from './widgets/panel';
 import { ShellModel } from './widgets/shell';
 import { SplitPanelModel, SplitPanelView } from './widgets/split_panel';
@@ -14,6 +15,8 @@ import { IconView, IconModel } from './widgets/icon';
 export {
   CommandRegistryModel,
   CommandPaletteModel,
+  ContentsManagerModel,
+  ContentsModelModel,
   JupyterFrontEndModel,
   PanelModel,
   ShellModel,
