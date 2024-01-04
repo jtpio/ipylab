@@ -1,0 +1,96 @@
+{
+    // To debug jupyterlab running in a venv or conda env:
+    //   - set up Python env in your workspace as per https://code.visualstudio.com/docs/python/environments
+    //   - add an "envFile" prop to each backend config pointing to .vscode/debug.env
+    //   - configure the .vscode/debug.env file as needed
+    // https://github.com/jupyterlab/vscode-config-template/tree/main
+    // https://github.com/jupyterlab/vscode-config-template/issues/1
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "JupyterLab backend",
+            "type": "python",
+            "request": "launch",
+            "args": [
+                "--notebook-dir=examples",
+                "--no-browser",
+                "--ServerApp.token=''",
+                "--port=9999"
+            ],
+            "justMyCode": false,
+            "module": "jupyterlab.labapp",
+            "presentation": {
+                "hidden": true
+            }
+        },
+        {
+            "name": "JupyterLab in Chrome",
+            "type": "chrome",
+            "request": "launch",
+            "timeout": 180000,
+            "url": "http://localhost:9999/lab",
+            "webRoot": "${workspaceFolder}",
+            "presentation": {
+                "hidden": true
+            }
+        },
+        {
+            "name": "jlab frontend with Firefox",
+            "type": "firefox",
+            "request": "launch",
+            "reAttach": true,
+            "url": "http://localhost:9999",
+            "webRoot": "${workspaceFolder}",
+            "pathMappings": [
+                {
+                    "url": "webpack://packages/base/src/utils.ts",
+                    "path": "${workspaceFolder}/packages/controls/src/utils.ts"
+                },
+                {
+                    "url": "webpack://packages/base/src/utils.ts",
+                    "path": "${workspaceFolder}/packages/controls/src/utils.ts"
+                },
+                {
+                    "url": "webpack://packages",
+                    "path": "${workspaceFolder}/../ipywidgets/packages"
+                },
+                {
+                    "url": "webpack://ipylab/src",
+                    "path": "${workspaceFolder}/src"
+                },
+                {
+                    "url": "webpack://jupyterlab/application-top/node_modules/minimist",
+                    "path": "${workspaceFolder}/../jupyterlab/staging"
+                },
+                {
+                    "url": "webpack://jupyterlab/application-top/node_modules/minimist",
+                    "path": "${workspaceFolder}/../jupyterlab/dev_mode"
+                },
+                // {
+                //     "url": "webpack://jupyter-widgets/packages",
+                //     "path": "${workspaceFolder}/../ipywidgets/packages"
+                // },                
+                {
+                    "url": "webpack:///",
+                    "path": "${webRoot}/"
+                }
+            ]
+        }
+    ],
+    "compounds": [
+        {
+            "name": "Debug JupyterLab with Chrome",
+            "configurations": [
+                "JupyterLab backend",
+                "JupyterLab in Chrome"
+            ]
+        },
+        {
+            "name": "Debug JupyterLab with firefox",
+            "configurations": [
+                "JupyterLab backend",
+                "jlab frontend with Firefox"
+            ]
+        }        
+    ]
+}
