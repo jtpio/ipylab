@@ -13,6 +13,10 @@ import {
 
 import { ArrayExt } from '@lumino/algorithm';
 
+import { MainAreaWidget } from '@jupyterlab/apputils';
+
+import { Widget } from '@lumino/widgets';
+
 import { Message, MessageLoop } from '@lumino/messaging';
 
 import { MODULE_NAME, MODULE_VERSION } from '../version';
@@ -62,9 +66,14 @@ export class ShellModel extends WidgetModel {
     const model = await unpack_models(serializedWidget, this.widget_manager);
     const view = await this.widget_manager.create_view(model, {});
     const title = await unpack_models(model.get('title'), this.widget_manager);
-    const luminoWidget = view.luminoWidget;
-
-    luminoWidget.id = id ?? DOMUtils.createDomID();
+    const content = new Widget(view.luminoWidget);
+    var luminoWidget = view.luminoWidget
+    if (area === 'main') {
+      luminoWidget = new MainAreaWidget({ content });
+    }
+    else {
+      luminoWidget.id = id ?? DOMUtils.createDomID();
+    }
 
     MessageLoop.installMessageHook(
       luminoWidget,
@@ -115,6 +124,7 @@ export class ShellModel extends WidgetModel {
     }
 
     this._shell.add(luminoWidget, area, args);
+    this._shell.activateById(luminoWidget.id);
     return luminoWidget.id;
   }
 
