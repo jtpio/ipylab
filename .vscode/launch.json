@@ -9,7 +9,7 @@
     "configurations": [
         {
             "name": "JupyterLab backend",
-            "type": "python",
+            "type": "debugpy",
             "request": "launch",
             "args": [
                 "--notebook-dir=examples",
@@ -71,10 +71,6 @@
                     "url": "webpack://jupyterlab/application-top/node_modules/minimist",
                     "path": "${workspaceFolder}/../jupyterlab/dev_mode"
                 },
-                // {
-                //     "url": "webpack://jupyter-widgets/packages",
-                //     "path": "${workspaceFolder}/../ipywidgets/packages"
-                // },
                 {
                     "url": "webpack://jupyter-widgets/packages",
                     "path": "${workspaceFolder}/../jupyter-widgets/packages"

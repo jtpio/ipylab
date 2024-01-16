@@ -101,6 +101,12 @@ jupyter labextension develop . --overwrite
 
 # compile the extension
 jlpm && jlpm run build
+
+# pre-commit (optional)
+pip install pre-commit
+pre-commit install
+
+
 ```
 
 ## Related projects

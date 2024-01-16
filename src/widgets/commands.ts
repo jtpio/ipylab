@@ -65,8 +65,7 @@ export class CommandRegistryModel extends IpylabModel {
   async operation(op: string, payload: any): Promise<JSONValue> {
     switch (op) {
       case 'execute':
-        this._execute(payload);
-        return 'done';
+        return await this._execute(payload);
       case 'addCommand': {
         await this._addCommand(payload);
         // keep track of the commands
@@ -76,7 +75,7 @@ export class CommandRegistryModel extends IpylabModel {
         return 'done';
       }
       case 'removeCommand':
-        this._removeCommand(payload.id);
+        this._removeCommand(payload.command_id);
         return 'done';
       default:
         throw new Error(
@@ -102,9 +101,15 @@ export class CommandRegistryModel extends IpylabModel {
    * @param payload.id
    * @param payload.args
    */
-  private _execute(payload: any): void {
+  private async _execute(payload: any): Promise<JSONValue> {
     const { id, args } = payload;
-    void this._commands.execute(id, args);
+    const result = await this._commands.execute(id, args);
+    try {
+      if (result.toJSON) return result.toJSON();
+      if (result.id) return { id: result.id };
+    } catch (e) {
+      return 'done';
+    }
   }
 
   /**
@@ -144,7 +149,6 @@ export class CommandRegistryModel extends IpylabModel {
       isVisible: () => commandEnabled(command)
     });
     Private.customCommands.set(id, command);
-    // this._sendCommandList();
   }
 
   /**
@@ -153,9 +157,9 @@ export class CommandRegistryModel extends IpylabModel {
    * @param payload The command payload.
    * @param payload.id
    */
-  private _removeCommand(id: string): void {
-    if (Private.customCommands.has(id)) {
-      const cmd = Private.customCommands.get(id);
+  private _removeCommand(command_id: string): void {
+    if (Private.customCommands.has(command_id)) {
+      const cmd = Private.customCommands.get(command_id);
       if (cmd) cmd.dispose();
     }
     this.save_changes();

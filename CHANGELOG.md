@@ -4,22 +4,28 @@
 
 ## DEV
 
-Upgraded to provide bi-diectional comms for shell operations. Each operation returns a task that 
-returns the result or raises an error if unsuccessful (if awaited). `JupyterFrontEnd', `CommandRegistry`,
-`SessionManager` & `CommandPalette` are all derived from `AsyncWidgetBase` and are now single instance objects.
+### Enhancements made
 
-Note that awaiting returned tasks is not possible in notebook cells.
+- Upgraded to provide asynchronous bi-directional comms for performing operations 
+in the Frontend. Each operation returns a task that when awaited will 
+return the response or raise an error if unsuccessful.
+- On the Python side `JupyterFrontEnd`, `CommandRegistry`, `SessionManager` & `CommandPalette` 
+are all derived from `AsyncWidgetBase` and are now single instance objects.
+- On the JavaScript frontend side `JupyterFrontendModel`, `CommandRegistryModel`,
+ `CommandPalletModel`, `ShellModel` &`SessionManageModel` extend the new `IpylabModel`. 
 
+### Added
 
-### Added 
-- bi-directional messaging with AsyncWidgetBase
-- AsyncWidgetBase supports SINGLETON and corresponds to the typesript model  IpylabModel
-- IpylabModel
-- Panel.app (a property giving access to the instance of the JupyterFrontEnd)
-- Panel & SplitPanel can now add themselves to the shell with the method `.add_to_shell()`.
+- `AsyncWidgetBase` - This provides the Python side functionality for messaging.
+- `IpylabModel` Provides the JavaScript frontend side messaging for the model.
+- Panel.app (a property giving access to the instance of the JupyterFrontEnd).
+- Panel & SplitPanel can add themselves to the shell with the method `.add_to_shell()`.
+- launch.json to provide vscode debugging support for development.
+- pre-commit settings.
 
 ### Removed
 - Callback type functionality
+- Dropped support for Python < 3.11
 - Dropped support for Jupyterlab <4.0
 - Dropped support for Ipywidgets <8.1.0
 

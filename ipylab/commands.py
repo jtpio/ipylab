@@ -16,12 +16,15 @@ class CommandPalette(AsyncWidgetBase):
 
     _items = Tuple(read_only=True).tag(sync=True)
 
-    def add_item(self, command_id: str, category, *, rank=None, **kwgs) -> asyncio.Task:
+    def add_item(
+        self, command_id: str, category, *, rank=None, args: dict | None = None, **kwgs
+    ) -> asyncio.Task:
         return self.schedule_operation(
             operation="addItem",
             id=command_id,
             category=category,
             rank=rank,
+            args=args,
             **kwgs,
         )
 
@@ -82,7 +85,7 @@ class CommandRegistry(AsyncWidgetBase):
     def remove_command(self, command_id: str) -> asyncio.Task:
         # TODO: check whether to keep this method, or return disposables like in lab
         if command_id not in self.commands:
-            return
+            raise ValueError(f"{command_id=} is not a registered command!")
         return self.schedule_operation("removeCommand", command_id=command_id)
 
     def set_attributes(self, command_id: str, **kwgs) -> asyncio.Task:
