@@ -88,15 +88,7 @@ class SplitPanel(Panel):
     _view_name = Unicode("SplitPanelView").tag(sync=True)
     orientation = Unicode("vertical").tag(sync=True)
     class_name = Unicode("ipylab-splitpanel").tag(sync=True)
-    layout = InstanceDict(
-        Layout,
-        kw={
-            "flex_flow": "column",
-            "width": "100%",
-            "min_height": "100px",
-            "overflow": "hidden",
-        },
-    ).tag(sync=True, **widget_serialization)
+    layout = InstanceDict(Layout, kw={"min_height": "100px"}).tag(sync=True, **widget_serialization)
 
 
 del Widget, Layout

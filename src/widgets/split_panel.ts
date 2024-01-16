@@ -94,8 +94,7 @@ export class SplitPanelView extends PanelView {
    */
   _createElement(tagName: string): HTMLElement {
     this.luminoWidget = new JupyterLuminoSplitPanelWidget({
-      view: this,
-      orientation: this.model.get('orientation')
+      view: this
     }) as any;
     return this.luminoWidget.node;
   }
