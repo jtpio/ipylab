@@ -1,9 +1,15 @@
 // Copyright (c) ipylab contributors
 // Distributed under the terms of the Modified BSD License.
 
-import { WidgetModel, unpack_models } from '@jupyter-widgets/base';
+import {
+  WidgetModel,
+  JupyterLuminoPanelWidget,
+  unpack_models
+} from '@jupyter-widgets/base';
 
 import { MODULE_NAME, MODULE_VERSION } from '../version';
+
+import { IconModel } from './icon';
 
 /**
  * The model for a title widget.
@@ -29,23 +35,43 @@ export class TitleModel extends WidgetModel {
    */
   initialize(attributes: any, options: any): void {
     super.initialize(attributes, options);
-    this.on('change:icon', this.iconChanged);
+    this.on('change:icon', this._iconChanged);
   }
 
   /**
-   * Pass on changes from the icon.
+   * Load settings into the widget
+   * @param luminoWidget
    */
-  async iconChanged() {
-    const icon = await unpack_models(this.get('icon'), this.widget_manager);
-    if (icon) {
-      icon.on('change', () => this.trigger('change'));
-    }
+  update_widget(luminoWidget: JupyterLuminoPanelWidget) {
+    luminoWidget.title.caption = this.get('caption');
+    luminoWidget.title.className = this.get('class_name');
+    luminoWidget.title.closable = this.get('closable');
+    luminoWidget.title.label = this.get('label');
+    luminoWidget.title.dataset = this.get('dataset');
+    luminoWidget.title.iconLabel = this.get('icon_label');
+
+    const icon = this.get('icon');
+    luminoWidget.title.icon = icon ? icon.labIcon : null;
+    luminoWidget.title.iconClass = icon ? null : this.get('icon_class');
   }
 
+  // /**
+  //  * Pass on changes from the icon.
+  //  */
+  private _iconChanged() {
+    const icon = this.get('icon');
+    this.listenTo(icon, 'change', () => {
+      // Pass on changes from the icon.
+      this.trigger('change');
+    });
+  }
+
+  static serializers = {
+    icon: { deserialize: unpack_models }
+  };
+  icon: IconModel;
   static model_name = 'TitleModel';
   static model_module = MODULE_NAME;
   static model_module_version = MODULE_VERSION;
-  static view_name: string = null;
-  static view_module: string = null;
   static view_module_version = MODULE_VERSION;
 }

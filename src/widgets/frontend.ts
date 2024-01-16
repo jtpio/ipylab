@@ -1,20 +1,14 @@
 // Copyright (c) ipylab contributors
 // Distributed under the terms of the Modified BSD License.
 
+import { ISerializers } from '@jupyter-widgets/base';
 import { JupyterFrontEnd } from '@jupyterlab/application';
-
-import {
-  DOMWidgetModel,
-  ISerializers,
-  WidgetModel
-} from '@jupyter-widgets/base';
-
-import { MODULE_NAME, MODULE_VERSION } from '../version';
+import { IpylabModel } from './ipylab';
 
 /**
  * The model for a JupyterFrontEnd.
  */
-export class JupyterFrontEndModel extends WidgetModel {
+export class JupyterFrontEndModel extends IpylabModel {
   /**
    * The default attributes.
    */
@@ -36,22 +30,18 @@ export class JupyterFrontEndModel extends WidgetModel {
   initialize(attributes: any, options: any): void {
     this._app = JupyterFrontEndModel.app;
     super.initialize(attributes, options);
-    this.send({ event: 'lab_ready' }, {});
     this.set('version', this._app.version);
+    // const msg = 'ipylab_' + JupyterFrontEndModel.model_name + '_ready';
+    // this.send({ event: msg }, {});
     this.save_changes();
   }
 
   static serializers: ISerializers = {
-    ...DOMWidgetModel.serializers
+    ...IpylabModel.serializers
   };
 
   static model_name = 'JupyterFrontEndModel';
-  static model_module = MODULE_NAME;
-  static model_module_version = MODULE_VERSION;
-  static view_name: string = null;
-  static view_module: string = null;
-  static view_module_version = MODULE_VERSION;
 
-  private _app: JupyterFrontEnd;
+  private _app!: JupyterFrontEnd;
   static app: JupyterFrontEnd;
 }

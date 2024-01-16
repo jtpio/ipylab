@@ -1,50 +1,34 @@
-#!/usr/bin/env python
-# coding: utf-8
-
 # Copyright (c) ipylab contributors.
 # Distributed under the terms of the Modified BSD License.
-
 import asyncio
+from typing import Self
 
-from ipywidgets import CallbackDispatcher, Widget, register, widget_serialization
 from traitlets import Instance, Unicode
-from ._frontend import module_name, module_version
 
-from .commands import CommandRegistry
-from .shell import Shell
-from .sessions import SessionManager
+from ipylab.asyncwidget import AsyncWidgetBase, register, widget_serialization
+from ipylab.commands import CommandPalette, CommandRegistry
+from ipylab.sessions import SessionManager
+from ipylab.shell import Shell
 
 
 @register
-class JupyterFrontEnd(Widget):
+class JupyterFrontEnd(AsyncWidgetBase):
     _model_name = Unicode("JupyterFrontEndModel").tag(sync=True)
-    _model_module = Unicode(module_name).tag(sync=True)
-    _model_module_version = Unicode(module_version).tag(sync=True)
+    SINGLETON = True
 
     version = Unicode(read_only=True).tag(sync=True)
-    shell = Instance(Shell).tag(sync=True, **widget_serialization)
-    commands = Instance(CommandRegistry).tag(sync=True, **widget_serialization)
-    sessions = Instance(SessionManager).tag(sync=True, **widget_serialization)
+    shell = Instance(Shell, (), read_only=True).tag(sync=True, **widget_serialization)
+    commands = Instance(CommandRegistry, (), read_only=True).tag(sync=True, **widget_serialization)
+    sessions = Instance(SessionManager, (), read_only=True).tag(sync=True, **widget_serialization)
+    command_pallet = Instance(CommandPalette, (), read_only=True).tag(
+        sync=True, **widget_serialization
+    )
 
-    def __init__(self, *args, **kwargs):
-        super().__init__(
-            *args,
-            shell=Shell(),
-            commands=CommandRegistry(),
-            sessions=SessionManager(),
-            **kwargs,
-        )
-        self._ready_event = asyncio.Event()
-        self._on_ready_callbacks = CallbackDispatcher()
-        self.on_msg(self._on_frontend_msg)
-
-    def _on_frontend_msg(self, _, content, buffers):
-        if content.get("event", "") == "lab_ready":
-            self._ready_event.set()
-            self._on_ready_callbacks()
-
-    async def ready(self):
-        await self._ready_event.wait()
-
-    def on_ready(self, callback, remove=False):
-        self._on_ready_callbacks.register_callback(callback, remove)
+    async def wait_ready(self, timeout=5) -> Self:
+        """Wait until connected to app indicates it is ready."""
+        async with asyncio.TaskGroup() as group, asyncio.timeout(timeout):
+            group.create_task(super().wait_ready())
+            group.create_task(self.shell.wait_ready())
+            group.create_task(self.commands.wait_ready())
+            group.create_task(self.command_pallet.wait_ready())
+        return self

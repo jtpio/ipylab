@@ -1,30 +1,20 @@
 // Copyright (c) ipylab contributors
 // Distributed under the terms of the Modified BSD License.
 
-import { JupyterFrontEnd, ILabShell } from '@jupyterlab/application';
+import { ILabShell, JupyterFrontEnd } from '@jupyterlab/application';
 
 import { DOMUtils } from '@jupyterlab/apputils';
 
-import {
-  ISerializers,
-  WidgetModel,
-  unpack_models
-} from '@jupyter-widgets/base';
-
-import { ArrayExt } from '@lumino/algorithm';
-
 import { MainAreaWidget } from '@jupyterlab/apputils';
 
-import { Widget } from '@lumino/widgets';
+import { ISerializers, IpylabModel, JSONValue } from './ipylab';
 
-import { Message, MessageLoop } from '@lumino/messaging';
-
-import { MODULE_NAME, MODULE_VERSION } from '../version';
+import { unpack_models } from '@jupyter-widgets/base';
 
 /**
  * The model for a shell.
  */
-export class ShellModel extends WidgetModel {
+export class ShellModel extends IpylabModel {
   /**
    * The default attributes.
    */
@@ -33,8 +23,7 @@ export class ShellModel extends WidgetModel {
       ...super.defaults(),
       _model_name: ShellModel.model_name,
       _model_module: ShellModel.model_module,
-      _model_module_version: ShellModel.model_module_version,
-      _widgets: []
+      _model_module_version: ShellModel.model_module_version
     };
   }
 
@@ -49,11 +38,6 @@ export class ShellModel extends WidgetModel {
     this._labShell = ShellModel.labShell;
 
     super.initialize(attributes, options);
-    this.on('msg:custom', this._onMessage.bind(this));
-
-    // restore existing widgets
-    const widgets = this.get('_widgets');
-    widgets.forEach((w: any) => this._add(w));
   }
 
   /**
@@ -62,50 +46,16 @@ export class ShellModel extends WidgetModel {
    * @param payload The payload to add
    */
   private async _add(payload: any): Promise<string> {
-    const { serializedWidget, area, args, id } = payload;
+    const { serializedWidget, area, options } = payload;
     const model = await unpack_models(serializedWidget, this.widget_manager);
     const view = await this.widget_manager.create_view(model, {});
-    const title = await unpack_models(model.get('title'), this.widget_manager);
-    const content = new Widget(view.luminoWidget);
-    var luminoWidget = view.luminoWidget
+    var luminoWidget = view.luminoWidget;
     if (area === 'main') {
-      luminoWidget = new MainAreaWidget({ content });
+      const lw = new MainAreaWidget({ content: view.luminoWidget });
+      lw.node.removeChild(lw.toolbar.node); // Drop the toolbar because it overlaps ontop of the content
+      luminoWidget = lw;
     }
-    else {
-      luminoWidget.id = id ?? DOMUtils.createDomID();
-    }
-
-    MessageLoop.installMessageHook(
-      luminoWidget,
-      (handler: any, msg: Message) => {
-        switch (msg.type) {
-          case 'close-request': {
-            const widgets = this.get('_widgets').slice();
-            ArrayExt.removeAllWhere(widgets, (w: any) => w.id === handler.id);
-            this.set('_widgets', widgets);
-            this.save_changes();
-            break;
-          }
-        }
-        return true;
-      }
-    );
-
-    const updateTitle = async (): Promise<void> => {
-      luminoWidget.title.caption = title.get('caption');
-      luminoWidget.title.className = title.get('class_name');
-      luminoWidget.title.closable = title.get('closable');
-      luminoWidget.title.label = title.get('label');
-      luminoWidget.title.dataset = title.get('dataset');
-      luminoWidget.title.iconLabel = title.get('icon_label');
-
-      const icon = await unpack_models(title.get('icon'), this.widget_manager);
-      luminoWidget.title.icon = icon ? icon.labIcon : null;
-      luminoWidget.title.iconClass = icon ? null : title.get('icon_class');
-    };
-
-    title.on('change', updateTitle);
-    void updateTitle();
+    if (!luminoWidget.id) luminoWidget.id = DOMUtils.createDomID();
 
     if ((area === 'left' || area === 'right') && this._labShell) {
       let handler;
@@ -122,60 +72,61 @@ export class ShellModel extends WidgetModel {
 
       luminoWidget.addClass('jp-SideAreaWidget');
     }
-
-    this._shell.add(luminoWidget, area, args);
-    this._shell.activateById(luminoWidget.id);
+    this._shell.add(luminoWidget, area, options);
+    model.on('comm_live_update', () => {
+      if (!model.comm_live) luminoWidget.close();
+    });
     return luminoWidget.id;
   }
 
-  /**
-   * Handle a custom message from the backend.
-   *
-   * @param msg The message to handle.
-   */
-  private async _onMessage(msg: any): Promise<void> {
-    switch (msg.func) {
+  async operation(op: string, payload: any): Promise<JSONValue> {
+    switch (op) {
       case 'add': {
-        const id = await this._add(msg.payload);
-        // keep track of the widgets added to the shell
-        const widgets = this.get('_widgets');
-        this.set(
-          '_widgets',
-          widgets.concat({
-            ...msg.payload,
-            id
-          })
-        );
-        this.save_changes();
-        break;
+        const id: string = await this._add(payload);
+        return { id: id };
       }
       case 'expandLeft': {
         if (this._labShell) {
           this._labShell.expandLeft();
         }
-        break;
+        return 'done';
       }
       case 'expandRight': {
         if (this._labShell) {
           this._labShell.expandRight();
         }
-        break;
+        return 'done';
+      }
+      case 'collapseLeft': {
+        if (this._labShell) {
+          this._labShell.collapseLeft();
+        }
+        return 'done';
+      }
+      case 'collapseRight': {
+        if (this._labShell) {
+          this._labShell.collapseRight();
+        }
+        return 'done';
+      }
+      case 'collapseRight': {
+        if (this._labShell) {
+          this._labShell.collapseRight();
+        }
+        return 'done';
       }
       default:
-        break;
+        throw new Error(
+          `op=${op} has not been implemented in ${this.get('_model_name')}!`
+        );
     }
   }
 
   static serializers: ISerializers = {
-    ...WidgetModel.serializers
+    ...IpylabModel.serializers
   };
 
   static model_name = 'ShellModel';
-  static model_module = MODULE_NAME;
-  static model_module_version = MODULE_VERSION;
-  static view_name: string = null;
-  static view_module: string = null;
-  static view_module_version = MODULE_VERSION;
 
   private _shell: JupyterFrontEnd.IShell;
   private _labShell: ILabShell;

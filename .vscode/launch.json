@@ -17,6 +17,7 @@
                 "--ServerApp.token=''",
                 "--port=9999"
             ],
+            "cwd": "${workspaceFolder}",
             "justMyCode": false,
             "module": "jupyterlab.labapp",
             "presentation": {
@@ -51,12 +52,16 @@
                     "path": "${workspaceFolder}/packages/controls/src/utils.ts"
                 },
                 {
-                    "url": "webpack://packages",
+                    "url": "webpack://ipylab/src",
+                    "path": "${workspaceFolder}/src"
+                },
+                {
+                    "url": "webpack://ipywidgets/packages",
                     "path": "${workspaceFolder}/../ipywidgets/packages"
                 },
                 {
-                    "url": "webpack://ipylab/src",
-                    "path": "${workspaceFolder}/src"
+                    "url": "webpack://ipywidgets/src",
+                    "path": "${workspaceFolder}/../ipywidgets/src"
                 },
                 {
                     "url": "webpack://jupyterlab/application-top/node_modules/minimist",
@@ -69,7 +74,11 @@
                 // {
                 //     "url": "webpack://jupyter-widgets/packages",
                 //     "path": "${workspaceFolder}/../ipywidgets/packages"
-                // },                
+                // },
+                {
+                    "url": "webpack://jupyter-widgets/packages",
+                    "path": "${workspaceFolder}/../jupyter-widgets/packages"
+                },
                 {
                     "url": "webpack:///",
                     "path": "${webRoot}/"
@@ -91,6 +100,6 @@
                 "JupyterLab backend",
                 "jlab frontend with Firefox"
             ]
-        }        
+        }
     ]
 }

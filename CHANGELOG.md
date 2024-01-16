@@ -2,6 +2,27 @@
 
 <!-- <START NEW CHANGELOG ENTRY> -->
 
+## DEV
+
+Upgraded to provide bi-diectional comms for shell operations. Each operation returns a task that 
+returns the result or raises an error if unsuccessful (if awaited). `JupyterFrontEnd', `CommandRegistry`,
+`SessionManager` & `CommandPalette` are all derived from `AsyncWidgetBase` and are now single instance objects.
+
+Note that awaiting returned tasks is not possible in notebook cells.
+
+
+### Added 
+- bi-directional messaging with AsyncWidgetBase
+- AsyncWidgetBase supports SINGLETON and corresponds to the typesript model  IpylabModel
+- IpylabModel
+- Panel.app (a property giving access to the instance of the JupyterFrontEnd)
+- Panel & SplitPanel can now add themselves to the shell with the method `.add_to_shell()`.
+
+### Removed
+- Callback type functionality
+- Dropped support for Jupyterlab <4.0
+- Dropped support for Ipywidgets <8.1.0
+
 ## 1.0.0
 
 ([Full Changelog](https://github.com/jtpio/ipylab/compare/v0.7.1...0f4e2a141ef68e7d6f3957c3250b300919b3d2d7))

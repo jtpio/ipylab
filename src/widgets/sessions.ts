@@ -3,16 +3,18 @@
 
 // SessionManager exposes `JupyterLab.serviceManager.sessions` to user python kernel
 
-import { ISerializers, WidgetModel } from '@jupyter-widgets/base';
-import { toArray } from '@lumino/algorithm';
 import { MODULE_NAME, MODULE_VERSION } from '../version';
+
 import { Session } from '@jupyterlab/services';
+
 import { ILabShell, JupyterFrontEnd } from '@jupyterlab/application';
+
+import { ISerializers, IpylabModel, JSONValue } from './ipylab';
 
 /**
  * The model for a Session Manager
  */
-export class SessionManagerModel extends WidgetModel {
+export class SessionManagerModel extends IpylabModel {
   /**
    * The default attributes.
    */
@@ -42,7 +44,6 @@ export class SessionManagerModel extends WidgetModel {
     sessions.runningChanged.connect(this._sendSessions, this);
 
     super.initialize(attributes, options);
-    this.on('msg:custom', this._onMessage.bind(this));
 
     if (this._labShell) {
       this._labShell.currentChanged.connect(this._currentChanged, this);
@@ -53,23 +54,19 @@ export class SessionManagerModel extends WidgetModel {
 
     this._sendSessions();
     this._sendCurrent();
-    this.send({ event: 'sessions_initialized' }, {});
   }
 
-  /**
-   * Handle a custom message from the backend.
-   *
-   * @param msg The message to handle.
-   */
-  private _onMessage(msg: any): void {
-    switch (msg.func) {
+  async operation(op: string, payload: any): Promise<JSONValue> {
+    switch (op) {
       case 'refreshRunning':
         this._sessions.refreshRunning().then(() => {
           this.send({ event: 'sessions_refreshed' }, {});
         });
-        break;
+        return 'done';
       default:
-        break;
+        throw new Error(
+          `event=${op} has not been implemented ${SessionManagerModel.model_name}!`
+        );
     }
   }
 
@@ -98,7 +95,7 @@ export class SessionManagerModel extends WidgetModel {
   private _currentChanged(): void {
     this._current_session = this._getSessionContext(this._shell.currentWidget);
     this.set('current_session', this._current_session);
-    this.set('sessions', toArray(this._sessions.running()));
+    this.set('sessions', Array.from(this._sessions.running()));
     this.save_changes();
   }
 
@@ -106,7 +103,7 @@ export class SessionManagerModel extends WidgetModel {
    * Send the list of sessions to the backend.
    */
   private _sendSessions(): void {
-    this.set('sessions', toArray(this._sessions.running()));
+    this.set('sessions', Array.from(this._sessions.running()));
     this.save_changes();
   }
 
@@ -120,21 +117,21 @@ export class SessionManagerModel extends WidgetModel {
   }
 
   static serializers: ISerializers = {
-    ...WidgetModel.serializers
+    ...IpylabModel.serializers
   };
 
   static model_name = 'SessionManagerModel';
   static model_module = MODULE_NAME;
   static model_module_version = MODULE_VERSION;
-  static view_name: string = null;
-  static view_module: string = null;
+  static view_name: string;
+  static view_module: string;
   static view_module_version = MODULE_VERSION;
 
-  private _current_session: Session.IModel | Record<string, unknown>;
-  private _sessions: Session.IManager;
+  private _current_session!: Session.IModel | Record<string, unknown>;
+  private _sessions!: Session.IManager;
   static sessions: Session.IManager;
-  private _shell: JupyterFrontEnd.IShell;
-  private _labShell: ILabShell | null;
+  private _shell!: JupyterFrontEnd.IShell;
+  private _labShell!: ILabShell;
   static shell: JupyterFrontEnd.IShell;
-  static labShell: ILabShell | null;
+  static labShell: ILabShell;
 }

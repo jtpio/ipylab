@@ -24,8 +24,8 @@ export class IconView extends DOMWidgetView {
     }
   }
 
-  model: IconModel;
-  protected iconElement: HTMLElement;
+  model!: IconModel;
+  protected iconElement!: HTMLElement;
 }
 
 /**
@@ -76,7 +76,7 @@ export class IconModel extends DOMWidgetModel {
     this.trigger('change');
   }
 
-  protected _labIcon: LabIcon;
+  protected _labIcon!: LabIcon;
 
   static model_name = 'IconModel';
   static model_module = MODULE_NAME;
