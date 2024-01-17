@@ -14,7 +14,7 @@ from ipylab.widgets import Icon
 class CommandPalette(AsyncWidgetBase):
     _model_name = Unicode("CommandPaletteModel").tag(sync=True)
 
-    _items = Tuple(read_only=True).tag(sync=True)
+    items = Tuple(read_only=True).tag(sync=True)
 
     def add_item(
         self, command_id: str, category, *, rank=None, args: dict | None = None, **kwgs
@@ -27,6 +27,9 @@ class CommandPalette(AsyncWidgetBase):
             args=args,
             **kwgs,
         )
+
+    def remove_item(self, command_id: str, category) -> asyncio.Task:
+        return self.schedule_operation(operation="addItem", id=command_id, category=category)
 
 
 @register
@@ -79,7 +82,7 @@ class CommandRegistry(AsyncWidgetBase):
             caption=caption,
             label=label,
             iconClass=icon_class,
-            icon=widget_serialization["to_json"](self, None) if icon else None,
+            icon=widget_serialization["to_json"](icon, None) if icon else None,
         )
 
     def remove_command(self, command_id: str) -> asyncio.Task:

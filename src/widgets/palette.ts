@@ -22,7 +22,7 @@ export class CommandPaletteModel extends IpylabModel {
       _model_name: CommandPaletteModel.model_name,
       _model_module: CommandPaletteModel.model_module,
       _model_module_version: CommandPaletteModel.model_module_version,
-      _items: []
+      items: []
     };
   }
 
@@ -35,23 +35,48 @@ export class CommandPaletteModel extends IpylabModel {
   initialize(attributes: any, options: any): void {
     super.initialize(attributes, options);
     this._palette = CommandPaletteModel.palette;
+    this._customItems = new ObservableMap<IDisposable>();
+    this._customItems.changed.connect(this._sendItems, this);
   }
 
   async operation(op: string, payload: any): Promise<JSONValue> {
     switch (op) {
       case 'addItem': {
-        const id = this._addItem(payload);
-        // keep track of the items
-        const items = this.get('_items');
-        this.set('_items', items.concat(payload));
-        this.save_changes();
-        return { id: id };
+        return this._addItem(payload);
+      }
+      case 'removeItem': {
+        return this._removeItem(payload);
       }
       default:
         throw new Error(
           `event=${op} has not been implemented in CommandPaletteModel!`
         );
     }
+  }
+
+  /**
+   * Close model
+   *
+   * @param comm_closed - true if the comm is already being closed. If false, the comm will be closed.
+   *
+   * @returns - a promise that is fulfilled when all the associated views have been removed.
+   */
+  close(comm_closed = false): Promise<void> {
+    // can only be closed once.
+    if (this.comm) {
+      this._customItems.changed.disconnect(this._sendItems, this);
+      this._customItems.values().forEach(item => item.dispose());
+      this._customItems.clear();
+    }
+    return super.close(comm_closed);
+  }
+
+  /**
+   * Send the list of items to the backend.
+   */
+  private _sendItems(sender?: object, args?: any): void {
+    this.set('items', this._customItems.keys());
+    this.save_changes();
   }
 
   /**
@@ -64,26 +89,37 @@ export class CommandPaletteModel extends IpylabModel {
       throw new Error('The command pallet is not loaded!');
     }
     const { id, category, args, rank } = options;
-    const itemId = `${id}-${category}`;
-    if (Private.customItems.has(itemId)) {
-      // no-op if the item is already in the palette
-      throw new Error(`Item with id='${itemId}' already exists`);
+    const itemId = `${id} | ${category}`;
+    if (this._customItems.has(itemId)) {
+      this._removeItem(options);
     }
     const item = this._palette.addItem({ command: id, category, args, rank });
-    Private.customItems.set(itemId, item);
+    this._customItems.set(itemId, item);
+    return itemId;
+  }
+
+  /**
+   * Remove an item (custom only) from the command pallet.
+   *
+   * @param payload The command payload.
+   * @param payload.id
+   */
+  private _removeItem(options: IPaletteItem & { id: string }): string {
+    const { id, category } = options;
+    const itemId = `${id} | ${category}`;
+    if (this._customItems.has(itemId)) {
+      const cmd = this._customItems.get(itemId);
+      if (cmd) cmd.dispose();
+    }
+    this._customItems.delete(itemId);
     return itemId;
   }
 
   static model_name = 'CommandPaletteModel';
 
+  private _customItems: ObservableMap<IDisposable>;
+
   private _palette!: ICommandPalette;
 
   static palette: ICommandPalette;
-}
-
-/**
- * A namespace for private data
- */
-namespace Private {
-  export const customItems = new ObservableMap<IDisposable>();
 }
