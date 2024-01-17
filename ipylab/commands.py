@@ -87,9 +87,3 @@ class CommandRegistry(AsyncWidgetBase):
         if command_id not in self.commands:
             raise ValueError(f"{command_id=} is not a registered command!")
         return self.schedule_operation("removeCommand", command_id=command_id)
-
-    def set_attributes(self, command_id: str, **kwgs) -> asyncio.Task:
-        if command_id not in self.commands:
-            raise AttributeError(f"Command {command_id} is not registered")
-        raise NotImplementedError("TODO")
-        # return self.schedule_operation( ...
