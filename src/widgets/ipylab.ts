@@ -27,7 +27,7 @@ export class IpylabModel extends WidgetModel {
     const msg = `ipylab ${this.get('_model_name')} ready for operations`;
     this.send({ init: msg });
     this.on('comm_live_update', () => {
-      if (!this.comm_live && !this.comm) this.close();
+      if (!this.comm_live && this.comm) this.close();
     });
   }
   /**
