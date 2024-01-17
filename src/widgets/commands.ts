@@ -11,6 +11,10 @@ import { IDisposable } from '@lumino/disposable';
 
 import { MODULE_NAME, MODULE_VERSION } from '../version';
 
+import { LabIcon } from '@jupyterlab/ui-components';
+
+import { unpack_models } from '@jupyter-widgets/base';
+
 /**
  * The model for a command registry.
  */
@@ -128,9 +132,14 @@ export class CommandRegistryModel extends IpylabModel {
       const cmd = Private.customCommands.get(id);
       if (cmd) cmd.dispose();
     }
+
+    let labIcon: LabIcon | null = null;
     if (icon) {
+      labIcon = (await unpack_models(icon, this.widget_manager))?.labIcon;
     }
 
+    // TODO: Add better support for enabling/disabling commands
+    // Add synchronized lists for disabled and hidden
     const commandEnabled = (command: IDisposable): boolean => {
       return !command.isDisposed && !!this.comm && this.comm_live;
     };
@@ -138,6 +147,7 @@ export class CommandRegistryModel extends IpylabModel {
       caption,
       label,
       iconClass,
+      icon: labIcon,
       execute: (args: any) => {
         if (!this.comm_live) {
           command.dispose();
