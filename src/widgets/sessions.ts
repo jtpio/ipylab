@@ -59,10 +59,9 @@ export class SessionManagerModel extends IpylabModel {
   async operation(op: string, payload: any): Promise<JSONValue> {
     switch (op) {
       case 'refreshRunning':
-        this._sessions.refreshRunning().then(() => {
-          this.send({ event: 'sessions_refreshed' }, {});
-        });
-        return 'done';
+        await this._sessions.refreshRunning();
+        this._currentChanged();
+        return this.get('sessions');
       default:
         throw new Error(
           `event=${op} has not been implemented ${SessionManagerModel.model_name}!`

@@ -2,6 +2,8 @@
 # Distributed under the terms of the Modified BSD License.
 
 
+import asyncio
+
 from traitlets import Dict, Tuple, Unicode
 
 from ipylab.asyncwidget import AsyncWidgetBase, register
@@ -18,3 +20,7 @@ class SessionManager(AsyncWidgetBase):
     current_session = Dict(read_only=True).tag(sync=True)
     # keeps track of the list of sessions
     sessions = Tuple(read_only=True).tag(sync=True)
+
+    def refresh_running(self) -> asyncio.Task:
+        """Force a call to refresh running sessions."""
+        return self.schedule_operation("refreshRunning")

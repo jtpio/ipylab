@@ -51,7 +51,7 @@ class AsyncWidgetBase(WidgetBase):
     SINGLETON = False
     _ready_response = Instance(Response, ())
     _model_id = None
-    _pending_events: dict[str:Response] = Dict()
+    _pending_events: dict[str, Response] = Dict()
     _tasks = Set()
 
     def __repr__(self):
@@ -128,7 +128,7 @@ class AsyncWidgetBase(WidgetBase):
             ipylab_ID = content.get("ipylab_ID", "")
             payload = content.get("payload", {})
             if ipylab_ID:
-                self._pending_events[ipylab_ID](payload, error)
+                self._pending_events.pop(ipylab_ID).set(payload, error)
             else:
                 self._on_event(event, payload, buffers, error)
         elif init_message := content.get("init"):
