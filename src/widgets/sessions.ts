@@ -107,11 +107,12 @@ export class SessionManagerModel extends IpylabModel {
   }
 
   /**
-   * send current session to backend
+   * send current session to backend after init
    */
   private _sendCurrent(): void {
     this._current_session = this._getSessionContext(this._shell.currentWidget);
     this.set('current_session', this._current_session);
+    this.set('app_session', this._current_session);
     this.save_changes();
   }
 
