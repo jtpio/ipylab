@@ -26,9 +26,16 @@ class JupyterFrontEnd(AsyncWidgetBase):
 
     async def wait_ready(self, timeout=5) -> Self:
         """Wait until connected to app indicates it is ready."""
-        async with asyncio.TaskGroup() as group, asyncio.timeout(timeout):
-            group.create_task(super().wait_ready())
-            group.create_task(self.shell.wait_ready())
-            group.create_task(self.commands.wait_ready())
-            group.create_task(self.command_pallet.wait_ready())
+        if not self._ready_response.is_set():
+            async with asyncio.TaskGroup() as group, asyncio.timeout(timeout):
+                group.create_task(super().wait_ready())
+                group.create_task(self.shell.wait_ready())
+                group.create_task(self.commands.wait_ready())
+                group.create_task(self.command_pallet.wait_ready())
+                group.create_task(self.sessions.wait_ready())
         return self
+
+    def open_console(self, session: dict | None = None, **kwgs) -> asyncio.Task:
+        if session is None:
+            session = self.sessions.app_session
+        return self.commands.execute("console:open", **session | kwgs)
