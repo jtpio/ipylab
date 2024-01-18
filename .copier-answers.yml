@@ -3,17 +3,12 @@ _commit: v4.2.4
 _src_path: https://github.com/jupyterlab/extension-template
 author_email: ''
 author_name: ipylab contributors
-data_format: string
-file_extension: ''
 has_binder: false
 has_settings: false
 kind: frontend
 labextension_name: ipylab
-mimetype: ''
-mimetype_name: ''
 project_short_description: Control JupyterLab from Python notebooks
 python_name: ipylab
 repository: https://github.com/jtpio/ipylab
 test: false
-viewer_name: ''
 
