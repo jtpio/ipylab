@@ -23,32 +23,30 @@ const extension: JupyterFrontEndPlugin<void> = {
   autoStart: true,
   requires: [IJupyterWidgetRegistry],
   optional: [ICommandPalette, ILabShell],
-  activate: (
+  activate: async (
     app: JupyterFrontEnd,
     registry: IJupyterWidgetRegistry,
     palette: ICommandPalette,
     labShell: ILabShell | null
-  ): void => {
-    registry.registerWidget({
-      name: MODULE_NAME,
-      version: MODULE_VERSION,
-      exports: async () => {
-        const widgetExports = await import('./widget');
+  ) => {
+    const widgetExports = await import('./widget');
+    if (!widgetExports.JupyterFrontEndModel.app) {
+      // add globals
+      widgetExports.JupyterFrontEndModel.app = app;
+      widgetExports.ShellModel.shell = app.shell;
+      widgetExports.ShellModel.labShell = labShell;
+      widgetExports.CommandRegistryModel.commands = app.commands;
+      widgetExports.CommandPaletteModel.palette = palette;
+      widgetExports.SessionManagerModel.sessions = app.serviceManager.sessions;
+      widgetExports.SessionManagerModel.shell = app.shell;
+      widgetExports.SessionManagerModel.labShell = labShell;
 
-        // add globals
-        widgetExports.JupyterFrontEndModel.app = app;
-        widgetExports.ShellModel.shell = app.shell;
-        widgetExports.ShellModel.labShell = labShell;
-        widgetExports.CommandRegistryModel.commands = app.commands;
-        widgetExports.CommandPaletteModel.palette = palette;
-        widgetExports.SessionManagerModel.sessions =
-          app.serviceManager.sessions;
-        widgetExports.SessionManagerModel.shell = app.shell;
-        widgetExports.SessionManagerModel.labShell = labShell;
-
-        return widgetExports;
-      }
-    });
+      registry.registerWidget({
+        name: MODULE_NAME,
+        version: MODULE_VERSION,
+        exports: widgetExports
+      });
+    }
   }
 };
 
