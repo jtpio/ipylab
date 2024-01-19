@@ -83,3 +83,5 @@ ignore = ["W002"]
 [tool.ruff]
 target-version = "py311"
 line-length = 100
+fix-only = true
+extend-include = ["*.ipynb"]
