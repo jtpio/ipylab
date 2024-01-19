@@ -1,4 +1,9 @@
-from ._version import __version__
+import pathlib, json
 
 module_name = "ipylab"
-module_version = f"^{__version__}".replace("r", "-r")
+
+# Read in the javascript version so the exact value can be specified
+path = pathlib.Path(__file__).parent.joinpath("labextension", "package.json")
+with path.open("rb") as f:
+    data = json.load(f)
+module_version = data["version"]

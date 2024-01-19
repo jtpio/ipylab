@@ -44,6 +44,9 @@ exclude = [".github", "binder"]
 "ipylab/labextension" = "share/jupyter/labextensions/ipylab"
 "install.json" = "share/jupyter/labextensions/ipylab/install.json"
 
+[tool.hatch.build.targets.wheel.force-include]
+"ipylab/labextension/package.json" = "ipylab/labextension/package.json"
+
 [tool.hatch.build.hooks.version]
 path = "ipylab/_version.py"
 
