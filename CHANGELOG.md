@@ -7,27 +7,27 @@
 ### Enhancements made
 
 - Upgraded to provide asynchronous bi-directional comms for performing operations 
-in the Frontend. Each operation returns a task that when awaited will 
-return the response or raise an error if unsuccessful.
+  in the Frontend. Each operation returns a task that when complete returns the response or raise an error if unsuccessful.
 - On the Python side `JupyterFrontEnd`, `CommandRegistry`, `SessionManager` & `CommandPalette` 
 are all derived from `AsyncWidgetBase` and are now single instance objects.
 - On the JavaScript frontend side `JupyterFrontendModel`, `CommandRegistryModel`,
- `CommandPalletModel`, `ShellModel` &`SessionManageModel` extend the new `IpylabModel`. 
+ `CommandPalletModel`, `ShellModel` &`SessionManageModel` extend the new `IpylabModel`.
 
 ### Added
 
 - `AsyncWidgetBase` - This provides the Python side functionality for messaging.
-- `IpylabModel` Provides the JavaScript frontend side messaging for the model.
-- Panel.app (a property giving access to the instance of the JupyterFrontEnd).
-- Panel & SplitPanel can add themselves to the shell with the method `.add_to_shell()`.
+- `IpylabModel` - Provides the JavaScript frontend side messaging for the model.
+- Panel.app - a property giving access to the instance of the JupyterFrontEnd.
+- Panel & SplitPanel can add themselves to the shell with the method `.add_to_shell()`
 - launch.json to provide vscode debugging support for development.
 - pre-commit settings.
+- app.dialogs described [here](https://jupyterlab.readthedocs.io/en/stable/extension/ui_helpers.html#user-interface-helpers).
 
 ### Removed
-- Callback type functionality
-- Dropped support for Python < 3.11
-- Dropped support for Jupyterlab <4.0
-- Dropped support for Ipywidgets <8.1.0
+- Callback functionality
+- Drop Python < 3.11
+- Drop Jupyterlab < 4.0
+- Drop IpyWidgets < 8.1.0
 
 ## 1.0.0
 
