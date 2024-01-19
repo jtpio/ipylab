@@ -49,7 +49,7 @@ export class CommandPaletteModel extends IpylabModel {
       }
       default:
         throw new Error(
-          `event=${op} has not been implemented in CommandPaletteModel!`
+          `operation='${op}' has not been implemented in CommandPaletteModel!`
         );
     }
   }

@@ -47,7 +47,7 @@ export class IpylabModel extends WidgetModel {
     try {
       if (typeof operation != 'string')
         throw new Error(
-          `op must be a string not ${typeof operation}  op=${operation}`
+          `operation must be a string not ${typeof operation}  operation='${operation}'`
         );
 
       const payload: JSONValue = await this.operation(operation, msg.kwgs);
@@ -55,7 +55,7 @@ export class IpylabModel extends WidgetModel {
         throw new Error(
           `ipylab ${this.get(
             '_model_name'
-          )} bug: op=${operation} did not return a payload!`
+          )} bug: operation=${operation} did not return a payload!`
         );
       const content = {
         event: operation,
@@ -79,7 +79,9 @@ export class IpylabModel extends WidgetModel {
     switch (op) {
       default:
         throw new Error(
-          `op=${op} has not been implemented in ${this.get('_model_name')}!`
+          `operation='${op}' has not been implemented in ${this.get(
+            '_model_name'
+          )}!`
         );
     }
   }

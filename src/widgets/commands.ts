@@ -83,7 +83,9 @@ export class CommandRegistryModel extends IpylabModel {
         return 'done';
       default:
         throw new Error(
-          `op=${op} has not been implemented in ${this.get('_model_name')}!`
+          `operation='${op}' has not been implemented in ${this.get(
+            '_model_name'
+          )}!`
         );
     }
   }

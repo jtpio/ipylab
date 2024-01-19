@@ -3,7 +3,13 @@
 
 import { ISerializers } from '@jupyter-widgets/base';
 import { JupyterFrontEnd } from '@jupyterlab/application';
-import { IpylabModel } from './ipylab';
+import {
+  InputDialog,
+  showDialog,
+  showErrorMessage
+} from '@jupyterlab/apputils';
+
+import { IpylabModel, JSONValue } from './ipylab';
 
 /**
  * The model for a JupyterFrontEnd.
@@ -31,11 +37,38 @@ export class JupyterFrontEndModel extends IpylabModel {
     this._app = JupyterFrontEndModel.app;
     super.initialize(attributes, options);
     this.set('version', this._app.version);
-    // const msg = 'ipylab_' + JupyterFrontEndModel.model_name + '_ready';
-    // this.send({ event: msg }, {});
     this.save_changes();
   }
 
+  async operation(op: string, payload: any): Promise<JSONValue> {
+    function _get_result(result: any): any {
+      if (result.value === null) throw new Error('Cancelled');
+      return result.value;
+    }
+    switch (op) {
+      case `showDialog`:
+        const result: any = await showDialog(payload);
+        4;
+        return { value: result.button.accept, isChecked: result.isChecked };
+      case 'getBoolean':
+        return await InputDialog.getBoolean(payload).then(_get_result);
+      case 'getItem':
+        return await InputDialog.getItem(payload).then(_get_result);
+      case 'getNumber':
+        return await InputDialog.getNumber(payload).then(_get_result);
+      case `getText`:
+        return await InputDialog.getText(payload).then(_get_result);
+      case `getPassword`:
+        return await InputDialog.getPassword(payload).then(_get_result);
+      case 'showErrorMessage':
+        await showErrorMessage(payload.title, payload.error, payload.buttons);
+        return 'done';
+      default:
+        throw new Error(
+          `operation='${op}' has not been implemented in ${JupyterFrontEndModel.model_name}!`
+        );
+    }
+  }
   static serializers: ISerializers = {
     ...IpylabModel.serializers
   };

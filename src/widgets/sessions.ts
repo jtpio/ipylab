@@ -64,7 +64,7 @@ export class SessionManagerModel extends IpylabModel {
         return this.get('sessions');
       default:
         throw new Error(
-          `event=${op} has not been implemented ${SessionManagerModel.model_name}!`
+          `operation='${op}' has not been implemented in ${SessionManagerModel.model_name}!`
         );
     }
   }

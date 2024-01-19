@@ -1,5 +1,7 @@
 # Copyright (c) ipylab contributors.
 # Distributed under the terms of the Modified BSD License.
+from __future__ import annotations
+
 import asyncio
 from typing import Self
 
@@ -7,6 +9,7 @@ from traitlets import Instance, Unicode
 
 from ipylab.asyncwidget import AsyncWidgetBase, register, widget_serialization
 from ipylab.commands import CommandPalette, CommandRegistry
+from ipylab.dialog import Dialog
 from ipylab.sessions import SessionManager
 from ipylab.shell import Shell
 
@@ -23,6 +26,12 @@ class JupyterFrontEnd(AsyncWidgetBase):
     command_pallet = Instance(CommandPalette, (), read_only=True).tag(
         sync=True, **widget_serialization
     )
+
+    @property
+    def dialog(self) -> Dialog:
+        if not hasattr(self, "_dialog"):
+            self._dialog = Dialog(self)
+        return self._dialog
 
     async def wait_ready(self, timeout=5) -> Self:
         """Wait until connected to app indicates it is ready."""

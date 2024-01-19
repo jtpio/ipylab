@@ -117,7 +117,9 @@ export class ShellModel extends IpylabModel {
       }
       default:
         throw new Error(
-          `op=${op} has not been implemented in ${this.get('_model_name')}!`
+          `operation='${op}' has not been implemented in ${this.get(
+            '_model_name'
+          )}!`
         );
     }
   }

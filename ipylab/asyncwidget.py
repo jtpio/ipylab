@@ -4,14 +4,20 @@ from __future__ import annotations
 
 import asyncio
 import uuid
-from typing import Any, Callable
+from typing import Any, Callable, Never
 
-from ipywidgets import DOMWidget, register, widget_serialization
+from ipywidgets import DOMWidget, Widget, register, widget_serialization
 from traitlets import Dict, Instance, Set, Unicode
 
 import ipylab._frontend as _fe
 
-__all__ = ["AsyncWidgetBase", "WidgetBase", "register", "widget_serialization"]
+__all__ = ["AsyncWidgetBase", "WidgetBase", "register", "widget_serialization", "pack", "Widget"]
+
+
+def pack(obj):
+    if isinstance(obj, Widget):
+        obj = widget_serialization["to_json"](obj, None)
+    return obj
 
 
 class Response(asyncio.Event):
@@ -22,12 +28,10 @@ class Response(asyncio.Event):
         self.error = error
         super().set()
 
-    async def wait(self) -> Any:
+    async def wait(self) -> tuple[Any, str | None]:
         """Wait for a message and return the response."""
         await super().wait()
-        if self.error:
-            raise self.error
-        return self.payload
+        return self.payload, self.error
 
 
 class IpylabFrontendError(IOError):
@@ -102,25 +106,32 @@ class AsyncWidgetBase(WidgetBase):
             raise ValueError(f"Invalid {operation=}")
         ipylab_ID = str(uuid.uuid4())
         msg = {"ipylab_ID": ipylab_ID, "operation": operation, "kwgs": kwgs}
-        task = asyncio.create_task(self._send_recieve(msg, self._parse_operation_response))
+        task = asyncio.create_task(self._send_recieve(msg, self._wait_response_check_error))
         self._tasks.add(task)
         task.add_done_callback(self._tasks.discard)
         return task
 
-    async def _send_recieve(self, msg: dict, parser: None | Callable):
+    async def _send_recieve(self, msg: dict, parser: None | Callable[[Response, dict]]):
         async with self:
             self._pending_events[msg["ipylab_ID"]] = response = Response()
             self.send(msg)
             if parser:
-                return await parser(response)
+                return await parser(response, msg)
             else:
                 return response
 
-    async def _parse_operation_response(self, msg: Response) -> None:
-        message: dict = await msg.wait()
-        if "error" in message:
-            raise IpylabFrontendError(message["error"])
-        return message
+    async def _wait_response_check_error(self, response: Response, msg: dict) -> Any:
+        payload, error = await response.wait()
+        if error:
+            self.error_handler(self, error, msg)
+        return payload
+
+    @staticmethod
+    def error_handler(obj: AsyncWidgetBase, error_message: str, msg: dict) -> Never:
+        "Can be overridden to add a logger or other special handling."
+        raise IpylabFrontendError(
+            f"{obj.__class__.__name__} operation '{msg.get('operation')}' failed with message '{error_message}'"
+        )
 
     def _on_frontend_msg(self, _, content: dict, buffers: list):
         error = self._to_error(content.get("error"))
