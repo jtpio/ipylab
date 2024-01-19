@@ -1,15 +1,20 @@
 // Copyright (c) ipylab contributors
 // Distributed under the terms of the Modified BSD License.
 
-import { ISerializers } from '@jupyter-widgets/base';
-import { JupyterFrontEnd } from '@jupyterlab/application';
 import {
   InputDialog,
   showDialog,
   showErrorMessage
 } from '@jupyterlab/apputils';
 
-import { IpylabModel, JSONValue } from './ipylab';
+import { FileDialog } from '@jupyterlab/filebrowser';
+
+import {
+  ISerializers,
+  IpylabModel,
+  JSONValue,
+  JupyterFrontEnd
+} from './ipylab';
 
 /**
  * The model for a JupyterFrontEnd.
@@ -45,9 +50,10 @@ export class JupyterFrontEndModel extends IpylabModel {
       if (result.value === null) throw new Error('Cancelled');
       return result.value;
     }
+    var result: any;
     switch (op) {
       case `showDialog`:
-        const result: any = await showDialog(payload);
+        result = await showDialog(payload);
         4;
         return { value: result.button.accept, isChecked: result.isChecked };
       case 'getBoolean':
@@ -63,6 +69,14 @@ export class JupyterFrontEndModel extends IpylabModel {
       case 'showErrorMessage':
         await showErrorMessage(payload.title, payload.error, payload.buttons);
         return 'done';
+      case 'getOpenFiles':
+        payload.manager = IpylabModel.defaultBrowser.model.manager;
+        result = await FileDialog.getOpenFiles(payload);
+        return result.value;
+      case 'getExistingDirectory':
+        payload.manager = IpylabModel.defaultBrowser.model.manager;
+        result = await FileDialog.getExistingDirectory(payload);
+        return result.value;
       default:
         throw new Error(
           `operation='${op}' has not been implemented in ${JupyterFrontEndModel.model_name}!`
@@ -76,5 +90,4 @@ export class JupyterFrontEndModel extends IpylabModel {
   static model_name = 'JupyterFrontEndModel';
 
   private _app!: JupyterFrontEnd;
-  static app: JupyterFrontEnd;
 }

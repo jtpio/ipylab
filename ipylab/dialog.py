@@ -135,3 +135,17 @@ class Dialog:
         return self.app.schedule_operation(
             "showErrorMessage", title=title, error=error, buttons=buttons
         )
+
+    def get_open_files(self, **kwgs) -> asyncio.Task:
+        """Get a list of files
+        see: https://jupyterlab.readthedocs.io/en/stable/extension/ui_helpers.html#file-dialogs
+        https://jupyterlab.readthedocs.io/en/latest/api/functions/filebrowser.FileDialog.getOpenFiles.html#getOpenFiles
+        """
+        return self.app.schedule_operation("getOpenFiles", **kwgs)
+
+    def get_existing_directory(self, **kwgs) -> asyncio.Task:
+        """TODO:.
+        see: https://jupyterlab.readthedocs.io/en/stable/extension/ui_helpers.html#file-dialogs
+        https://jupyterlab.readthedocs.io/en/latest/api/functions/filebrowser.FileDialog.getExistingDirectory.html#getExistingDirectory
+        """
+        return self.app.schedule_operation("getExistingDirectory", **kwgs)

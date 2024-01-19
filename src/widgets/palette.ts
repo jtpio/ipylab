@@ -34,7 +34,7 @@ export class CommandPaletteModel extends IpylabModel {
    */
   initialize(attributes: any, options: any): void {
     super.initialize(attributes, options);
-    this._palette = CommandPaletteModel.palette;
+    this._palette = IpylabModel.palette;
     this._customItems = new ObservableMap<IDisposable>();
     this._customItems.changed.connect(this._sendItems, this);
   }
@@ -120,6 +120,4 @@ export class CommandPaletteModel extends IpylabModel {
   private _customItems: ObservableMap<IDisposable>;
 
   private _palette!: ICommandPalette;
-
-  static palette: ICommandPalette;
 }

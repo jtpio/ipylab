@@ -3,8 +3,6 @@
 
 // SessionManager exposes `JupyterLab.serviceManager.sessions` to user python kernel
 
-import { MODULE_NAME, MODULE_VERSION } from '../version';
-
 import { Session } from '@jupyterlab/services';
 
 import { ILabShell, JupyterFrontEnd } from '@jupyterlab/application';
@@ -36,12 +34,11 @@ export class SessionManagerModel extends IpylabModel {
    * @param options The initialization options.
    */
   initialize(attributes: any, options: any): void {
-    const { labShell, sessions, shell } = SessionManagerModel;
-    this._sessions = sessions;
-    this._shell = shell;
-    this._labShell = labShell;
+    this._sessions = IpylabModel.app.serviceManager.sessions;
+    this._shell = IpylabModel.shell;
+    this._labShell = IpylabModel.labShell;
 
-    sessions.runningChanged.connect(this._sendSessions, this);
+    this._sessions.runningChanged.connect(this._sendSessions, this);
 
     super.initialize(attributes, options);
 
@@ -121,17 +118,9 @@ export class SessionManagerModel extends IpylabModel {
   };
 
   static model_name = 'SessionManagerModel';
-  static model_module = MODULE_NAME;
-  static model_module_version = MODULE_VERSION;
-  static view_name: string;
-  static view_module: string;
-  static view_module_version = MODULE_VERSION;
 
   private _current_session!: Session.IModel | Record<string, unknown>;
   private _sessions!: Session.IManager;
-  static sessions: Session.IManager;
   private _shell!: JupyterFrontEnd.IShell;
   private _labShell!: ILabShell;
-  static shell: JupyterFrontEnd.IShell;
-  static labShell: ILabShell;
 }

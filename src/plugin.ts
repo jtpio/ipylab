@@ -2,9 +2,9 @@
 // Distributed under the terms of the Modified BSD License.
 
 import {
-  JupyterFrontEndPlugin,
+  ILabShell,
   JupyterFrontEnd,
-  ILabShell
+  JupyterFrontEndPlugin
 } from '@jupyterlab/application';
 
 import { ICommandPalette } from '@jupyterlab/apputils';
@@ -12,6 +12,8 @@ import { ICommandPalette } from '@jupyterlab/apputils';
 import { IJupyterWidgetRegistry } from '@jupyter-widgets/base';
 
 import { MODULE_NAME, MODULE_VERSION } from './version';
+
+import { IDefaultFileBrowser } from '@jupyterlab/filebrowser';
 
 const EXTENSION_ID = 'ipylab:plugin';
 
@@ -22,24 +24,23 @@ const extension: JupyterFrontEndPlugin<void> = {
   id: EXTENSION_ID,
   autoStart: true,
   requires: [IJupyterWidgetRegistry],
-  optional: [ICommandPalette, ILabShell],
+  optional: [ICommandPalette, ILabShell, IDefaultFileBrowser],
   activate: async (
     app: JupyterFrontEnd,
     registry: IJupyterWidgetRegistry,
     palette: ICommandPalette,
-    labShell: ILabShell | null
+    labShell: ILabShell | null,
+    defaultBrowser: IDefaultFileBrowser | null
   ) => {
     const widgetExports = await import('./widget');
     if (!widgetExports.JupyterFrontEndModel.app) {
       // add globals
-      widgetExports.JupyterFrontEndModel.app = app;
-      widgetExports.ShellModel.shell = app.shell;
-      widgetExports.ShellModel.labShell = labShell;
-      widgetExports.CommandRegistryModel.commands = app.commands;
-      widgetExports.CommandPaletteModel.palette = palette;
-      widgetExports.SessionManagerModel.sessions = app.serviceManager.sessions;
-      widgetExports.SessionManagerModel.shell = app.shell;
-      widgetExports.SessionManagerModel.labShell = labShell;
+      widgetExports.IpylabModel.app = app;
+      widgetExports.IpylabModel.shell = app.shell;
+      widgetExports.IpylabModel.labShell = labShell;
+      widgetExports.IpylabModel.defaultBrowser = defaultBrowser;
+      widgetExports.IpylabModel.commands = app.commands;
+      widgetExports.IpylabModel.palette = palette;
 
       registry.registerWidget({
         name: MODULE_NAME,

@@ -437,6 +437,29 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@jupyterlab/docmanager@npm:^4.0.10":
+  version: 4.0.10
+  resolution: "@jupyterlab/docmanager@npm:4.0.10"
+  dependencies:
+    "@jupyterlab/apputils": ^4.1.10
+    "@jupyterlab/coreutils": ^6.0.10
+    "@jupyterlab/docregistry": ^4.0.10
+    "@jupyterlab/services": ^7.0.10
+    "@jupyterlab/statusbar": ^4.0.10
+    "@jupyterlab/translation": ^4.0.10
+    "@jupyterlab/ui-components": ^4.0.10
+    "@lumino/algorithm": ^2.0.1
+    "@lumino/coreutils": ^2.1.2
+    "@lumino/disposable": ^2.1.2
+    "@lumino/messaging": ^2.0.1
+    "@lumino/properties": ^2.0.1
+    "@lumino/signaling": ^2.1.2
+    "@lumino/widgets": ^2.3.0
+    react: ^18.2.0
+  checksum: 8be669130f29f9245c75e6b03f2bf788da17e1026b1117e0bbd8fe84afca5a9fddfa27fa879231979db1a2bf62c3e9b50eb38586cc155a3e64e1c1dd2e528c9b
+  languageName: node
+  linkType: hard
+
 "@jupyterlab/docregistry@npm:^4.0.10":
   version: 4.0.10
   resolution: "@jupyterlab/docregistry@npm:4.0.10"
@@ -459,6 +482,34 @@ __metadata:
     "@lumino/signaling": ^2.1.2
     "@lumino/widgets": ^2.3.0
   checksum: 0863d8b3c97b8790280805cb781f7448e6a26f6f7e5e75d597d1add480be988bbaa72a6792d2417bc648800d4af30d96af8437ef5c6d9906819e36010d523a3c
+  languageName: node
+  linkType: hard
+
+"@jupyterlab/filebrowser@npm:^4.0.10":
+  version: 4.0.10
+  resolution: "@jupyterlab/filebrowser@npm:4.0.10"
+  dependencies:
+    "@jupyterlab/apputils": ^4.1.10
+    "@jupyterlab/coreutils": ^6.0.10
+    "@jupyterlab/docmanager": ^4.0.10
+    "@jupyterlab/docregistry": ^4.0.10
+    "@jupyterlab/services": ^7.0.10
+    "@jupyterlab/statedb": ^4.0.10
+    "@jupyterlab/statusbar": ^4.0.10
+    "@jupyterlab/translation": ^4.0.10
+    "@jupyterlab/ui-components": ^4.0.10
+    "@lumino/algorithm": ^2.0.1
+    "@lumino/coreutils": ^2.1.2
+    "@lumino/disposable": ^2.1.2
+    "@lumino/domutils": ^2.0.1
+    "@lumino/dragdrop": ^2.1.4
+    "@lumino/messaging": ^2.0.1
+    "@lumino/polling": ^2.1.2
+    "@lumino/signaling": ^2.1.2
+    "@lumino/virtualdom": ^2.0.1
+    "@lumino/widgets": ^2.3.0
+    react: ^18.2.0
+  checksum: f19884d40b0b1761e023c939cae1f11112b3b021f75df4806d97d0434e8b25c651bb054a66f563faa99e46c4b2b820b54e6a0e48bffa49d0a0e7bce145c34852
   languageName: node
   linkType: hard
 
@@ -3168,6 +3219,7 @@ __metadata:
     "@jupyterlab/application": ^4.0.4
     "@jupyterlab/apputils": ^4.1.4
     "@jupyterlab/builder": ^4.0.0
+    "@jupyterlab/filebrowser": ^4.0.10
     "@jupyterlab/observables": ^5.0.4
     "@lumino/algorithm": ^2
     "@lumino/commands": ^2

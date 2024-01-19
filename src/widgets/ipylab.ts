@@ -15,7 +15,22 @@ import { ObjectHash } from 'backbone';
 
 import { MODULE_NAME, MODULE_VERSION } from '../version';
 
-export { IBackboneModelOptions, ISerializers, JSONValue };
+import { ILabShell, JupyterFrontEnd, LabShell } from '@jupyterlab/application';
+
+import { ICommandPalette } from '@jupyterlab/apputils';
+
+import { IDefaultFileBrowser } from '@jupyterlab/filebrowser';
+
+import { CommandRegistry } from '@lumino/commands';
+
+export {
+  CommandRegistry,
+  IBackboneModelOptions,
+  ILabShell,
+  ISerializers,
+  JSONValue,
+  JupyterFrontEnd
+};
 
 /**
  * Base model for common features
@@ -96,4 +111,11 @@ export class IpylabModel extends WidgetModel {
   static view_name: string;
   static view_module: string;
   static view_module_version = MODULE_VERSION;
+
+  static app: JupyterFrontEnd;
+  static shell: JupyterFrontEnd.IShell;
+  static labShell: LabShell;
+  static defaultBrowser: IDefaultFileBrowser;
+  static palette: ICommandPalette;
+  static commands: CommandRegistry;
 }

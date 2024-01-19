@@ -87,6 +87,7 @@
         "@jupyter-widgets/controls": "^5",
         "@jupyterlab/application": "^4.0.4",
         "@jupyterlab/apputils": "^4.1.4",
+        "@jupyterlab/filebrowser": "^4.0.10",
         "@jupyterlab/observables": "^5.0.4",
         "@lumino/algorithm": "^2",
         "@lumino/commands": "^2",

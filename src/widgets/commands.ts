@@ -3,13 +3,14 @@
 
 import { ObservableMap } from '@jupyterlab/observables';
 
-import { ISerializers, IpylabModel, JSONValue } from './ipylab';
-
-import { CommandRegistry } from '@lumino/commands';
+import {
+  CommandRegistry,
+  ISerializers,
+  IpylabModel,
+  JSONValue
+} from './ipylab';
 
 import { IDisposable } from '@lumino/disposable';
-
-import { MODULE_NAME, MODULE_VERSION } from '../version';
 
 import { LabIcon } from '@jupyterlab/ui-components';
 
@@ -40,7 +41,7 @@ export class CommandRegistryModel extends IpylabModel {
    * @param options The initialization options.
    */
   initialize(attributes: any, options: any): void {
-    this._commands = CommandRegistryModel.commands;
+    this._commands = IpylabModel.commands;
     super.initialize(attributes, options);
     this.on('comm_live_update', () => {
       if (this.comm_live) {
@@ -182,15 +183,8 @@ export class CommandRegistryModel extends IpylabModel {
   };
 
   static model_name = 'CommandRegistryModel';
-  static model_module = MODULE_NAME;
-  static model_module_version = MODULE_VERSION;
-  static view_name: string;
-  static view_module: string;
-  static view_module_version = MODULE_VERSION;
 
   private _commands!: CommandRegistry;
-
-  static commands: CommandRegistry;
 }
 
 /**

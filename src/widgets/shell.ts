@@ -1,13 +1,17 @@
 // Copyright (c) ipylab contributors
 // Distributed under the terms of the Modified BSD License.
 
-import { ILabShell, JupyterFrontEnd } from '@jupyterlab/application';
-
 import { DOMUtils } from '@jupyterlab/apputils';
 
 import { MainAreaWidget } from '@jupyterlab/apputils';
 
-import { ISerializers, IpylabModel, JSONValue } from './ipylab';
+import {
+  ILabShell,
+  ISerializers,
+  IpylabModel,
+  JSONValue,
+  JupyterFrontEnd
+} from './ipylab';
 
 import { unpack_models } from '@jupyter-widgets/base';
 
@@ -34,8 +38,8 @@ export class ShellModel extends IpylabModel {
    * @param options The initialization options.
    */
   initialize(attributes: any, options: any): void {
-    this._shell = ShellModel.shell;
-    this._labShell = ShellModel.labShell;
+    this._shell = IpylabModel.shell;
+    this._labShell = IpylabModel.labShell;
 
     super.initialize(attributes, options);
   }
@@ -132,7 +136,4 @@ export class ShellModel extends IpylabModel {
 
   private _shell: JupyterFrontEnd.IShell;
   private _labShell: ILabShell;
-
-  static shell: JupyterFrontEnd.IShell;
-  static labShell: ILabShell;
 }
