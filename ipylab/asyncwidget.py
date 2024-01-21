@@ -122,6 +122,9 @@ class AsyncWidgetBase(WidgetBase):
         payload, error = await response.wait()
         if error:
             pm.hook.on_frontend_error(obj=self, error=error, msg=msg)
+            raise IpylabFrontendError(
+                f"{self.__class__.__name__} operation '{msg.get('operation')}' failed with message '{error}'"
+            )
         else:
             return payload
 

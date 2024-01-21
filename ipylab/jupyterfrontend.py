@@ -3,10 +3,12 @@
 from __future__ import annotations
 
 import asyncio
-from typing import Self
+from typing import Callable, Self
 
 from traitlets import Instance, Unicode
 
+import ipylab
+from ipylab._plugin_manger import pm
 from ipylab.asyncwidget import AsyncWidgetBase, register, widget_serialization
 from ipylab.commands import CommandPalette, CommandRegistry
 from ipylab.dialog import Dialog
@@ -43,6 +45,42 @@ class JupyterFrontEnd(AsyncWidgetBase):
                 group.create_task(self.command_pallet.wait_ready())
                 group.create_task(self.sessions.wait_ready())
         return self
+
+    def _create_launchers(self):
+        "Run by the Ipylab python backend"
+        pm.hook.register_launcher(callback=self.create_launcher)
+
+    def create_launcher(self, name: str, tooltip: str, icon: str, entry_point: str) -> asyncio.Task:
+        """Create a new launcher in jupyter.
+
+        Normally this would be done by registering the plugin.
+
+        ``` python
+
+        @ipylab.hookimpl
+        def register_launcher(callback):
+            callback(name="Launch my app",
+            tooltip="My app is great...",
+            entry_point='my_module.my_attr.start_my_app')
+        ```
+
+        Note: The package should be installed (re-installed) with the entry point "ipylab-python-backend"
+
+        in pyproject.toml
+        ``` toml
+        [project.entry-points.ipylab-python-backend]
+        my_plugins = "my_module.ipylab_backend_plugin"
+        ```
+
+        entry_point: str <package_or_module>[:<object>[.<attr>[.<nested-attr>]*]]
+            The script called
+            Uses the same convention as setup tools.
+
+            https://setuptools.pypa.io/en/latest/userguide/entry_point.html#entry-points-syntax
+        """
+        return self.schedule_operation(
+            "createLauncher", name=name, tooltip=tooltip, icon=icon, entry_point=entry_point
+        )
 
     def open_console(self, session: dict | None = None, **kwgs) -> asyncio.Task:
         if session is None:

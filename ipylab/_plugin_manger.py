@@ -7,5 +7,5 @@ import ipylab.hookspecs, ipylab.lib
 
 pm = pluggy.PluginManager("ipylab")
 pm.add_hookspecs(ipylab.hookspecs)
-pm.load_setuptools_entrypoints("ipylab")
+pm.load_setuptools_entrypoints("ipylab-python-backend")
 pm.register(ipylab.lib)

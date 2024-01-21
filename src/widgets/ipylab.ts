@@ -23,11 +23,19 @@ import { IDefaultFileBrowser } from '@jupyterlab/filebrowser';
 
 import { CommandRegistry } from '@lumino/commands';
 
+import { ILauncher } from '@jupyterlab/launcher';
+
+import { ITranslator } from '@jupyterlab/translation';
+
+import { PythonBackendModel } from './python_backend';
+
 export {
   CommandRegistry,
   IBackboneModelOptions,
   ILabShell,
+  ILauncher,
   ISerializers,
+  ITranslator,
   JSONValue,
   JupyterFrontEnd
 };
@@ -105,6 +113,7 @@ export class IpylabModel extends WidgetModel {
     ...WidgetModel.serializers
   };
 
+  static python_backend = new PythonBackendModel();
   static model_name: string;
   static model_module = MODULE_NAME;
   static model_module_version = MODULE_VERSION;
@@ -116,4 +125,6 @@ export class IpylabModel extends WidgetModel {
   static labShell: LabShell;
   static defaultBrowser: IDefaultFileBrowser;
   static palette: ICommandPalette;
+  static translator: ITranslator;
+  static launcher: ILauncher;
 }
