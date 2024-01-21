@@ -38,7 +38,7 @@ export class ShellModel extends IpylabModel {
    * @param options The initialization options.
    */
   initialize(attributes: any, options: any): void {
-    this._shell = IpylabModel.shell;
+    this._shell = IpylabModel.app.shell;
     this._labShell = IpylabModel.labShell;
 
     super.initialize(attributes, options);

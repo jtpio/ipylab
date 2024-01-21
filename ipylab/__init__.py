@@ -3,11 +3,26 @@
 
 from ._version import __version__  # noqa: F401
 
-from ipylab.jupyterfrontend import JupyterFrontEnd
-from ipylab.widgets import Panel, SplitPanel, Icon
-from ipylab.shell import Area, InsertMode
+__all__ = [
+    "__version__",
+    "JupyterFrontEnd",
+    "Panel",
+    "SplitPanel",
+    "Icon",
+    "Area",
+    "InsertMode",
+    "hookimpl",
+    "hookspecs",
+]
 
-__all__ = ["JupyterFrontEnd", "Panel", "SplitPanel", "Icon", "Area", "InsertMode"]
+import pluggy
+
+hookimpl = pluggy.HookimplMarker("ipylab")
+"""Marker to be imported and used in plugins (and for own implementations)"""
+
+from ipylab.jupyterfrontend import JupyterFrontEnd
+from ipylab.shell import Area, InsertMode
+from ipylab.widgets import Icon, Panel, SplitPanel
 
 
 def _jupyter_labextension_paths():

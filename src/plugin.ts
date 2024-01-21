@@ -36,10 +36,8 @@ const extension: JupyterFrontEndPlugin<void> = {
     if (!widgetExports.JupyterFrontEndModel.app) {
       // add globals
       widgetExports.IpylabModel.app = app;
-      widgetExports.IpylabModel.shell = app.shell;
       widgetExports.IpylabModel.labShell = labShell;
       widgetExports.IpylabModel.defaultBrowser = defaultBrowser;
-      widgetExports.IpylabModel.commands = app.commands;
       widgetExports.IpylabModel.palette = palette;
 
       registry.registerWidget({
@@ -48,6 +46,7 @@ const extension: JupyterFrontEndPlugin<void> = {
         exports: widgetExports
       });
     }
+    // TODO: Start the core kernel that will provide the launchers
   }
 };
 

@@ -41,7 +41,7 @@ export class CommandRegistryModel extends IpylabModel {
    * @param options The initialization options.
    */
   initialize(attributes: any, options: any): void {
-    this._commands = IpylabModel.commands;
+    this._commands = IpylabModel.app.commands;
     super.initialize(attributes, options);
     this.on('comm_live_update', () => {
       if (this.comm_live) {

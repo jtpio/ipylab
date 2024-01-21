@@ -113,9 +113,7 @@ export class IpylabModel extends WidgetModel {
   static view_module_version = MODULE_VERSION;
 
   static app: JupyterFrontEnd;
-  static shell: JupyterFrontEnd.IShell;
   static labShell: LabShell;
   static defaultBrowser: IDefaultFileBrowser;
   static palette: ICommandPalette;
-  static commands: CommandRegistry;
 }

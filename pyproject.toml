@@ -25,10 +25,13 @@ classifiers = [
 ]
 dynamic = ["version", "description", "authors", "urls", "keywords"]
 
-dependencies = ["jupyterlab>=4.0.9", "ipywidgets>=8.1.0,<9"]
+dependencies = ["jupyterlab>=4.0.9", "ipywidgets>=8.1.0,<9", "pluggy>=1.1"]
 
 [project.optional-dependencies]
 dev = ["hatch", "ruff", "pre-commit"]
+
+[project.scripts]
+ipylab = "ipylab:scripts.launch_jupyterlab"
 
 [tool.hatch.version]
 source = "nodejs"

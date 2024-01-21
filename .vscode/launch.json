@@ -1,101 +1,99 @@
 {
-    // To debug jupyterlab running in a venv or conda env:
-    //   - set up Python env in your workspace as per https://code.visualstudio.com/docs/python/environments
-    //   - add an "envFile" prop to each backend config pointing to .vscode/debug.env
-    //   - configure the .vscode/debug.env file as needed
-    // https://github.com/jupyterlab/vscode-config-template/tree/main
-    // https://github.com/jupyterlab/vscode-config-template/issues/1
-    "version": "0.2.0",
-    "configurations": [
+  // To debug jupyterlab running in a venv or conda env:
+  //   - set up Python env in your workspace as per https://code.visualstudio.com/docs/python/environments
+  //   - add an "envFile" prop to each backend config pointing to .vscode/debug.env
+  //   - configure the .vscode/debug.env file as needed
+  // https://github.com/jupyterlab/vscode-config-template/tree/main
+  // https://github.com/jupyterlab/vscode-config-template/issues/1
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Python Debugger: Current File all-code",
+      "type": "debugpy",
+      "request": "launch",
+      "program": "${file}",
+      "console": "integratedTerminal",
+      "justMyCode": false
+    },
+    {
+      "name": "Python Debugger: Current File: just my code",
+      "type": "debugpy",
+      "request": "launch",
+      "program": "${file}",
+      "console": "integratedTerminal",
+      "justMyCode": false
+    },
+    {
+      "name": "Ipylab backend",
+      "type": "debugpy",
+      "request": "launch",
+      "args": [
+        "--notebook-dir=examples",
+        "--no-browser",
+        "--ServerApp.token=''",
+        "--port=9999"
+      ],
+      "cwd": "${workspaceFolder}",
+      "justMyCode": false,
+      "module": "ipylab",
+      "presentation": {
+        "hidden": false
+      }
+    },
+    {
+      "name": "IPylab frontend with Firefox",
+      "type": "firefox",
+      "request": "launch",
+      "reAttach": true,
+      "url": "http://localhost:9999",
+      "webRoot": "${workspaceFolder}",
+      "pathMappings": [
         {
-            "name": "JupyterLab backend",
-            "type": "debugpy",
-            "request": "launch",
-            "args": [
-                "--notebook-dir=examples",
-                "--no-browser",
-                "--ServerApp.token=''",
-                "--port=9999"
-            ],
-            "cwd": "${workspaceFolder}",
-            "justMyCode": false,
-            "module": "jupyterlab.labapp",
-            "presentation": {
-                "hidden": true
-            }
+          "url": "webpack://packages/base/src/utils.ts",
+          "path": "${workspaceFolder}/../jupyterlab/packages/controls/src/utils.ts"
         },
         {
-            "name": "JupyterLab in Chrome",
-            "type": "chrome",
-            "request": "launch",
-            "timeout": 180000,
-            "url": "http://localhost:9999/lab",
-            "webRoot": "${workspaceFolder}",
-            "presentation": {
-                "hidden": true
-            }
+          "url": "webpack://packages/base/src/utils.ts",
+          "path": "${workspaceFolder}/packages/controls/src/utils.ts"
         },
         {
-            "name": "jlab frontend with Firefox",
-            "type": "firefox",
-            "request": "launch",
-            "reAttach": true,
-            "url": "http://localhost:9999",
-            "webRoot": "${workspaceFolder}",
-            "pathMappings": [
-                {
-                    "url": "webpack://packages/base/src/utils.ts",
-                    "path": "${workspaceFolder}/packages/controls/src/utils.ts"
-                },
-                {
-                    "url": "webpack://packages/base/src/utils.ts",
-                    "path": "${workspaceFolder}/packages/controls/src/utils.ts"
-                },
-                {
-                    "url": "webpack://ipylab/src",
-                    "path": "${workspaceFolder}/src"
-                },
-                {
-                    "url": "webpack://ipywidgets/packages",
-                    "path": "${workspaceFolder}/../ipywidgets/packages"
-                },
-                {
-                    "url": "webpack://ipywidgets/src",
-                    "path": "${workspaceFolder}/../ipywidgets/src"
-                },
-                {
-                    "url": "webpack://jupyterlab/application-top/node_modules/minimist",
-                    "path": "${workspaceFolder}/../jupyterlab/staging"
-                },
-                {
-                    "url": "webpack://jupyterlab/application-top/node_modules/minimist",
-                    "path": "${workspaceFolder}/../jupyterlab/dev_mode"
-                },
-                {
-                    "url": "webpack://jupyter-widgets/packages",
-                    "path": "${workspaceFolder}/../jupyter-widgets/packages"
-                },
-                {
-                    "url": "webpack:///",
-                    "path": "${webRoot}/"
-                }
-            ]
+          "url": "webpack://ipylab/src",
+          "path": "${workspaceFolder}/src"
+        },
+        {
+          "url": "webpack://ipywidgets/packages",
+          "path": "${workspaceFolder}/../ipywidgets/packages"
+        },
+        {
+          "url": "webpack://ipywidgets/src",
+          "path": "${workspaceFolder}/../ipywidgets/src"
+        },
+        {
+          "url": "webpack://jupyterlab/application-top/node_modules/minimist",
+          "path": "${workspaceFolder}/../jupyterlab/staging"
+        },
+        {
+          "url": "webpack://jupyterlab/application-top/node_modules/minimist",
+          "path": "${workspaceFolder}/../jupyterlab/dev_mode"
+        },
+        {
+          "url": "webpack://jupyter-widgets/packages",
+          "path": "${workspaceFolder}/../jupyter-widgets/packages"
+        },
+        {
+          "url": "webpack:///",
+          "path": "${webRoot}/"
         }
-    ],
-    "compounds": [
-        {
-            "name": "Debug JupyterLab with Chrome",
-            "configurations": [
-                "JupyterLab backend",
-                "JupyterLab in Chrome"
-            ]
-        },
-        {
-            "name": "Debug JupyterLab with firefox",
-            "configurations": [
-                "JupyterLab backend",
-                "jlab frontend with Firefox"
-            ]
-        }
-    ]
+      ],
+      "presentation": {
+        "hidden": false
+      }
+    }
+  ],
+  "compounds": [
+    {
+      "name": "Debug IPylab with firefox",
+      "configurations": ["Ipylab backend", "IPylab frontend with Firefox"]
+    }
+  ]
 }
