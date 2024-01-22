@@ -16,8 +16,7 @@ def init_ipylab_backend() -> str:
     from ipylab.jupyterfrontend import JupyterFrontEnd
 
     app = JupyterFrontEnd()
-    app._create_launchers()
-    return "done"
+    return app._init_python_backend()
 
 
 def launch_jupyterlab():

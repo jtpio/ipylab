@@ -3,17 +3,23 @@
 from __future__ import annotations
 
 import asyncio
-from typing import Callable, Self
+from typing import Self, TypedDict, NotRequired
 
 from traitlets import Instance, Unicode
 
-import ipylab
 from ipylab._plugin_manger import pm
 from ipylab.asyncwidget import AsyncWidgetBase, register, widget_serialization
 from ipylab.commands import CommandPalette, CommandRegistry
 from ipylab.dialog import Dialog
 from ipylab.sessions import SessionManager
 from ipylab.shell import Shell
+
+
+class LauncherOptions(TypedDict):
+    name: str
+    entry_point: str
+    tooltip: NotRequired[str]
+    icon: NotRequired[str]
 
 
 @register
@@ -46,22 +52,24 @@ class JupyterFrontEnd(AsyncWidgetBase):
                 group.create_task(self.sessions.wait_ready())
         return self
 
-    def _create_launchers(self):
+    def _init_python_backend(self) -> str:
         "Run by the Ipylab python backend"
-        pm.hook.register_launcher(callback=self.create_launcher)
+        # This is called in a separate kernel started by the JavaScript frontend
+        # the first time the ipylab plugin is activated.
+        pm.hook.register_launcher.call_historic(result_callback=self.create_launcher)
+        return "done"
 
-    def create_launcher(self, name: str, tooltip: str, icon: str, entry_point: str) -> asyncio.Task:
-        """Create a new launcher in jupyter.
-
-        Normally this would be done by registering the plugin.
+    def create_launcher(self, options: LauncherOptions) -> asyncio.Task:
+        """Create a new launcher in Jupypterlab.
 
         ``` python
 
-        @ipylab.hookimpl
-        def register_launcher(callback):
-            callback(name="Launch my app",
+        @ipylab.hookimpl(specname="register_launcher")
+        def plugin_my_launcher() -> LauncherOptions:
+            options = LauncherOptions(name="Launch my app",
             tooltip="My app is great...",
             entry_point='my_module.my_attr.start_my_app')
+            return options
         ```
 
         Note: The package should be installed (re-installed) with the entry point "ipylab-python-backend"
@@ -78,9 +86,7 @@ class JupyterFrontEnd(AsyncWidgetBase):
 
             https://setuptools.pypa.io/en/latest/userguide/entry_point.html#entry-points-syntax
         """
-        return self.schedule_operation(
-            "createLauncher", name=name, tooltip=tooltip, icon=icon, entry_point=entry_point
-        )
+        return self.schedule_operation("createLauncher", **options)
 
     def open_console(self, session: dict | None = None, **kwgs) -> asyncio.Task:
         if session is None:
