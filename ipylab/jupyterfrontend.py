@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import asyncio
-from typing import Self, TypedDict, NotRequired
+from typing import NotRequired, Self, TypedDict
 
 from traitlets import Instance, Unicode
 
@@ -87,8 +87,3 @@ class JupyterFrontEnd(AsyncWidgetBase):
             https://setuptools.pypa.io/en/latest/userguide/entry_point.html#entry-points-syntax
         """
         return self.schedule_operation("createLauncher", **options)
-
-    def open_console(self, session: dict | None = None, **kwgs) -> asyncio.Task:
-        if session is None:
-            session = self.sessions.app_session
-        return self.commands.execute("console:open", **session | kwgs)

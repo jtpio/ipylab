@@ -8,11 +8,13 @@ __all__ = [
     "JupyterFrontEnd",
     "Panel",
     "SplitPanel",
+    "MainArea",
     "Icon",
     "Area",
     "InsertMode",
     "hookimpl",
     "hookspecs",
+    "LauncherOptions",
 ]
 
 import pluggy
@@ -20,7 +22,8 @@ import pluggy
 hookimpl = pluggy.HookimplMarker("ipylab")
 """Marker to be imported and used in plugins (and for own implementations)"""
 
-from ipylab.jupyterfrontend import JupyterFrontEnd
+from ipylab.jupyterfrontend import JupyterFrontEnd, LauncherOptions
+from ipylab.main_area import MainArea
 from ipylab.shell import Area, InsertMode
 from ipylab.widgets import Icon, Panel, SplitPanel
 

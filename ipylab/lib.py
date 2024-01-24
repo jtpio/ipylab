@@ -16,3 +16,8 @@ def get_ipylab_backend_class():
     import ipylab.labapp
 
     return ipylab.labapp.IPLabApp
+
+
+@ipylab.hookimpl
+def unhandled_frontend_operation_message(obj: AsyncWidgetBase, operation: str):
+    raise RuntimeError(f"Unhandled frontend_operation_message from {obj=} {operation=}")

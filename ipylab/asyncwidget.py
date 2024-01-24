@@ -4,15 +4,25 @@ from __future__ import annotations
 
 import asyncio
 import uuid
-from typing import Any
+from typing import Any, Callable, Coroutine
 
-from ipywidgets import DOMWidget, Widget, register, widget_serialization
-from traitlets import Dict, Instance, Set, Unicode
+from ipywidgets import Widget, register, widget_serialization
+from traitlets import Dict, Instance, Set, Unicode, Bool
+from ipylab._plugin_manger import pm
 
 import ipylab._frontend as _fe
 from ipylab._plugin_manger import pm
+from IPython.core.getipython import get_ipython
 
 __all__ = ["AsyncWidgetBase", "WidgetBase", "register", "widget_serialization", "pack", "Widget"]
+
+# Currently only checks for an IPython kernel. A better way of getting the kernel_id would be useful.
+ip = get_ipython()
+KERNEL_ID = (
+    ip.kernel.config["IPKernelApp"]["connection_file"].split("kernel-", 1)[1].removesuffix(".json")
+    if ip
+    else "NO KERNEL"
+)
 
 
 def pack(obj):
@@ -22,58 +32,67 @@ def pack(obj):
 
 
 class Response(asyncio.Event):
-    def set(self, payload, error=None) -> None:
+    def set(self, payload, error: Exception | None = None) -> None:
         if self._value:
             raise RuntimeError("Already set!")
         self.payload = payload
         self.error = error
         super().set()
 
-    async def wait(self) -> tuple[Any, str | None]:
+    async def wait(self) -> Any:
         """Wait for a message and return the response."""
         await super().wait()
-        return self.payload, self.error
+        if self.error:
+            raise self.error
+        return self.payload
 
 
 class IpylabFrontendError(IOError):
     pass
 
 
-class WidgetBase(DOMWidget):
+class WidgetBase(Widget):
     _model_module = Unicode(_fe.module_name, read_only=True).tag(sync=True)
     _model_module_version = Unicode(_fe.module_version, read_only=True).tag(sync=True)
     _view_module = Unicode(_fe.module_name, read_only=True).tag(sync=True)
     _view_module_version = Unicode(_fe.module_version, read_only=True).tag(sync=True)
+    _comm = None
 
 
 class AsyncWidgetBase(WidgetBase):
     """The base for all widgets that need async comms with the model."""
 
-    _view_module = Unicode("", read_only=True).tag(sync=True)
-    _view_module_version = Unicode("", read_only=True).tag(sync=True)
+    kernel_id = Unicode(KERNEL_ID, read_only=True).tag(sync=True)
     _ipylab_model_register: dict[str, "AsyncWidgetBase"] = {}
     _singleton_register: dict[type, str] = {}
     SINGLETON = False
     _ready_response = Instance(Response, ())
     _model_id = None
-    _pending_events: dict[str, Response] = Dict()
-    _tasks = Set()
+    _pending_operations: dict[str, Response] = Dict()
+    _tasks: set[asyncio.Task] = Set()
+    _comm = None
+    closed = Bool(read_only=True).tag(sync=True)
 
     def __repr__(self):
         return f"<{self.__class__.__name__} at {id(self)}>"
 
-    def __new__(cls, model_id=None, **kwargs):
+    def __new__(cls, *, model_id=None, **kwgs):
         if not model_id and cls.SINGLETON:
             model_id = cls._singleton_register.get(cls.__name__)
         if model_id and model_id in cls._ipylab_model_register:
             return cls._ipylab_model_register[model_id]
-        inst = super().__new__(cls, model_id=model_id, **kwargs)
+        inst = super().__new__(cls, model_id=model_id, **kwgs)
         return inst
 
-    def __init__(self, model_id=None, **kwargs):
+    def __init__(self, *, model_id=None, **kwgs):
         if self._model_id:
             return
-        super().__init__(model_id=model_id, **kwargs)
+        if not self.kernel_id:
+            raise RuntimeError(
+                f"{self.__class__.__name__} requries a running kernel."
+                "kernel_id is not set meaning that a kernel is not running."
+            )
+        super().__init__(model_id=model_id, **kwgs)
         self._ipylab_model_register[self.model_id] = self
         if self.SINGLETON:
             self._singleton_register[self.__class__.__name__] = self.model_id
@@ -86,9 +105,29 @@ class AsyncWidgetBase(WidgetBase):
     async def __aexit__(self, exc_type, exc, tb):
         pass
 
-    def _to_error(self, error: str) -> IpylabFrontendError | None:
+    def open(self) -> None:
+        self._check_closed()
+        super().open()
+
+    def close(self):
+        self._ipylab_model_register.pop(self._model_id, None)
+        for task in self._tasks:
+            task.cancel()
+        super().close()
+        self.set_trait("closed", True)
+
+    def _check_closed(self):
+        if self.closed:
+            raise RuntimeError(f"This object is closed {self}")
+
+    def _check_get_error(self, msg={}) -> IpylabFrontendError | None:
+        error = msg.get("error")
         if error:
-            return IpylabFrontendError(error)
+            if operation := msg.get("operation"):
+                return IpylabFrontendError(
+                    f"{self.__class__.__name__} operation '{operation}' failed with message '{error}'"
+                )
+            return IpylabFrontendError(f"{self.__class__.__name__} failed with message '{error}'")
         else:
             return None
 
@@ -98,53 +137,94 @@ class AsyncWidgetBase(WidgetBase):
             await self._ready_response.wait()
             self.log.info(f"Connected to frontend {self._model_name}")
 
-    def close(self):
-        self._ipylab_model_register.pop(self._model_id, None)
-        super().close()
+    def send(self, content, buffers=None):
+        try:
+            super().send(content, buffers)
+        except Exception as error:
+            pm.hook.on_send_error(self, error, content, buffers)
 
-    def schedule_operation(self, operation: str, **kwgs) -> asyncio.Task:
+    def schedule_operation(
+        self, operation: str, *, callback: Callable[[any], None | Coroutine] = None, **kwgs
+    ) -> asyncio.Task:
+        self._check_closed()
         if not operation or not isinstance(operation, str):
             raise ValueError(f"Invalid {operation=}")
-        ipylab_ID = str(uuid.uuid4())
-        msg = {"ipylab_ID": ipylab_ID, "operation": operation, "kwgs": kwgs}
-        task = asyncio.create_task(self._send_recieve(msg))
+        ipylab_BE = str(uuid.uuid4())
+        msg = {"ipylab_BE": ipylab_BE, "operation": operation, "kwgs": kwgs}
+        if callback and not callable(callback):
+            raise TypeError(f"callback is not callable {type(callback)=}")
+        task = asyncio.create_task(self._send_receive(msg, callback))
         self._tasks.add(task)
         task.add_done_callback(self._tasks.discard)
         return task
 
-    async def _send_recieve(self, msg: dict):
+    async def _send_receive(self, msg: dict, callback: Callable):
         async with self:
-            self._pending_events[msg["ipylab_ID"]] = response = Response()
+            self._pending_operations[msg["ipylab_BE"]] = response = Response()
             self.send(msg)
-            return await self._wait_response_check_error(response, msg)
+            return await self._wait_response_check_error(response, msg, callback)
 
-    async def _wait_response_check_error(self, response: Response, msg: dict) -> Any:
-        payload, error = await response.wait()
-        if error:
-            pm.hook.on_frontend_error(obj=self, error=error, msg=msg)
-            raise IpylabFrontendError(
-                f"{self.__class__.__name__} operation '{msg.get('operation')}' failed with message '{error}'"
-            )
-        else:
-            return payload
+    async def _wait_response_check_error(
+        self, response: Response, msg: dict, callback: Callable
+    ) -> Any:
+        payload = await response.wait()
+        if callback:
+            result = callback(payload)
+            if asyncio.iscoroutine(result):
+                await result
+        return payload
 
-    def _on_frontend_msg(self, _, content: dict, buffers: list):
-        error = self._to_error(content.get("error"))
-        if event := content.get("event"):
-            ipylab_ID = content.get("ipylab_ID", "")
-            payload = content.get("payload", {})
-            if ipylab_ID:
-                self._pending_events.pop(ipylab_ID).set(payload, error)
-            else:
-                self._on_event(event, payload, buffers, error)
-        elif init_message := content.get("init"):
-            self._ready_response.set(content)
+    def _on_frontend_msg(self, _, msg: dict, buffers: list):
+        error = self._check_get_error(msg)
+        if operation := msg.get("operation"):
+            ipylab_BE = msg.get("ipylab_BE", "")
+            payload = msg.get("payload", {})
+            if ipylab_BE:
+                self._pending_operations.pop(ipylab_BE).set(payload, error)
+            elif error:
+                pm.hook.on_frontend_error(obj=self, error=self.error, msg=msg)
+            ipylab_FE = msg.get("ipylab_FE", "")
+            if ipylab_FE:
+                task = asyncio.create_task(
+                    self._handle_frontend_operation(ipylab_FE, operation, payload, buffers)
+                )
+                self._tasks.add(task)
+                task.add_done_callback(self._tasks.discard)
+        elif init_message := msg.get("init"):
+            self._ready_response.set(msg)
             print(init_message)
 
     def add_traits(self, **traits):
         raise NotImplementedError("Using this method is a bad idea! Make a subclass instead.")
 
-    def _on_event(self, event: str, payload: dict, buffers, error: IpylabFrontendError | None):
-        # To overload.
-        if error:
-            raise error
+    async def _handle_frontend_operation(
+        self, ipylab_FE: str, operation: str, payload: dict, buffers: list
+    ):
+        """Handle operation requests from the frontend and reply with a result."""
+        content = {"ipylab_FE": ipylab_FE}
+        buffers = []
+        try:
+            payload_ = self._do_operation_for_frontend(operation, payload, buffers)
+            if asyncio.iscoroutine(payload_):
+                payload_ = await payload_
+            if payload_ is None:
+                pm.hook.unhandled_frontend_operation_message(self, operation)
+                raise ValueError(f"{operation=}")
+            if isinstance(payload_, dict) and "buffers" in payload_:
+                buffers = payload_["buffers"]
+                payload_ = payload_["payload"]
+            content["payload"] = payload_
+        except asyncio.CancelledError:
+            content["error"] = "Cancelled"
+        except Exception as e:
+            content["error"] = str(e)
+            pm.hook.on_frontend_operation_error(self, error=e, content=payload)
+        finally:
+            self.send(content, buffers)
+
+    def _do_operation_for_frontend(self, operation: str, payload: dict, buffers):
+        """Overload this function as required.
+
+        Should return something that isn't `None` that is json serializable.
+        or if there is a buffer can return a dict {"payload":dict, "buffers":[]}
+        """

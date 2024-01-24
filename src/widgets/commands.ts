@@ -77,11 +77,11 @@ export class CommandRegistryModel extends IpylabModel {
         const commands = this.get('_commands');
         this.set('_commands', commands.concat(payload));
         this.save_changes();
-        return 'done';
+        return IpylabModel.OPERATION_DONE;
       }
       case 'removeCommand':
         this._removeCommand(payload.command_id);
-        return 'done';
+        return IpylabModel.OPERATION_DONE;
       default:
         throw new Error(
           `operation='${op}' has not been implemented in ${this.get(
@@ -114,8 +114,9 @@ export class CommandRegistryModel extends IpylabModel {
     try {
       if (result.toJSON) return result.toJSON();
       if (result.id) return { id: result.id };
+      return result;
     } catch (e) {
-      return 'done';
+      return IpylabModel.OPERATION_DONE;
     }
   }
 
@@ -156,7 +157,7 @@ export class CommandRegistryModel extends IpylabModel {
           command.dispose();
           return;
         }
-        this.send({ event: 'execute', payload: { id: id, kwgs: args } }, {});
+        return this.schedule_operation('execute', { id: id, kwgs: args });
       },
       isEnabled: () => commandEnabled(command),
       isVisible: () => commandEnabled(command)

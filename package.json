@@ -87,6 +87,8 @@
         "@jupyter-widgets/controls": "^5",
         "@jupyterlab/application": "^4.0.4",
         "@jupyterlab/apputils": "^4.1.4",
+        "@jupyterlab/console": "^4.0.11",
+        "@jupyterlab/coreutils": "^6.0.11",
         "@jupyterlab/filebrowser": "^4.0.10",
         "@jupyterlab/launcher": "^4.0.11",
         "@jupyterlab/observables": "^5.0.4",

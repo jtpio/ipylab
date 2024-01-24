@@ -4,7 +4,8 @@
 import {
   unpack_models,
   JupyterLuminoPanelWidget,
-  WidgetView
+  WidgetView,
+  IBackboneModelOptions
 } from '@jupyter-widgets/base';
 
 import { BoxModel, BoxView } from '@jupyter-widgets/controls';
@@ -12,6 +13,7 @@ import { BoxModel, BoxView } from '@jupyter-widgets/controls';
 import { MODULE_NAME, MODULE_VERSION } from '../version';
 
 import { TitleModel } from '../widgets/title';
+import { ObjectHash } from 'backbone';
 
 /**
  * The model for a panel.
@@ -30,6 +32,23 @@ export class PanelModel extends BoxModel {
       _view_module: PanelModel.model_module,
       _view_module_version: PanelModel.model_module_version
     };
+  }
+
+  initialize(attributes: ObjectHash, options: IBackboneModelOptions): void {
+    super.initialize(attributes, options);
+    this.on('comm_live_update', () => {
+      if (!this.comm_live && this.comm) {
+        this.close();
+      }
+    });
+  }
+
+  close(comm_closed?: boolean): Promise<void> {
+    if (!this.get('closed')) {
+      this.set('closed', true);
+      if (this.comm) this.save_changes();
+    }
+    return super.close(comm_closed);
   }
 
   class_name: string; // class_name is set in widgets.py
@@ -62,7 +81,7 @@ export class PanelView extends BoxView {
 
   update_title() {
     const title: TitleModel = this.model.get('title');
-    title.update_widget(this.luminoWidget);
+    title.update_title(this.luminoWidget.title);
   }
 
   update_class_name() {

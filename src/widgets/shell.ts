@@ -93,31 +93,31 @@ export class ShellModel extends IpylabModel {
         if (this._labShell) {
           this._labShell.expandLeft();
         }
-        return 'done';
+        return IpylabModel.OPERATION_DONE;
       }
       case 'expandRight': {
         if (this._labShell) {
           this._labShell.expandRight();
         }
-        return 'done';
+        return IpylabModel.OPERATION_DONE;
       }
       case 'collapseLeft': {
         if (this._labShell) {
           this._labShell.collapseLeft();
         }
-        return 'done';
+        return IpylabModel.OPERATION_DONE;
       }
       case 'collapseRight': {
         if (this._labShell) {
           this._labShell.collapseRight();
         }
-        return 'done';
+        return IpylabModel.OPERATION_DONE;
       }
       case 'collapseRight': {
         if (this._labShell) {
           this._labShell.collapseRight();
         }
-        return 'done';
+        return IpylabModel.OPERATION_DONE;
       }
       default:
         throw new Error(

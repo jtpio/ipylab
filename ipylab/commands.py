@@ -6,7 +6,7 @@ from typing import Callable
 
 from traitlets import Dict, Tuple, Unicode, observe
 
-from ipylab.asyncwidget import AsyncWidgetBase, IpylabFrontendError, register, widget_serialization
+from ipylab.asyncwidget import AsyncWidgetBase, register, widget_serialization
 from ipylab.widgets import Icon
 
 
@@ -47,16 +47,17 @@ class CommandRegistry(AsyncWidgetBase):
             if k not in commands:
                 self._execute_callbacks.pop(k)
 
-    def _on_event(
-        self, event: str, payload: dict, buffers, error: IpylabFrontendError | None
-    ) -> None:
-        match event:
+    def _do_operation_for_frontend(
+        self, operation: str, payload: dict, buffers: list
+    ) -> bool | None:
+        match operation:
             case "execute":
                 command_id = payload.get("id")
                 cmd = self._execute_callbacks[command_id]
                 result = cmd(**payload.get("kwgs", {}))
                 if asyncio.iscoroutine(result):
                     asyncio.create_task(result)
+                return result or {}
 
     def execute(self, command_id, **args) -> asyncio.Task:
         """Schedule execution of command_id."""

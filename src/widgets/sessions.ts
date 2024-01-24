@@ -37,7 +37,6 @@ export class SessionManagerModel extends IpylabModel {
     this._sessions = IpylabModel.app.serviceManager.sessions;
     this._shell = IpylabModel.app.shell;
     this._labShell = IpylabModel.labShell;
-
     this._sessions.runningChanged.connect(this._sendSessions, this);
 
     super.initialize(attributes, options);

@@ -5,6 +5,7 @@ import { CommandRegistryModel } from './widgets/commands';
 import { JupyterFrontEndModel } from './widgets/frontend';
 import { IconModel, IconView } from './widgets/icon';
 import { IpylabModel } from './widgets/ipylab';
+import { MainAreaModel } from './widgets/main_area';
 import { CommandPaletteModel } from './widgets/palette';
 import { PanelModel, PanelView } from './widgets/panel';
 import { SessionManagerModel } from './widgets/sessions';
@@ -19,6 +20,7 @@ export {
   IconView,
   IpylabModel,
   JupyterFrontEndModel,
+  MainAreaModel,
   PanelModel,
   PanelView,
   SessionManagerModel,

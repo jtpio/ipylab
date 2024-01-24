@@ -68,7 +68,7 @@ export class JupyterFrontEndModel extends IpylabModel {
         return await InputDialog.getPassword(payload).then(_get_result);
       case 'showErrorMessage':
         await showErrorMessage(payload.title, payload.error, payload.buttons);
-        return 'done';
+        return IpylabModel.OPERATION_DONE;
       case 'getOpenFiles':
         payload.manager = IpylabModel.defaultBrowser.model.manager;
         result = await FileDialog.getOpenFiles(payload);

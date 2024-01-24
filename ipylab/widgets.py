@@ -10,6 +10,7 @@ from ipywidgets import Box, Layout, Widget, register, widget_serialization
 from ipywidgets.widgets.trait_types import InstanceDict
 from traitlets import Bool, Dict, Unicode
 
+import ipylab._frontend as _fe
 import ipylab.jupyterfrontend as _jfe
 from ipylab.asyncwidget import WidgetBase
 from ipylab.shell import Area, InsertMode
@@ -40,15 +41,34 @@ class Title(WidgetBase):
 
 
 @register
-class Panel(Box, WidgetBase):
+class Panel(Box):
+    _model_module = Unicode(_fe.module_name, read_only=True).tag(sync=True)
+    _model_module_version = Unicode(_fe.module_version, read_only=True).tag(sync=True)
+    _view_module = Unicode(_fe.module_name, read_only=True).tag(sync=True)
+    _view_module_version = Unicode(_fe.module_version, read_only=True).tag(sync=True)
+
     _model_name = Unicode("PanelModel").tag(sync=True)
     _view_name = Unicode("PanelView").tag(sync=True)
     title = InstanceDict(Title, ()).tag(sync=True, **widget_serialization)
     class_name = Unicode("ipylab-panel").tag(sync=True)
+    _comm = None
+    closed = Bool(read_only=True).tag(sync=True)
 
     @property
     def app(self):
         return _jfe.JupyterFrontEnd()
+
+    def open(self) -> None:
+        self._check_closed()
+        super().open()
+
+    def close(self) -> None:
+        super().close()
+        self.set_trait("closed", True)
+
+    def _check_closed(self):
+        if self.closed:
+            raise RuntimeError(f"This object is closed {self}")
 
     def add_to_shell(
         self,
@@ -71,6 +91,7 @@ class Panel(Box, WidgetBase):
         args:
             ref mode: str
         """
+        self._check_closed()
         return self.app.shell.add(
             self,
             Area(area),

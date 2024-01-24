@@ -25,8 +25,3 @@ class SessionManager(AsyncWidgetBase):
     def refresh_running(self) -> asyncio.Task:
         """Force a call to refresh running sessions."""
         return self.schedule_operation("refreshRunning")
-
-
-# Start session to get app session
-# Is there a better way to get the session where this code is running?
-SessionManager()

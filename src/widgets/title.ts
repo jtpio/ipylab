@@ -1,14 +1,11 @@
 // Copyright (c) ipylab contributors
 // Distributed under the terms of the Modified BSD License.
 
-import {
-  WidgetModel,
-  JupyterLuminoPanelWidget,
-  unpack_models
-} from '@jupyter-widgets/base';
+import { WidgetModel, unpack_models } from '@jupyter-widgets/base';
 
 import { MODULE_NAME, MODULE_VERSION } from '../version';
 
+import { Title } from '@lumino/widgets';
 import { IconModel } from './icon';
 
 /**
@@ -42,17 +39,17 @@ export class TitleModel extends WidgetModel {
    * Load settings into the widget
    * @param luminoWidget
    */
-  update_widget(luminoWidget: JupyterLuminoPanelWidget) {
-    luminoWidget.title.caption = this.get('caption');
-    luminoWidget.title.className = this.get('class_name');
-    luminoWidget.title.closable = this.get('closable');
-    luminoWidget.title.label = this.get('label');
-    luminoWidget.title.dataset = this.get('dataset');
-    luminoWidget.title.iconLabel = this.get('icon_label');
+  update_title(title: Title<any>) {
+    title.caption = this.get('caption');
+    title.className = this.get('class_name');
+    title.closable = this.get('closable');
+    title.label = this.get('label');
+    title.dataset = this.get('dataset');
+    title.iconLabel = this.get('icon_label');
 
     const icon = this.get('icon');
-    luminoWidget.title.icon = icon ? icon.labIcon : null;
-    luminoWidget.title.iconClass = icon ? null : this.get('icon_class');
+    title.icon = icon ? icon.labIcon : null;
+    title.iconClass = icon ? null : this.get('icon_class');
   }
 
   // /**

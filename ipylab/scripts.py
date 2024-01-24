@@ -2,6 +2,7 @@
 # Distributed under the terms of the Modified BSD License.
 from __future__ import annotations
 
+import sys
 import typing as t
 
 if t.TYPE_CHECKING:
@@ -23,4 +24,4 @@ def launch_jupyterlab():
     from ipylab._plugin_manger import pm
 
     cls: IPLabApp = pm.hook.get_ipylab_backend_class()
-    cls.launch_instance()
+    sys.exit(cls.launch_instance())
