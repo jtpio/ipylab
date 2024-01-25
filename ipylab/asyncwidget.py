@@ -72,6 +72,7 @@ class AsyncWidgetBase(WidgetBase):
     _tasks: set[asyncio.Task] = Set()
     _comm = None
     closed = Bool(read_only=True).tag(sync=True)
+    OPERATION_DONE = "DONE"
 
     def __repr__(self):
         return f"<{self.__class__.__name__} at {id(self)}>"
@@ -120,10 +121,10 @@ class AsyncWidgetBase(WidgetBase):
         if self.closed:
             raise RuntimeError(f"This object is closed {self}")
 
-    def _check_get_error(self, msg={}) -> IpylabFrontendError | None:
-        error = msg.get("error")
+    def _check_get_error(self, content={}) -> IpylabFrontendError | None:
+        error = content.get("error")
         if error:
-            if operation := msg.get("operation"):
+            if operation := content.get("operation"):
                 return IpylabFrontendError(
                     f"{self.__class__.__name__} operation '{operation}' failed with message '{error}'"
                 )
@@ -150,22 +151,22 @@ class AsyncWidgetBase(WidgetBase):
         if not operation or not isinstance(operation, str):
             raise ValueError(f"Invalid {operation=}")
         ipylab_BE = str(uuid.uuid4())
-        msg = {"ipylab_BE": ipylab_BE, "operation": operation, "kwgs": kwgs}
+        content = {"ipylab_BE": ipylab_BE, "operation": operation, "kwgs": kwgs}
         if callback and not callable(callback):
             raise TypeError(f"callback is not callable {type(callback)=}")
-        task = asyncio.create_task(self._send_receive(msg, callback))
+        task = asyncio.create_task(self._send_receive(content, callback))
         self._tasks.add(task)
         task.add_done_callback(self._tasks.discard)
         return task
 
-    async def _send_receive(self, msg: dict, callback: Callable):
+    async def _send_receive(self, content: dict, callback: Callable):
         async with self:
-            self._pending_operations[msg["ipylab_BE"]] = response = Response()
-            self.send(msg)
-            return await self._wait_response_check_error(response, msg, callback)
+            self._pending_operations[content["ipylab_BE"]] = response = Response()
+            self.send(content)
+            return await self._wait_response_check_error(response, content, callback)
 
     async def _wait_response_check_error(
-        self, response: Response, msg: dict, callback: Callable
+        self, response: Response, content: dict, callback: Callable
     ) -> Any:
         payload = await response.wait()
         if callback:
@@ -174,24 +175,26 @@ class AsyncWidgetBase(WidgetBase):
                 await result
         return payload
 
-    def _on_frontend_msg(self, _, msg: dict, buffers: list):
-        error = self._check_get_error(msg)
-        if operation := msg.get("operation"):
-            ipylab_BE = msg.get("ipylab_BE", "")
-            payload = msg.get("payload", {})
+    def _on_frontend_msg(self, _, content: dict, buffers: list):
+        error = self._check_get_error(content)
+        if operation := content.get("operation"):
+            ipylab_BE = content.get("ipylab_BE", "")
+            payload = content.get("payload", {})
             if ipylab_BE:
+                if payload == self.OPERATION_DONE:
+                    payload = None
                 self._pending_operations.pop(ipylab_BE).set(payload, error)
             elif error:
-                pm.hook.on_frontend_error(obj=self, error=self.error, msg=msg)
-            ipylab_FE = msg.get("ipylab_FE", "")
+                pm.hook.on_frontend_error(obj=self, error=self.error, content=content)
+            ipylab_FE = content.get("ipylab_FE", "")
             if ipylab_FE:
                 task = asyncio.create_task(
                     self._handle_frontend_operation(ipylab_FE, operation, payload, buffers)
                 )
                 self._tasks.add(task)
                 task.add_done_callback(self._tasks.discard)
-        elif init_message := msg.get("init"):
-            self._ready_response.set(msg)
+        elif init_message := content.get("init"):
+            self._ready_response.set(content)
             print(init_message)
 
     def add_traits(self, **traits):

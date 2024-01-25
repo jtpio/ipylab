@@ -74,7 +74,7 @@ export class IpylabModel extends DOMWidgetModel {
   private async _onCustomMessage(msg: any): Promise<void> {
     const ipylab_FE: string = msg.ipylab_FE;
     if (ipylab_FE) {
-      // Frontend operation
+      // Frontend operation result
       delete (msg as any).ipylab_FE;
       const [resolve, reject] =
         this._pending_backend_operation_callbacks.get(ipylab_FE);
@@ -98,22 +98,25 @@ export class IpylabModel extends DOMWidgetModel {
             `operation must be a string not ${typeof operation}  operation='${operation}'`
           );
 
-        const payload: JSONValue = await this.operation(operation, msg.kwgs);
+        var payload: JSONValue = await this.operation(operation, msg.kwgs);
         if (payload === undefined)
           throw new Error(
             `ipylab ${this.get(
               '_model_name'
             )} bug: operation=${operation} did not return a payload!`
           );
+        const buffers = (payload as any).buffers;
+        delete (payload as any).buffers;
+        if ((payload as any).payload) payload = (payload as any).payload;
         const content = {
-          event: operation,
           ipylab_BE: ipylab_BE,
+          operation: operation,
           payload: payload
         };
-        this.send(content);
+        this.send(content, null, buffers);
       } catch (e) {
         const content = {
-          event: operation,
+          operation: operation,
           ipylab_BE: msg.ipylab_BE,
           error: String(e)
         };
@@ -152,7 +155,8 @@ export class IpylabModel extends DOMWidgetModel {
     });
     this.send(msg);
     // TODO: await a response with corresponding ipylab_FE from the backend and return it's result or thrown an exception.
-    const result = await promise;
+    var result = await promise;
+    if (result === IpylabModel.OPERATION_DONE) result = null;
     return result;
   }
 
@@ -187,5 +191,5 @@ export class IpylabModel extends DOMWidgetModel {
   static palette: ICommandPalette;
   static translator: ITranslator;
   static launcher: ILauncher;
-  static OPERATION_DONE = 'done';
+  static OPERATION_DONE = 'DONE';
 }

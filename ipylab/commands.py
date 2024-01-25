@@ -57,7 +57,9 @@ class CommandRegistry(AsyncWidgetBase):
                 result = cmd(**payload.get("kwgs", {}))
                 if asyncio.iscoroutine(result):
                     asyncio.create_task(result)
-                return result or {}
+                if result is None:
+                    return self.OPERATION_DONE
+                return result
 
     def execute(self, command_id, **args) -> asyncio.Task:
         """Schedule execution of command_id."""

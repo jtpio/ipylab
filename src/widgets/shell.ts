@@ -3,7 +3,7 @@
 
 import { DOMUtils } from '@jupyterlab/apputils';
 
-import { MainAreaWidget } from '@jupyterlab/apputils';
+import { IpylabMainAreaWidget } from './main_area';
 
 import {
   ILabShell,
@@ -49,45 +49,30 @@ export class ShellModel extends IpylabModel {
    *
    * @param payload The payload to add
    */
-  private async _add(payload: any): Promise<string> {
+  private async _add(payload: any): Promise<JSONValue> {
     const { serializedWidget, area, options } = payload;
     const model = await unpack_models(serializedWidget, this.widget_manager);
     const view = await this.widget_manager.create_view(model, {});
     var luminoWidget = view.luminoWidget;
     if (area === 'main') {
-      const lw = new MainAreaWidget({ content: view.luminoWidget });
-      lw.node.removeChild(lw.toolbar.node); // Drop the toolbar because it overlaps ontop of the content
-      luminoWidget = lw;
+      luminoWidget = new IpylabMainAreaWidget({
+        content: view.luminoWidget,
+        kernel_id: this.get('kernel_id'),
+        name: 'Ipylab'
+      });
     }
     if (!luminoWidget.id) luminoWidget.id = DOMUtils.createDomID();
-
-    if ((area === 'left' || area === 'right') && this._labShell) {
-      let handler;
-      if (area === 'left') {
-        handler = this._labShell['_leftHandler'];
-      } else {
-        handler = this._labShell['_rightHandler'];
-      }
-
-      // handle tab closed event
-      handler.sideBar.tabCloseRequested.connect((sender: any, tab: any) => {
-        tab.title.owner.close();
-      });
-
-      luminoWidget.addClass('jp-SideAreaWidget');
-    }
     this._shell.add(luminoWidget, area, options);
     model.on('comm_live_update', () => {
       if (!model.comm_live) luminoWidget.close();
     });
-    return luminoWidget.id;
+    return { id: luminoWidget.id };
   }
 
   async operation(op: string, payload: any): Promise<JSONValue> {
     switch (op) {
       case 'add': {
-        const id: string = await this._add(payload);
-        return { id: id };
+        return await this._add(payload);
       }
       case 'expandLeft': {
         if (this._labShell) {
@@ -96,27 +81,20 @@ export class ShellModel extends IpylabModel {
         return IpylabModel.OPERATION_DONE;
       }
       case 'expandRight': {
-        if (this._labShell) {
-          this._labShell.expandRight();
-        }
+        this._labShell.expandRight();
         return IpylabModel.OPERATION_DONE;
       }
       case 'collapseLeft': {
-        if (this._labShell) {
-          this._labShell.collapseLeft();
-        }
+        this._labShell.collapseLeft();
         return IpylabModel.OPERATION_DONE;
       }
       case 'collapseRight': {
         if (this._labShell) {
           this._labShell.collapseRight();
         }
-        return IpylabModel.OPERATION_DONE;
       }
       case 'collapseRight': {
-        if (this._labShell) {
-          this._labShell.collapseRight();
-        }
+        this._labShell.collapseRight();
         return IpylabModel.OPERATION_DONE;
       }
       default:

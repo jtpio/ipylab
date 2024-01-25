@@ -17,7 +17,7 @@ import { UUID } from '@lumino/coreutils';
 /**
  * A main area widget with a sessionContext and the ability to add other children.
  */
-class IpylabMainAreaWidget extends MainAreaWidget {
+export class IpylabMainAreaWidget extends MainAreaWidget {
   /**
    * Construct a MainAreaWidget with a context.
    * closing in the shell
@@ -42,6 +42,7 @@ class IpylabMainAreaWidget extends MainAreaWidget {
       }
     });
     this._sessionContext.initialize();
+    this.node.removeChild(this.toolbar.node); // Temp until toolbar is supported
   }
 
   /**
@@ -108,8 +109,7 @@ export class MainAreaModel extends IpylabModel {
         this._unload_mainarea_widget();
         return IpylabModel.OPERATION_DONE;
       case 'open_console':
-        await this._open_console(payload);
-        return IpylabModel.OPERATION_DONE;
+        return await this._open_console(payload);
       case 'close_console':
         this._close_console();
         return IpylabModel.OPERATION_DONE;
@@ -179,6 +179,7 @@ export class MainAreaModel extends IpylabModel {
     this._consolePanel = cp;
     this.set('console_loaded', true);
     this.save_changes();
+    return { id: cp.id };
   }
 
   _on_change_closed() {

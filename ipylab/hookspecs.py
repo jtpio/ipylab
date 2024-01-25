@@ -16,7 +16,7 @@ if t.TYPE_CHECKING:
 
 
 @hookspec
-def on_frontend_error(obj: AsyncWidgetBase, error: Exception, msg: dict) -> t.NoReturn | None:
+def on_frontend_error(obj: AsyncWidgetBase, error: Exception, content: dict) -> t.NoReturn | None:
     """Intercept an error message for logging purposes.
 
     Fired when the task handling comms recieves the error prior to raising it.
@@ -26,8 +26,8 @@ def on_frontend_error(obj: AsyncWidgetBase, error: Exception, msg: dict) -> t.No
             The object from where the error.
         error: str
             The message from the JupyterFrontend.
-        msg:
-            The message that was sent that corresponds to the frontend error.
+        content:
+            The content of the message acompanying the frontend error.
     """
 
 

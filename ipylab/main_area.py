@@ -7,7 +7,7 @@ import asyncio
 import pathlib
 
 from ipywidgets import register
-from traitlets import Bool, Instance, Unicode, validate
+from traitlets import Bool, Instance, Unicode, observe, validate
 
 import ipylab.jupyterfrontend as _jfe
 from ipylab.asyncwidget import AsyncWidgetBase, pack, widget_serialization
@@ -40,6 +40,11 @@ class MainArea(AsyncWidgetBase):
         if value != value.strip():
             raise ValueError(f"Leading/trailing whitespace is not allowed for {trait}: '{value}'")
         return value
+
+    @observe("closed")
+    def _observe_closed(self, change):
+        if self.closed:
+            self.laoded = False
 
     @property
     def app(self):
