@@ -72,7 +72,7 @@ class AsyncWidgetBase(WidgetBase):
     _tasks: set[asyncio.Task] = Set()
     _comm = None
     closed = Bool(read_only=True).tag(sync=True)
-    OPERATION_DONE = "DONE"
+    OPERATION_DONE = "--DONE--"
 
     def __repr__(self):
         return f"<{self.__class__.__name__} at {id(self)}>"
@@ -126,9 +126,9 @@ class AsyncWidgetBase(WidgetBase):
         if error:
             if operation := content.get("operation"):
                 return IpylabFrontendError(
-                    f"{self.__class__.__name__} operation '{operation}' failed with message '{error}'"
+                    f"{self.__class__.__name__} operation '{operation}' failed with message \"{error}\""
                 )
-            return IpylabFrontendError(f"{self.__class__.__name__} failed with message '{error}'")
+            return IpylabFrontendError(f'{self.__class__.__name__} failed with message "{error}"')
         else:
             return None
 
@@ -144,21 +144,6 @@ class AsyncWidgetBase(WidgetBase):
         except Exception as error:
             pm.hook.on_send_error(self, error, content, buffers)
 
-    def schedule_operation(
-        self, operation: str, *, callback: Callable[[any], None | Coroutine] = None, **kwgs
-    ) -> asyncio.Task:
-        self._check_closed()
-        if not operation or not isinstance(operation, str):
-            raise ValueError(f"Invalid {operation=}")
-        ipylab_BE = str(uuid.uuid4())
-        content = {"ipylab_BE": ipylab_BE, "operation": operation, "kwgs": kwgs}
-        if callback and not callable(callback):
-            raise TypeError(f"callback is not callable {type(callback)=}")
-        task = asyncio.create_task(self._send_receive(content, callback))
-        self._tasks.add(task)
-        task.add_done_callback(self._tasks.discard)
-        return task
-
     async def _send_receive(self, content: dict, callback: Callable):
         async with self:
             self._pending_operations[content["ipylab_BE"]] = response = Response()
@@ -170,9 +155,9 @@ class AsyncWidgetBase(WidgetBase):
     ) -> Any:
         payload = await response.wait()
         if callback:
-            result = callback(payload)
-            if asyncio.iscoroutine(result):
-                await result
+            payload = callback(content, payload)
+            if asyncio.iscoroutine(payload):
+                payload = await payload
         return payload
 
     def _on_frontend_msg(self, _, content: dict, buffers: list):
@@ -231,3 +216,45 @@ class AsyncWidgetBase(WidgetBase):
         Should return something that isn't `None` that is json serializable.
         or if there is a buffer can return a dict {"payload":dict, "buffers":[]}
         """
+
+    def schedule_operation(
+        self, operation: str, *, callback: Callable[[any, any], None | Coroutine] = None, **kwgs
+    ) -> asyncio.Task:
+        """
+        operation: str
+            Name corresponding to operation in JS frontend.
+        callback: callable | coroutine function.
+            A callback to do additional processing on the response prior to returning a result.
+            The callback is passed (response, content).
+        kwgs: Named arguments passed to the frontend operation.
+
+        """
+        self._check_closed()
+        if not operation or not isinstance(operation, str):
+            raise ValueError(f"Invalid {operation=}")
+        ipylab_BE = str(uuid.uuid4())
+        content = {"ipylab_BE": ipylab_BE, "operation": operation, "kwgs": kwgs}
+        if callback and not callable(callback):
+            raise TypeError(f"callback is not callable {type(callback)=}")
+        task = asyncio.create_task(self._send_receive(content, callback))
+        self._tasks.add(task)
+        task.add_done_callback(self._tasks.discard)
+        return task
+
+    def execute_method(
+        self,
+        method: str,
+        *,
+        callback: Callable[[any, any], None | Coroutine] = None,
+        **kwgs,
+    ) -> asyncio.Task:
+        "Call a method on the corresponding frontend object."
+        return self.schedule_operation(
+            operation="FE_execute",
+            FE_execute={
+                "mode": "execute_method",
+                "kwgs": {"method": method},
+            },
+            callback=callback,
+            **kwgs,
+        )

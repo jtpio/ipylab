@@ -9,12 +9,7 @@ import {
 
 import { FileDialog } from '@jupyterlab/filebrowser';
 
-import {
-  ISerializers,
-  IpylabModel,
-  JSONValue,
-  JupyterFrontEnd
-} from './ipylab';
+import { ISerializers, IpylabModel, JSONValue } from './ipylab';
 
 /**
  * The model for a JupyterFrontEnd.
@@ -39,10 +34,16 @@ export class JupyterFrontEndModel extends IpylabModel {
    * @param options The initialization options.
    */
   initialize(attributes: any, options: any): void {
-    this._app = JupyterFrontEndModel.app;
     super.initialize(attributes, options);
-    this.set('version', this._app.version);
+    this.set('version', this.app.version);
     this.save_changes();
+  }
+
+  get shell(): Object {
+    return IpylabModel.app.shell;
+  }
+  get labShell(): Object {
+    return IpylabModel.labShell;
   }
 
   async operation(op: string, payload: any): Promise<JSONValue> {
@@ -88,6 +89,4 @@ export class JupyterFrontEndModel extends IpylabModel {
   };
 
   static model_name = 'JupyterFrontEndModel';
-
-  private _app!: JupyterFrontEnd;
 }
