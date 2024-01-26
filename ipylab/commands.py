@@ -6,7 +6,7 @@ from typing import Callable
 
 from traitlets import Dict, Tuple, Unicode, observe
 
-from ipylab.asyncwidget import AsyncWidgetBase, register, widget_serialization
+from ipylab.asyncwidget import AsyncWidgetBase, register, pack
 from ipylab.widgets import Icon
 
 
@@ -85,7 +85,7 @@ class CommandRegistry(AsyncWidgetBase):
             caption=caption,
             label=label,
             iconClass=icon_class,
-            icon=widget_serialization["to_json"](icon, None) if icon else None,
+            icon=pack(icon),
         )
 
     def remove_command(self, command_id: str) -> asyncio.Task:

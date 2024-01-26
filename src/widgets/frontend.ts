@@ -1,15 +1,22 @@
 // Copyright (c) ipylab contributors
 // Distributed under the terms of the Modified BSD License.
 
+import { unpack_models } from '@jupyter-widgets/base';
 import {
+  DOMUtils,
   InputDialog,
   showDialog,
   showErrorMessage
 } from '@jupyterlab/apputils';
-
 import { FileDialog } from '@jupyterlab/filebrowser';
-
-import { ISerializers, IpylabModel, JSONValue } from './ipylab';
+import {
+  ISerializers,
+  IpylabModel,
+  JSONValue,
+  JupyterFrontEnd
+} from './ipylab';
+import { IpylabMainAreaWidget } from './main_area';
+import { LabShell } from '@jupyterlab/application';
 
 /**
  * The model for a JupyterFrontEnd.
@@ -39,10 +46,10 @@ export class JupyterFrontEndModel extends IpylabModel {
     this.save_changes();
   }
 
-  get shell(): Object {
+  get shell(): JupyterFrontEnd.IShell {
     return IpylabModel.app.shell;
   }
-  get labShell(): Object {
+  get labShell(): LabShell {
     return IpylabModel.labShell;
   }
 
@@ -53,7 +60,9 @@ export class JupyterFrontEndModel extends IpylabModel {
     }
     var result: any;
     switch (op) {
-      case `showDialog`:
+      case 'addToShell':
+        return await this._addToShell(payload);
+      case 'showDialog':
         result = await showDialog(payload);
         4;
         return { value: result.button.accept, isChecked: result.isChecked };
@@ -72,18 +81,42 @@ export class JupyterFrontEndModel extends IpylabModel {
         return IpylabModel.OPERATION_DONE;
       case 'getOpenFiles':
         payload.manager = IpylabModel.defaultBrowser.model.manager;
-        result = await FileDialog.getOpenFiles(payload);
-        return result.value;
+        return await FileDialog.getOpenFiles(payload).then(_get_result);
       case 'getExistingDirectory':
         payload.manager = IpylabModel.defaultBrowser.model.manager;
-        result = await FileDialog.getExistingDirectory(payload);
-        return result.value;
+        return await FileDialog.getExistingDirectory(payload).then(_get_result);
       default:
         throw new Error(
           `operation='${op}' has not been implemented in ${JupyterFrontEndModel.model_name}!`
         );
     }
   }
+
+  /**
+   * Add a widget to the application shell
+   *
+   * @param payload The payload to add
+   */
+  private async _addToShell(payload: any): Promise<JSONValue> {
+    const { serializedWidget, area, options } = payload;
+    const model = await unpack_models(serializedWidget, this.widget_manager);
+    const view = await this.widget_manager.create_view(model, {});
+    var luminoWidget = view.luminoWidget;
+    if (area === 'main') {
+      luminoWidget = new IpylabMainAreaWidget({
+        content: view.luminoWidget,
+        kernel_id: this.get('kernel_id'),
+        name: 'Ipylab'
+      });
+    }
+    if (!luminoWidget.id) luminoWidget.id = DOMUtils.createDomID();
+    this.shell.add(luminoWidget, area, options);
+    model.on('comm_live_update', () => {
+      if (!model.comm_live) luminoWidget.close();
+    });
+    return luminoWidget.id;
+  }
+
   static serializers: ISerializers = {
     ...IpylabModel.serializers
   };

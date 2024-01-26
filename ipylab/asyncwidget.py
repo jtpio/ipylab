@@ -14,7 +14,7 @@ import ipylab._frontend as _fe
 from ipylab._plugin_manger import pm
 from IPython.core.getipython import get_ipython
 
-__all__ = ["AsyncWidgetBase", "WidgetBase", "register", "widget_serialization", "pack", "Widget"]
+__all__ = ["AsyncWidgetBase", "WidgetBase", "register", "pack", "Widget"]
 
 # Currently only checks for an IPython kernel. A better way of getting the kernel_id would be useful.
 ip = get_ipython()

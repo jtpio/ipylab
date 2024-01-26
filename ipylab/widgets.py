@@ -11,9 +11,9 @@ from ipywidgets.widgets.trait_types import InstanceDict
 from traitlets import Bool, Dict, Unicode
 
 import ipylab._frontend as _fe
-import ipylab.jupyterfrontend as _jfe
 from ipylab.asyncwidget import WidgetBase
 from ipylab.shell import Area, InsertMode
+from ipylab.sub import HasApp
 
 
 @register
@@ -41,7 +41,7 @@ class Title(WidgetBase):
 
 
 @register
-class Panel(Box):
+class Panel(Box, HasApp):
     _model_module = Unicode(_fe.module_name, read_only=True).tag(sync=True)
     _model_module_version = Unicode(_fe.module_version, read_only=True).tag(sync=True)
     _view_module = Unicode(_fe.module_name, read_only=True).tag(sync=True)
@@ -53,10 +53,6 @@ class Panel(Box):
     class_name = Unicode("ipylab-panel").tag(sync=True)
     _comm = None
     closed = Bool(read_only=True).tag(sync=True)
-
-    @property
-    def app(self):
-        return _jfe.JupyterFrontEnd()
 
     def open(self) -> None:
         self._check_closed()
@@ -70,7 +66,7 @@ class Panel(Box):
         if self.closed:
             raise RuntimeError(f"This object is closed {self}")
 
-    def add_to_shell(
+    def addToShell(
         self,
         area: Area = Area.main,
         mode: InsertMode = InsertMode.split_right,
@@ -92,7 +88,7 @@ class Panel(Box):
             ref mode: str
         """
         self._check_closed()
-        return self.app.shell.add(
+        return self.app.shell.addToShell(
             self,
             Area(area),
             mode=InsertMode(mode),

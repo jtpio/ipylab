@@ -10,7 +10,7 @@ from traitlets import Instance, Unicode
 from ipylab._plugin_manger import pm
 from ipylab.asyncwidget import AsyncWidgetBase, register, widget_serialization
 from ipylab.commands import CommandPalette, CommandRegistry
-from ipylab.dialog import Dialog
+from ipylab.dialog import Dialog, FileDialog
 from ipylab.sessions import SessionManager
 from ipylab.shell import Shell
 
@@ -28,7 +28,6 @@ class JupyterFrontEnd(AsyncWidgetBase):
     SINGLETON = True
 
     version = Unicode(read_only=True).tag(sync=True)
-    shell = Instance(Shell, (), read_only=True).tag(sync=True, **widget_serialization)
     commands = Instance(CommandRegistry, (), read_only=True).tag(sync=True, **widget_serialization)
     sessions = Instance(SessionManager, (), read_only=True).tag(sync=True, **widget_serialization)
     command_pallet = Instance(CommandPalette, (), read_only=True).tag(
@@ -38,15 +37,26 @@ class JupyterFrontEnd(AsyncWidgetBase):
     @property
     def dialog(self) -> Dialog:
         if not hasattr(self, "_dialog"):
-            self._dialog = Dialog(self)
+            self._dialog = Dialog()
         return self._dialog
+
+    @property
+    def file_dialog(self) -> FileDialog:
+        if not hasattr(self, "_file_dialog"):
+            self._file_dialog = FileDialog()
+        return self._file_dialog
+
+    @property
+    def shell(self) -> Shell:
+        if not hasattr(self, "_shell"):
+            self._shell = Shell()
+        return self._shell
 
     async def wait_ready(self, timeout=5) -> Self:
         """Wait until connected to app indicates it is ready."""
         if not self._ready_response.is_set():
             async with asyncio.TaskGroup() as group, asyncio.timeout(timeout):
                 group.create_task(super().wait_ready())
-                group.create_task(self.shell.wait_ready())
                 group.create_task(self.commands.wait_ready())
                 group.create_task(self.command_pallet.wait_ready())
                 group.create_task(self.sessions.wait_ready())

@@ -18,7 +18,7 @@ are all derived from `AsyncWidgetBase` and are now single instance objects.
 - `AsyncWidgetBase` - This provides the Python side functionality for messaging.
 - `IpylabModel` - Provides the JavaScript frontend side messaging for the model.
 - Panel.app - a property giving access to the instance of the JupyterFrontEnd.
-- Panel & SplitPanel can add themselves to the shell with the method `.add_to_shell()`
+- Panel & SplitPanel can add themselves to the shell with the method `.addToShell()`
 - launch.json to provide vscode debugging support for development.
 - pre-commit settings.
 - app.dialogs described [here](https://jupyterlab.readthedocs.io/en/stable/extension/ui_helpers.html#user-interface-helpers).

@@ -5,12 +5,17 @@ from __future__ import annotations
 import asyncio
 import enum
 import typing as t
-from traitlets import List, Unicode
+
 import ipywidgets as ipw
-from .asyncwidget import AsyncWidgetBase, register, widget_serialization
+
+from ipylab import pack
+from ipylab.sub import SubApp
 
 if t.TYPE_CHECKING:
     from ipywidgets import Widget
+
+
+__all__ = ["Area", "InsertMode", "Shell"]
 
 
 class Area(enum.StrEnum):
@@ -39,13 +44,20 @@ class InsertMode(enum.StrEnum):
     tab_after = "tab-after"
 
 
-@register
-class Shell(AsyncWidgetBase):
-    _model_name = Unicode("ShellModel").tag(sync=True)
-    _widgets = List([], read_only=True).tag(sync=True)
-    SINGLETON = True
+class Shell(SubApp):
+    """
+    Provides access to the shell.
+    The minimal interface is:
+    https://jupyterlab.readthedocs.io/en/latest/api/interfaces/application.JupyterFrontEnd.IShell.html
 
-    def add(
+    Likely the full labShell interface.
+
+    ref: https://jupyterlab.readthedocs.io/en/latest/api/interfaces/application.JupyterFrontEnd.IShell.html#add
+    """
+
+    SUBPATH = "shell"
+
+    def addToShell(
         self,
         widget: Widget,
         area: Area,
@@ -56,7 +68,7 @@ class Shell(AsyncWidgetBase):
         **options,
     ) -> asyncio.Task:
         """
-        add the widget to the shell.
+        Add the widget to the shell.
 
         ref: https://jupyterlab.readthedocs.io/en/latest/api/interfaces/application.JupyterFrontEnd.IShell.html#add
 
@@ -65,27 +77,27 @@ class Shell(AsyncWidgetBase):
             https://jupyterlab.readthedocs.io/en/latest/api/interfaces/docregistry.DocumentRegistry.IOpenOptions.html
         """
 
-        return self.schedule_operation(
-            "add",
-            serializedWidget=widget_serialization["to_json"](widget, None),
+        return self.app.schedule_operation(
+            "addToShell",
+            serializedWidget=pack(widget),
             area=area,
             options={
                 "activate": activate,
                 "mode": mode,
                 "rank": int(rank) if rank else None,
-                "ref": None or widget_serialization["to_json"](ref, None),
+                "ref": pack(ref),
             }
             | options,
         )
 
-    def expand_left(self) -> asyncio.Task:
-        return self.schedule_operation("expandLeft")
+    def expandLeft(self) -> asyncio.Task:
+        return self.execute_method("expandLeft")
 
-    def expand_right(self) -> asyncio.Task:
-        return self.schedule_operation("expandRight")
+    def expandRight(self) -> asyncio.Task:
+        return self.execute_method("expandRight")
 
-    def collapse_left(self) -> asyncio.Task:
-        return self.schedule_operation("collapseLeft")
+    def collapseLeft(self) -> asyncio.Task:
+        return self.execute_method("collapseLeft")
 
-    def collapse_right(self) -> asyncio.Task:
-        return self.schedule_operation("collapseRight")
+    def collapseRight(self) -> asyncio.Task:
+        return self.execute_method("collapseRight")

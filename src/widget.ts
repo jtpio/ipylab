@@ -9,7 +9,6 @@ import { MainAreaModel } from './widgets/main_area';
 import { CommandPaletteModel } from './widgets/palette';
 import { PanelModel, PanelView } from './widgets/panel';
 import { SessionManagerModel } from './widgets/sessions';
-import { ShellModel } from './widgets/shell';
 import { SplitPanelModel, SplitPanelView } from './widgets/split_panel';
 import { TitleModel } from './widgets/title';
 
@@ -24,7 +23,6 @@ export {
   PanelModel,
   PanelView,
   SessionManagerModel,
-  ShellModel,
   SplitPanelModel,
   SplitPanelView,
   TitleModel

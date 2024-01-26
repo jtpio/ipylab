@@ -3,23 +3,12 @@
 from __future__ import annotations
 
 import asyncio
-import typing as t
 
-
+from ipylab.sub import HasApp
 from ipylab.asyncwidget import Widget, pack
 
-if t.TYPE_CHECKING:
-    from ipylab.jupyterfrontend import JupyterFrontEnd
 
-
-class Dialog:
-    def __init__(self, app: JupyterFrontEnd) -> None:
-        self._app = app
-
-    @property
-    def app(self):
-        return self._app
-
+class Dialog(HasApp):
     def get_boolean(self, title: str) -> asyncio.Task:
         """Jupyter dialog to get a boolean value.
         see: https://jupyterlab.readthedocs.io/en/stable/extension/ui_helpers.html#input-dialogs
@@ -136,16 +125,21 @@ class Dialog:
             "showErrorMessage", title=title, error=error, buttons=buttons
         )
 
+
+class FileDialog(HasApp):
+    """
+    https://jupyterlab.readthedocs.io/en/stable/extension/ui_helpers.html#file-dialogs
+    """
+
     def get_open_files(self, **kwgs) -> asyncio.Task:
         """Get a list of files
-        see: https://jupyterlab.readthedocs.io/en/stable/extension/ui_helpers.html#file-dialogs
+
         https://jupyterlab.readthedocs.io/en/latest/api/functions/filebrowser.FileDialog.getOpenFiles.html#getOpenFiles
         """
         return self.app.schedule_operation("getOpenFiles", **kwgs)
 
     def get_existing_directory(self, **kwgs) -> asyncio.Task:
-        """TODO:.
-        see: https://jupyterlab.readthedocs.io/en/stable/extension/ui_helpers.html#file-dialogs
+        """
         https://jupyterlab.readthedocs.io/en/latest/api/functions/filebrowser.FileDialog.getExistingDirectory.html#getExistingDirectory
         """
         return self.app.schedule_operation("getExistingDirectory", **kwgs)

@@ -9,14 +9,14 @@ import pathlib
 from ipywidgets import register
 from traitlets import Bool, Instance, Unicode, observe, validate
 
-import ipylab.jupyterfrontend as _jfe
 from ipylab.asyncwidget import AsyncWidgetBase, pack, widget_serialization
 from ipylab.shell import Area, InsertMode
+from ipylab.sub import HasApp
 from ipylab.widgets import Panel
 
 
 @register
-class MainArea(AsyncWidgetBase):
+class MainArea(AsyncWidgetBase, HasApp):
     """A MainAreaWidget that can be loaded / unloaded with a single 'view'.
 
     Also provides methods to open/close a console using the context of the loaded widget.
@@ -45,10 +45,6 @@ class MainArea(AsyncWidgetBase):
     def _observe_closed(self, change):
         if self.closed:
             self.laoded = False
-
-    @property
-    def app(self):
-        return _jfe.JupyterFrontEnd()
 
     def __new__(cls, *, name: str, model_id=None, content: Panel = None, **kwgs):
         if not name:
