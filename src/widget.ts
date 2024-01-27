@@ -8,7 +8,6 @@ import { IpylabModel } from './widgets/ipylab';
 import { MainAreaModel } from './widgets/main_area';
 import { CommandPaletteModel } from './widgets/palette';
 import { PanelModel, PanelView } from './widgets/panel';
-import { SessionManagerModel } from './widgets/sessions';
 import { SplitPanelModel, SplitPanelView } from './widgets/split_panel';
 import { TitleModel } from './widgets/title';
 
@@ -22,7 +21,6 @@ export {
   MainAreaModel,
   PanelModel,
   PanelView,
-  SessionManagerModel,
   SplitPanelModel,
   SplitPanelView,
   TitleModel

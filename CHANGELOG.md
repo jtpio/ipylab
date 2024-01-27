@@ -8,10 +8,10 @@
 
 - Upgraded to provide asynchronous bi-directional comms for performing operations 
   in the Frontend. Each operation returns a task that when complete returns the response or raise an error if unsuccessful.
-- On the Python side `JupyterFrontEnd`, `CommandRegistry`, `SessionManager` & `CommandPalette` 
+- On the Python side `JupyterFrontEnd`, `CommandRegistry`, & `CommandPalette` 
 are all derived from `AsyncWidgetBase` and are now single instance objects.
 - On the JavaScript frontend side `JupyterFrontendModel`, `CommandRegistryModel`,
- `CommandPalletModel`, `ShellModel` &`SessionManageModel` extend the new `IpylabModel`.
+ `CommandPalletModel`,  extend the new `IpylabModel`.
 
 ### Added
 

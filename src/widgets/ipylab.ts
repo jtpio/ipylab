@@ -9,28 +9,16 @@ import {
   ISerializers,
   WidgetModel
 } from '@jupyter-widgets/base';
-
-import { JSONValue } from '@lumino/coreutils';
-
-import { ObjectHash } from 'backbone';
-
-import { MODULE_NAME, MODULE_VERSION } from '../version';
-
 import { ILabShell, JupyterFrontEnd, LabShell } from '@jupyterlab/application';
-
 import { ICommandPalette } from '@jupyterlab/apputils';
-
 import { IDefaultFileBrowser } from '@jupyterlab/filebrowser';
-
-import { CommandRegistry } from '@lumino/commands';
-
 import { ILauncher } from '@jupyterlab/launcher';
-
 import { ITranslator } from '@jupyterlab/translation';
-
+import { CommandRegistry } from '@lumino/commands';
+import { JSONValue, UUID } from '@lumino/coreutils';
+import { ObjectHash } from 'backbone';
+import { MODULE_NAME, MODULE_VERSION } from '../version';
 import { PythonBackendModel } from './python_backend';
-
-import { UUID } from '@lumino/coreutils';
 
 export {
   CommandRegistry,
@@ -102,6 +90,7 @@ export class IpylabModel extends DOMWidgetModel {
   private async _do_operation_for_backend(msg: any) {
     const operation: string = msg.operation;
     const ipylab_BE: string = msg.ipylab_BE;
+    const transform: object | string = msg.transform;
 
     try {
       if (!operation) {
@@ -118,23 +107,20 @@ export class IpylabModel extends DOMWidgetModel {
         );
 
       if (operation === 'FE_execute') {
-        var payload: JSONValue = await this._fe_execute(msg.kwgs);
-      } else var payload: JSONValue = await this.operation(operation, msg.kwgs);
-
-      if (payload === undefined)
-        throw new Error(
-          `ipylab ${this.get(
-            '_model_name'
-          )} bug: operation=${operation} did not return a payload!`
-        );
-
-      const buffers = (payload as any).buffers;
-      delete (payload as any).buffers;
-      if ((payload as any).payload) payload = (payload as any).payload;
+        var result: JSONValue = await this._fe_execute(msg.kwgs);
+      } else {
+        var result: JSONValue = await this.operation(operation, msg.kwgs);
+      }
+      var buffers = null;
+      if ((result as any)?.buffers) {
+        buffers = (result as any).buffers;
+        delete (result as any).buffers;
+      }
+      if ((result as any)?.payload) result = (result as any).payload;
       const content = {
         ipylab_BE: ipylab_BE,
         operation: operation,
-        payload: payload
+        payload: _transform_object(result, transform, this)
       };
       this.send(content, null, buffers);
     } catch (e) {
@@ -150,56 +136,40 @@ export class IpylabModel extends DOMWidgetModel {
 
   /**
    * Perform execute request from backend.
+   * Options:
+   *  - execute_method: Execute the method using dotted access.
+   *
    * @param payload
    * @returns
    */
-  async _fe_execute(payload: object) {
+  async _fe_execute(payload: object): Promise<JSONValue> {
     const { mode, kwgs } = (payload as any).FE_execute;
     delete (payload as any).FE_execute;
-
-    var result: JSONValue;
     switch (mode) {
       case 'execute_method': {
-        const owner = this.get_nested_object(
+        const owner = get_nested_object(
+          this,
           kwgs.method.split('.').slice(0, -1).join('.')
         );
-        var func = this.get_nested_object(kwgs.method) as Function;
-        func = func.bind(owner, payload);
-        result = await func();
-        return result ?? IpylabModel.OPERATION_DONE;
+        var func = get_nested_object(this, kwgs.method) as Function;
+        func = func.bind(owner, ...(payload as any).args);
+        return await func();
       }
     }
   }
-
   /**
-   *Returns a nested object relative to `this`.
-   * @param path The dotted path of the object.
-   * @returns
+   *
+   * @param op Name of the operation.
+   * @param payload Options relevant to the operation.
+   * @returns Raw result of the operation.
    */
-  get_nested_object(path: string): object {
-    var obj: Object = this;
-    var path_: String = '';
-    const parts = path.split('.');
-    var attr = '';
-    for (let i = 0; i < parts.length; i++) {
-      attr = parts[i];
-      if (attr in obj) {
-        obj = obj[attr as keyof typeof obj];
-        path_ = !path_ ? attr : `${path_}.${attr}`;
-      } else break;
-    }
-    if (path_ != path) {
-      const model = this.get('_model_name');
-      path_ = path_ ? `${model}.${path_}` : model;
-      throw new Error(`Invalid path: '${attr}' does not exist on '${path_}' `);
-    }
-    return obj;
-  }
-
   async operation(op: string, payload: any): Promise<JSONValue> {
-    // Provide any json content
     switch (op) {
+      case 'myFunction':
+        // do something
+        return; // the result (it will get converted as required);
       default:
+        // Each failed operation should throw an error if it is un-handled
         throw new Error(
           `operation='${op}' has not been implemented in ${this.get(
             '_model_name'
@@ -264,4 +234,86 @@ export class IpylabModel extends DOMWidgetModel {
   static translator: ITranslator;
   static launcher: ILauncher;
   static OPERATION_DONE = '--DONE--';
+}
+
+/**
+ *Returns a nested object relative to `this`.
+ * @param base The starting object.
+ * @param path The dotted path of the object.
+ * @returns
+ */
+export function get_nested_object(base: object, path: string): any {
+  var obj: Object = base;
+  var path_: String = '';
+  const parts = path.split('.');
+  var attr = '';
+  for (let i = 0; i < parts.length; i++) {
+    attr = parts[i];
+    if (attr in obj) {
+      obj = obj[attr as keyof typeof obj];
+      path_ = !path_ ? attr : `${path_}.${attr}`;
+    } else break;
+  }
+  if (path_ != path) {
+    throw new Error(
+      `Failed to get the nested attribute ${path_}.${attr} ` +
+        ` (base='${(base as any).name ?? 'unknown'}') `
+    );
+  }
+  return obj;
+}
+
+/**
+ * Modify the object for sending.
+ * TODO: Add in 'function'
+ * @param obj
+ * @param options The mode as a string or an object with mode and any other parameters.
+ * @param thisArg 'function' mode only - the binding of `this`.
+ * @returns
+ */
+function _transform_object(
+  obj: any,
+  options: string | any,
+  thisArg: object = null
+): JSONValue {
+  const mode = typeof options == 'string' ? options : options.mode;
+  switch (mode) {
+    case 'done':
+      return IpylabModel.OPERATION_DONE;
+    case 'raw':
+      return obj as any;
+    case 'null':
+      return null;
+    case 'string':
+      return String(obj);
+    case 'attribute':
+      // expects simple: {parts:['dotted.attribute']}
+      // or advanced: {parts:[{path:'dotted.attribute', transform:'...' }]
+      const result: { [key: string]: any } = new Object();
+      for (var i = 0; i < options.parts.length; i++) {
+        if (typeof options.parts[i] == 'string') {
+          var path = options.parts[i];
+          var transform: any = 'raw';
+        } else {
+          var { path, transform } = options.parts[i];
+        }
+        var part = get_nested_object(obj, path);
+        result[path] = _transform_object(part, transform);
+      }
+      return result;
+    case 'function':
+      var func = to_function(options.code).bind(thisArg);
+      return func(obj);
+    default:
+      throw new Error(`Invalid return mode: '${options.mode}'`);
+  }
+}
+
+/**
+ * Convert a string definition of a function to a function object.
+ * @param code The function as a string: eg. 'function (a, b) { return a + b; }'
+ * @returns
+ */
+function to_function(code: string): Function {
+  return new Function('return ' + code)();
 }

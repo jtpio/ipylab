@@ -1,27 +1,45 @@
 # Copyright (c) ipylab contributors.
 # Distributed under the terms of the Modified BSD License.
 
-
 import asyncio
 
-from traitlets import Dict, Tuple, Unicode
+from ipylab.asyncwidget import TransformMode
+from ipylab.sub import SubApp
 
-from ipylab.asyncwidget import AsyncWidgetBase, register
 
+class SessionManager(SubApp):
+    """
+    https://jupyterlab.readthedocs.io/en/latest/api/interfaces/services.Session.IManager.html
+    """
 
-@register
-class SessionManager(AsyncWidgetBase):
-    """Expose JupyterFrontEnd.serviceManager.sessions"""
+    SUBPATH = "sessionManager"
 
-    _model_name = Unicode("SessionManagerModel").tag(sync=True)
-    SINGLETON = True
-    # information of the session in which the application is started
-    app_session = Dict(read_only=True).tag(sync=True)
-    # information of the current session
-    current_session = Dict(read_only=True).tag(sync=True)
-    # keeps track of the list of sessions
-    sessions = Tuple(read_only=True).tag(sync=True)
-
-    def refresh_running(self) -> asyncio.Task:
+    def refreshRunning(self) -> asyncio.Task:
         """Force a call to refresh running sessions."""
-        return self.schedule_operation("refreshRunning")
+        return self.execute_method("refreshRunning")
+
+    def stopIfNeeded(self, path) -> asyncio.Task:
+        """
+        https://jupyterlab.readthedocs.io/en/latest/api/interfaces/services.Session.IManager.html#stopIfNeeded
+        """
+        return self.execute_method("stopIfNeeded", path=path)
+
+    def startNew(
+        self,
+        path: str,
+        type: str,
+        name: str,
+        *,
+        kernel: dict | None = None,
+        createOptions={},
+        connectOptions={},
+        transform={"mode": TransformMode.attribute, "parts": ["model"]},
+    ) -> asyncio.Task:
+        """
+        https://jupyterlab.readthedocs.io/en/latest/api/interfaces/services.Session.IManager.html#startNew
+
+        If specifying kernel. Use kernel = {'id':kernel_id}
+        """
+        createOptions = dict(path=path, type=type, name=name) | createOptions
+        connectOptions = dict(kernel=kernel) | connectOptions
+        return self.execute_method("startNew", createOptions, connectOptions, transform=transform)

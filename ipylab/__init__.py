@@ -16,6 +16,7 @@ __all__ = [
     "hookimpl",
     "hookspecs",
     "LauncherOptions",
+    "TransformMode",
     "pack",
 ]
 
@@ -24,7 +25,7 @@ import pluggy
 hookimpl = pluggy.HookimplMarker("ipylab")
 """Marker to be imported and used in plugins (and for own implementations)"""
 
-from ipylab.asyncwidget import pack
+from ipylab.asyncwidget import pack, TransformMode
 from ipylab.jupyterfrontend import JupyterFrontEnd, LauncherOptions
 from ipylab.main_area import MainArea
 from ipylab.shell import Area, InsertMode

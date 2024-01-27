@@ -13,6 +13,7 @@ from ipylab._plugin_manger import pm
 import ipylab._frontend as _fe
 from ipylab._plugin_manger import pm
 from IPython.core.getipython import get_ipython
+import enum
 
 __all__ = ["AsyncWidgetBase", "WidgetBase", "register", "pack", "Widget"]
 
@@ -25,10 +26,55 @@ KERNEL_ID = (
 )
 
 
-def pack(obj):
+def pack(obj: Widget):
+    """Return serialized obj if it is a Widget otherwise return it unchanged."""
     if isinstance(obj, Widget):
         obj = widget_serialization["to_json"](obj, None)
     return obj
+
+
+class TransformMode(enum.StrEnum):
+    """The transformation to apply to the result of frontend operations prior to sending.
+
+    - done: [default] A string '--DONE--'
+    - raw: No conversion. Note: data is serialized when sending, some objects shouldn't be serialized.
+    - string: Result is converted to a string.
+    - attribute: A dotted attribute of the returned object is returned. ['path']='dotted.path.name'
+    - function: Use a function to calculate the return value. ['code'] = 'function...'
+
+    `attribute`
+    ---------
+    ```
+    transform = {
+    mode: 'attribute',
+    parts: ['dotted.attribute.name', ...] # default transform is 'raw'
+    }
+    ```
+
+    #### To specify a separate transform per part:
+
+    transform = {
+    mode: 'attribute',
+    parts:  [{'path':'model', 'transform':...},, ...]
+    }
+
+    `function`
+    --------
+    JS code defining a function and returning data.
+
+    ```
+    transform = {
+    mode: 'function',
+    code: 'function (obj) { return String(obj); }'
+    }
+
+    """
+
+    raw = "raw"
+    done = "done"
+    string = "string"
+    attribute = "attribute"
+    function = "function"
 
 
 class Response(asyncio.Event):
@@ -60,7 +106,7 @@ class WidgetBase(Widget):
 
 
 class AsyncWidgetBase(WidgetBase):
-    """The base for all widgets that need async comms with the model."""
+    """The base for all widgets that need async comms with the frontend model."""
 
     kernel_id = Unicode(KERNEL_ID, read_only=True).tag(sync=True)
     _ipylab_model_register: dict[str, "AsyncWidgetBase"] = {}
@@ -72,7 +118,6 @@ class AsyncWidgetBase(WidgetBase):
     _tasks: set[asyncio.Task] = Set()
     _comm = None
     closed = Bool(read_only=True).tag(sync=True)
-    OPERATION_DONE = "--DONE--"
 
     def __repr__(self):
         return f"<{self.__class__.__name__} at {id(self)}>"
@@ -166,8 +211,6 @@ class AsyncWidgetBase(WidgetBase):
             ipylab_BE = content.get("ipylab_BE", "")
             payload = content.get("payload", {})
             if ipylab_BE:
-                if payload == self.OPERATION_DONE:
-                    payload = None
                 self._pending_operations.pop(ipylab_BE).set(payload, error)
             elif error:
                 pm.hook.on_frontend_error(obj=self, error=self.error, content=content)
@@ -192,16 +235,14 @@ class AsyncWidgetBase(WidgetBase):
         content = {"ipylab_FE": ipylab_FE}
         buffers = []
         try:
-            payload_ = self._do_operation_for_frontend(operation, payload, buffers)
-            if asyncio.iscoroutine(payload_):
-                payload_ = await payload_
-            if payload_ is None:
+            result = await self._do_operation_for_frontend(operation, payload, buffers)
+            if result is None:
                 pm.hook.unhandled_frontend_operation_message(self, operation)
                 raise ValueError(f"{operation=}")
-            if isinstance(payload_, dict) and "buffers" in payload_:
-                buffers = payload_["buffers"]
-                payload_ = payload_["payload"]
-            content["payload"] = payload_
+            if isinstance(result, dict) and "buffers" in result:
+                buffers = result["buffers"]
+                result = result["payload"]
+            content["payload"] = result
         except asyncio.CancelledError:
             content["error"] = "Cancelled"
         except Exception as e:
@@ -210,30 +251,49 @@ class AsyncWidgetBase(WidgetBase):
         finally:
             self.send(content, buffers)
 
-    def _do_operation_for_frontend(self, operation: str, payload: dict, buffers):
+    async def _do_operation_for_frontend(self, operation: str, payload: dict, buffers):
         """Overload this function as required.
-
-        Should return something that isn't `None` that is json serializable.
         or if there is a buffer can return a dict {"payload":dict, "buffers":[]}
         """
+        pm.hook.unhandled_frontend_operation_message(self, operation)
 
     def schedule_operation(
-        self, operation: str, *, callback: Callable[[any, any], None | Coroutine] = None, **kwgs
+        self,
+        operation: str,
+        *,
+        callback: Callable[[any, any], None | Coroutine] = None,
+        transform: TransformMode | dict[str, str] = TransformMode.done,
+        **kwgs,
     ) -> asyncio.Task:
         """
+
         operation: str
             Name corresponding to operation in JS frontend.
+
         callback: callable | coroutine function.
             A callback to do additional processing on the response prior to returning a result.
             The callback is passed (response, content).
-        kwgs: Named arguments passed to the frontend operation.
-
+        transform : TransformMode | dict
+            see ipylab.TransformMode
+        note: If there is a name clash with the operation, use kwgs={}
+        **kwgs: Keyword arguments for the frontend operation.
         """
         self._check_closed()
+
+        # validation
         if not operation or not isinstance(operation, str):
             raise ValueError(f"Invalid {operation=}")
+        if isinstance(transform, str):
+            TransformMode(transform)
+        else:
+            TransformMode(transform["mode"])
         ipylab_BE = str(uuid.uuid4())
-        content = {"ipylab_BE": ipylab_BE, "operation": operation, "kwgs": kwgs}
+        content = {
+            "ipylab_BE": ipylab_BE,
+            "operation": operation,
+            "kwgs": kwgs,
+            "transform": transform,
+        }
         if callback and not callable(callback):
             raise TypeError(f"callback is not callable {type(callback)=}")
         task = asyncio.create_task(self._send_receive(content, callback))
@@ -244,17 +304,73 @@ class AsyncWidgetBase(WidgetBase):
     def execute_method(
         self,
         method: str,
-        *,
+        *args,
         callback: Callable[[any, any], None | Coroutine] = None,
-        **kwgs,
+        transform: TransformMode | dict[str, str] = TransformMode.done,
     ) -> asyncio.Task:
-        "Call a method on the corresponding frontend object."
+        """Call a method on the corresponding frontend object.
+
+        method: dotted.access.to.the.method relative to app.
+
+        *args
+        `args` are passed in order so must correspond with the order in the JS method.
+        Specifying arguments by name is not currently support.
+        """
+
+        # This operation is sent to the frontend function _fe_execute in 'ipylab/src/widgets/ipylab.ts'
+
+        # validation
+        if callback:
+            assert Callable(callback)
         return self.schedule_operation(
             operation="FE_execute",
             FE_execute={
                 "mode": "execute_method",
-                "kwgs": {"method": method},
+                "kwgs": {
+                    "method": method,
+                },
+            },
+            transform=transform,
+            callback=callback,
+            args=args,
+        )
+
+    def get_attribute(
+        self,
+        name: str,
+        *,
+        callback: Callable[[any, any], None | Coroutine] = None,
+        transform: TransformMode | dict[str, str] = TransformMode.done,
+    ):
+        """A serialized verison of the attribute relative to this object."""
+        raise NotImplementedError("TODO")
+        return self.schedule_operation(
+            operation="FE_execute",
+            FE_execute={
+                "mode": "get_attribute",
+                "kwgs": {
+                    "name": name,
+                },
+            },
+            transform=transform,
+            callback=callback,
+        )
+
+    def list_attributes(
+        self,
+        base: str = "",
+        *,
+        callback: Callable[[any, any], None | Coroutine] = None,
+        transform: TransformMode | dict[str, str] = TransformMode.done,
+    ):
+        """A serialized verison of the attribute relative to this object."""
+        raise NotImplementedError("TODO")
+        return self.schedule_operation(
+            operation="FE_execute",
+            FE_execute={
+                "mode": "list_attributes",
+                "kwgs": {"base": base},
             },
             callback=callback,
-            **kwgs,
+            transform=transform,
         )

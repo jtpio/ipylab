@@ -6,7 +6,8 @@ from typing import Callable
 
 from traitlets import Dict, Tuple, Unicode, observe
 
-from ipylab.asyncwidget import AsyncWidgetBase, register, pack
+from ipylab._plugin_manger import pm
+from ipylab.asyncwidget import AsyncWidgetBase, TransformMode, pack, register
 from ipylab.widgets import Icon
 
 
@@ -47,7 +48,7 @@ class CommandRegistry(AsyncWidgetBase):
             if k not in commands:
                 self._execute_callbacks.pop(k)
 
-    def _do_operation_for_frontend(
+    async def _do_operation_for_frontend(
         self, operation: str, payload: dict, buffers: list
     ) -> bool | None:
         match operation:
@@ -56,16 +57,29 @@ class CommandRegistry(AsyncWidgetBase):
                 cmd = self._execute_callbacks[command_id]
                 result = cmd(**payload.get("kwgs", {}))
                 if asyncio.iscoroutine(result):
-                    asyncio.create_task(result)
-                if result is None:
-                    return self.OPERATION_DONE
+                    result = await result
                 return result
+            case _:
+                pm.hook.unhandled_frontend_operation_message(self, operation)
 
-    def execute(self, command_id, **args) -> asyncio.Task:
-        """Schedule execution of command_id."""
-        return self.schedule_operation("execute", id=command_id, args=args)
+    def execute(
+        self,
+        command_id: str,
+        transform: TransformMode | dict[str, str] = TransformMode.done,
+        **args,
+    ) -> asyncio.Task:
+        """Execute command_id.
 
-    def add_command(
+        `args` correspond to `args` in JupyterLab.
+
+        Finding what the `args` are remains an outstanding issue in JupyterLab.
+
+        see: https://github.com/jtpio/ipylab/issues/128#issuecomment-1683097383 for hints
+        about how args can be found.
+        """
+        return self.execute_method("app.commands.execute", command_id, args, transform=transform)
+
+    def addPythonCommand(
         self,
         command_id: str,
         execute: Callable,
@@ -74,22 +88,24 @@ class CommandRegistry(AsyncWidgetBase):
         label="",
         icon_class="",
         icon: Icon = None,
+        **kwgs,
     ):
         if command_id in self.commands:
             raise Exception(f"Command '{command_id} is already registered!")
         # TODO: support other parameters (isEnabled, isVisible...)
         self._execute_callbacks = self._execute_callbacks | {command_id: execute}
         return self.schedule_operation(
-            "addCommand",
+            "addPythonCommand",
             id=command_id,
             caption=caption,
             label=label,
             iconClass=icon_class,
             icon=pack(icon),
+            **kwgs,
         )
 
-    def remove_command(self, command_id: str) -> asyncio.Task:
+    def remove_command(self, command_id: str, **kwgs) -> asyncio.Task:
         # TODO: check whether to keep this method, or return disposables like in lab
         if command_id not in self.commands:
             raise ValueError(f"{command_id=} is not a registered command!")
-        return self.schedule_operation("removeCommand", command_id=command_id)
+        return self.schedule_operation("removePythonCommand", command_id=command_id, **kwgs)

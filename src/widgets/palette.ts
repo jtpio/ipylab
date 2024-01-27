@@ -84,7 +84,7 @@ export class CommandPaletteModel extends IpylabModel {
    *
    * @param options The item options.
    */
-  private _addItem(options: IPaletteItem & { id: string }): string {
+  private _addItem(options: IPaletteItem & { id: string }): JSONValue {
     if (!this._palette) {
       throw new Error('The command pallet is not loaded!');
     }
@@ -95,7 +95,7 @@ export class CommandPaletteModel extends IpylabModel {
     }
     const item = this._palette.addItem({ command: id, category, args, rank });
     this._customItems.set(itemId, item);
-    return itemId;
+    return { id: itemId };
   }
 
   /**
@@ -104,7 +104,7 @@ export class CommandPaletteModel extends IpylabModel {
    * @param payload The command payload.
    * @param payload.id
    */
-  private _removeItem(options: IPaletteItem & { id: string }): string {
+  private _removeItem(options: IPaletteItem & { id: string }): null {
     const { id, category } = options;
     const itemId = `${id} | ${category}`;
     if (this._customItems.has(itemId)) {
@@ -112,7 +112,7 @@ export class CommandPaletteModel extends IpylabModel {
       if (cmd) cmd.dispose();
     }
     this._customItems.delete(itemId);
-    return itemId;
+    return null;
   }
 
   static model_name = 'CommandPaletteModel';

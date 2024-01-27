@@ -70,18 +70,18 @@ export class CommandRegistryModel extends IpylabModel {
   async operation(op: string, payload: any): Promise<JSONValue> {
     switch (op) {
       case 'execute':
-        return await this._execute(payload);
-      case 'addCommand': {
-        await this._addCommand(payload);
+        const { id, args } = payload;
+        return await this._commands.execute(id, args);
+      case 'addPythonCommand': {
+        const result = await this._addCommand(payload);
         // keep track of the commands
         const commands = this.get('_commands');
         this.set('_commands', commands.concat(payload));
         this.save_changes();
-        return IpylabModel.OPERATION_DONE;
+        return result;
       }
-      case 'removeCommand':
-        this._removeCommand(payload.command_id);
-        return IpylabModel.OPERATION_DONE;
+      case 'removePythonCommand':
+        return this._removeCommand(payload.command_id);
       default:
         throw new Error(
           `operation='${op}' has not been implemented in ${this.get(
@@ -102,25 +102,6 @@ export class CommandRegistryModel extends IpylabModel {
   }
 
   /**
-   * Execute a command
-   *
-   * @param payload The command payload.
-   * @param payload.id
-   * @param payload.args
-   */
-  private async _execute(payload: any): Promise<JSONValue> {
-    const { id, args } = payload;
-    const result = await this._commands.execute(id, args);
-    try {
-      if (result.toJSON) return result.toJSON();
-      if (result.id) return { id: result.id };
-      return result;
-    } catch (e) {
-      return IpylabModel.OPERATION_DONE;
-    }
-  }
-
-  /**
    * Add a new command to the command registry.
    *
    * @param payload The command options.
@@ -130,7 +111,7 @@ export class CommandRegistryModel extends IpylabModel {
    * @param options.iconClass
    * @param options.icon
    */
-  private async _addCommand(options: any): Promise<void> {
+  private async _addCommand(options: any): Promise<JSONValue> {
     const { id, caption, label, iconClass, icon } = options;
     if (this._commands.hasCommand(id)) {
       const cmd = Private.customCommands.get(id);
@@ -163,6 +144,7 @@ export class CommandRegistryModel extends IpylabModel {
       isVisible: () => commandEnabled(command)
     });
     Private.customCommands.set(id, command);
+    return { id: id };
   }
 
   /**
@@ -171,12 +153,13 @@ export class CommandRegistryModel extends IpylabModel {
    * @param payload The command payload.
    * @param payload.id
    */
-  private _removeCommand(command_id: string): void {
+  private _removeCommand(command_id: string): null {
     if (Private.customCommands.has(command_id)) {
       const cmd = Private.customCommands.get(command_id);
       if (cmd) cmd.dispose();
     }
     this.save_changes();
+    return null;
   }
 
   static serializers: ISerializers = {

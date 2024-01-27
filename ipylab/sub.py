@@ -6,6 +6,7 @@ import asyncio
 from typing import Callable, Coroutine
 
 import ipylab
+from ipylab import TransformMode
 
 
 class HasApp:
@@ -24,9 +25,40 @@ class SubApp(HasApp):
     def execute_method(
         self,
         method: str,
-        *,
+        *args,
         callback: Callable[[any, any], None | Coroutine] = None,
-        **kwgs,
+        transform: TransformMode | dict[str, str] = TransformMode.done,
     ) -> asyncio.Task:
         "Calls app.execute_method with method={self.SUBPATH}.{method}."
-        return self.app.execute_method(f"{self.SUBPATH}.{method}", callback=callback, **kwgs)
+        # validation
+        return self.app.execute_method(
+            f"{self.SUBPATH}.{method}", *args, callback=callback, transform=transform
+        )
+
+    def get_attribute(
+        self,
+        name: str,
+        *,
+        callback: Callable[[any, any], None | Coroutine] = None,
+        transform: TransformMode | dict[str, str] = TransformMode.done,
+    ) -> asyncio.Task:
+        """A serialized verison of the attribute relative to this object."""
+        raise NotImplementedError("TODO")
+        return self.app.get_attribute(
+            f"{self.SUBPATH}.{name}",
+            callback=callback,
+            transform=transform,
+        )
+
+    def list_attributes(
+        self,
+        base: str = "",
+        *,
+        callback: Callable[[any, any], None | Coroutine] = None,
+        transform: TransformMode | dict[str, str] = TransformMode.done,
+    ) -> asyncio.Task:
+        """Get a list of all attributes"""
+        raise NotImplementedError("TODO")
+        return self.app.list_attributes(
+            f"{self.SUBPATH}.{base}", callback=callback, transform=transform
+        )

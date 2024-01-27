@@ -2,6 +2,7 @@
 // Distributed under the terms of the Modified BSD License.
 
 import { unpack_models } from '@jupyter-widgets/base';
+import { LabShell } from '@jupyterlab/application';
 import {
   DOMUtils,
   InputDialog,
@@ -9,6 +10,7 @@ import {
   showErrorMessage
 } from '@jupyterlab/apputils';
 import { FileDialog } from '@jupyterlab/filebrowser';
+import { Session } from '@jupyterlab/services';
 import {
   ISerializers,
   IpylabModel,
@@ -16,7 +18,6 @@ import {
   JupyterFrontEnd
 } from './ipylab';
 import { IpylabMainAreaWidget } from './main_area';
-import { LabShell } from '@jupyterlab/application';
 
 /**
  * The model for a JupyterFrontEnd.
@@ -43,6 +44,17 @@ export class JupyterFrontEndModel extends IpylabModel {
   initialize(attributes: any, options: any): void {
     super.initialize(attributes, options);
     this.set('version', this.app.version);
+
+    this.sessionManager.runningChanged.connect(
+      this._updateAllSessionDetails,
+      this
+    );
+    if (this.labShell) {
+      this.labShell.currentChanged.connect(this._updateSessionDetails, this);
+      this.labShell.activeChanged.connect(this._updateSessionDetails, this);
+      this._updateSessionDetails();
+    }
+    this._updateAllSessionDetails();
     this.save_changes();
   }
 
@@ -51,6 +63,22 @@ export class JupyterFrontEndModel extends IpylabModel {
   }
   get labShell(): LabShell {
     return IpylabModel.labShell;
+  }
+
+  get sessionManager(): Session.IManager {
+    return IpylabModel.app.serviceManager.sessions;
+  }
+
+  private _updateSessionDetails(): void {
+    const currentWidget = this.shell.currentWidget as any;
+    const current_session = currentWidget?.sessionContext?.session?.model ?? {};
+    this.set('current_widget_id', currentWidget.id ?? '');
+    this.set('current_session', current_session);
+    this.save_changes();
+  }
+  private _updateAllSessionDetails(): void {
+    this.set('all_sessions', Array.from(this.sessionManager.running()));
+    this.save_changes();
   }
 
   async operation(op: string, payload: any): Promise<JSONValue> {
@@ -114,7 +142,7 @@ export class JupyterFrontEndModel extends IpylabModel {
     model.on('comm_live_update', () => {
       if (!model.comm_live) luminoWidget.close();
     });
-    return luminoWidget.id;
+    return { id: luminoWidget.id };
   }
 
   static serializers: ISerializers = {
