@@ -10,8 +10,8 @@ from ipywidgets import register
 from traitlets import Bool, Instance, Unicode, observe, validate
 
 from ipylab.asyncwidget import AsyncWidgetBase, pack, widget_serialization
+from ipylab.hasapp import HasApp
 from ipylab.shell import Area, InsertMode
-from ipylab.sub import HasApp
 from ipylab.widgets import Panel
 
 

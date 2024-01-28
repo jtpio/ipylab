@@ -3,17 +3,16 @@
 from __future__ import annotations
 
 import asyncio
+import enum
 import uuid
 from typing import Any, Callable, Coroutine
 
+from IPython.core.getipython import get_ipython
 from ipywidgets import Widget, register, widget_serialization
-from traitlets import Dict, Instance, Set, Unicode, Bool
-from ipylab._plugin_manger import pm
+from traitlets import Bool, Dict, Instance, Set, Unicode
 
 import ipylab._frontend as _fe
 from ipylab._plugin_manger import pm
-from IPython.core.getipython import get_ipython
-import enum
 
 __all__ = ["AsyncWidgetBase", "WidgetBase", "register", "pack", "Widget"]
 

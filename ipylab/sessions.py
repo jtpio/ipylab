@@ -2,17 +2,19 @@
 # Distributed under the terms of the Modified BSD License.
 
 import asyncio
+import inspect
+from typing import Callable
 
 from ipylab.asyncwidget import TransformMode
-from ipylab.sub import SubApp
+from ipylab.jupyterfrontend_subsection import JupyterFrontEndSubsection
 
 
-class SessionManager(SubApp):
+class SessionManager(JupyterFrontEndSubsection):
     """
     https://jupyterlab.readthedocs.io/en/latest/api/interfaces/services.Session.IManager.html
     """
 
-    SUBPATH = "sessionManager"
+    JFE_JS_SUB_PATH = "app.sessionManager"
 
     def refreshRunning(self) -> asyncio.Task:
         """Force a call to refresh running sessions."""
@@ -33,13 +35,26 @@ class SessionManager(SubApp):
         kernel: dict | None = None,
         createOptions={},
         connectOptions={},
-        transform={"mode": TransformMode.attribute, "parts": ["model"]},
+        code: str | Callable | None = None,
+        transform=TransformMode.raw,
     ) -> asyncio.Task:
         """
+        Create a new kernel and execute code in it.
+
         https://jupyterlab.readthedocs.io/en/latest/api/interfaces/services.Session.IManager.html#startNew
 
         If specifying kernel. Use kernel = {'id':kernel_id}
         """
         createOptions = dict(path=path, type=type, name=name) | createOptions
         connectOptions = dict(kernel=kernel) | connectOptions
-        return self.execute_method("startNew", createOptions, connectOptions, transform=transform)
+
+        if callable(code):
+            code = inspect.getsource(code)
+
+        return self.app.schedule_operation(
+            "startNewSessionExecuteCode",
+            createOptions=createOptions,
+            connectOptions=createOptions,
+            transform=transform,
+            code=code,
+        )

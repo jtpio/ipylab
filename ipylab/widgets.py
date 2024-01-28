@@ -6,14 +6,14 @@ from __future__ import annotations
 import asyncio
 
 import ipywidgets as ipw
-from ipywidgets import Box, Layout, Widget, register, widget_serialization
+from ipywidgets import Box, Layout, register, widget_serialization
 from ipywidgets.widgets.trait_types import InstanceDict
 from traitlets import Bool, Dict, Unicode
 
 import ipylab._frontend as _fe
 from ipylab.asyncwidget import WidgetBase
+from ipylab.hasapp import HasApp
 from ipylab.shell import Area, InsertMode
-from ipylab.sub import HasApp
 
 
 @register
@@ -106,6 +106,3 @@ class SplitPanel(Panel):
     orientation = Unicode("vertical").tag(sync=True)
     class_name = Unicode("ipylab-splitpanel").tag(sync=True)
     layout = InstanceDict(Layout, kw={"min_height": "100px"}).tag(sync=True, **widget_serialization)
-
-
-del Widget, Layout

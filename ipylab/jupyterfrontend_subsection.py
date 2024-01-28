@@ -1,26 +1,20 @@
 # Copyright (c) ipylab contributors.
 # Distributed under the terms of the Modified BSD License.
-from __future__ import annotations
 
 import asyncio
 from typing import Callable, Coroutine
 
-import ipylab
 from ipylab import TransformMode
+from ipylab.hasapp import HasApp
 
 
-class HasApp:
-    @property
-    def app(self) -> ipylab.JupyterFrontEnd:
-        if not hasattr(self, "_app"):
-            self._app = ipylab.JupyterFrontEnd()
-        return self._app
+class JupyterFrontEndSubsection(HasApp):
+    """Use as a sub section in the JupyterFrontEnd class"""
 
-
-class SubApp(HasApp):
-    """for providing nested access to subpaths inside an app."""
-
-    SUBPATH = ""
+    # Point to the attribute on the JupyterFrontEndModel for which this class represents.
+    # Nested attributes are support such as "app.sessionManager"
+    # see ipylab/src/widgets/frontend.ts -> JupyterFrontEndModel
+    JFE_JS_SUB_PATH = ""
 
     def execute_method(
         self,
@@ -29,11 +23,10 @@ class SubApp(HasApp):
         callback: Callable[[any, any], None | Coroutine] = None,
         transform: TransformMode | dict[str, str] = TransformMode.done,
     ) -> asyncio.Task:
-        "Calls app.execute_method with method={self.SUBPATH}.{method}."
+        "Execute a method on the JFE_SUB_PATH to which this instance belongs."
         # validation
-        return self.app.execute_method(
-            f"{self.SUBPATH}.{method}", *args, callback=callback, transform=transform
-        )
+        method = f"{self.JFE_JS_SUB_PATH}.{method}"
+        return self.app.execute_method(method, *args, callback=callback, transform=transform)
 
     def get_attribute(
         self,
@@ -45,7 +38,7 @@ class SubApp(HasApp):
         """A serialized verison of the attribute relative to this object."""
         raise NotImplementedError("TODO")
         return self.app.get_attribute(
-            f"{self.SUBPATH}.{name}",
+            f"{self.JFE_JS_SUB_PATH}.{name}",
             callback=callback,
             transform=transform,
         )
@@ -60,5 +53,5 @@ class SubApp(HasApp):
         """Get a list of all attributes"""
         raise NotImplementedError("TODO")
         return self.app.list_attributes(
-            f"{self.SUBPATH}.{base}", callback=callback, transform=transform
+            f"{self.JFE_JS_SUB_PATH}.{base}", callback=callback, transform=transform
         )

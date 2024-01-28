@@ -9,7 +9,7 @@ import typing as t
 import ipywidgets as ipw
 
 from ipylab import pack
-from ipylab.sub import SubApp
+from ipylab.jupyterfrontend_subsection import JupyterFrontEndSubsection
 
 if t.TYPE_CHECKING:
     from ipywidgets import Widget
@@ -44,7 +44,7 @@ class InsertMode(enum.StrEnum):
     tab_after = "tab-after"
 
 
-class Shell(SubApp):
+class Shell(JupyterFrontEndSubsection):
     """
     Provides access to the shell.
     The minimal interface is:
@@ -55,7 +55,7 @@ class Shell(SubApp):
     ref: https://jupyterlab.readthedocs.io/en/latest/api/interfaces/application.JupyterFrontEnd.IShell.html#add
     """
 
-    SUBPATH = "shell"
+    JFE_JS_SUB_PATH = "shell"
 
     def addToShell(
         self,

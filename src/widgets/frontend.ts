@@ -113,6 +113,19 @@ export class JupyterFrontEndModel extends IpylabModel {
       case 'getExistingDirectory':
         payload.manager = IpylabModel.defaultBrowser.model.manager;
         return await FileDialog.getExistingDirectory(payload).then(_get_result);
+      case 'startNewSessionExecuteCode':
+        const session = await this.sessionManager.startNew(
+          payload.createOptions,
+          payload.connectOptions
+        );
+        if (payload.code) {
+          const future = session.kernel.requestExecute({
+            code: payload.code,
+            store_history: false
+          });
+          await future.done;
+        }
+        return session.model as any;
       default:
         throw new Error(
           `operation='${op}' has not been implemented in ${JupyterFrontEndModel.model_name}!`
@@ -144,6 +157,16 @@ export class JupyterFrontEndModel extends IpylabModel {
     });
     return { id: luminoWidget.id };
   }
+
+  //   async executeCode(manager: ServiceManager.IManager, translator: ITranslator) {
+  //     if (!session || session.isDisposed) {
+
+  //     await session.initialize();
+  //     await session.ready;
+  //     this.execute('import ipylab.scripts; ipylab.scripts.init_ipylab_backend()');
+  //     const result = await this.future.done;
+  //     result;
+  // }
 
   static serializers: ISerializers = {
     ...IpylabModel.serializers

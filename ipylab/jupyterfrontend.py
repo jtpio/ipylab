@@ -9,6 +9,8 @@ from traitlets import Dict, Instance, Tuple, Unicode
 
 from ipylab._plugin_manger import pm
 from ipylab.asyncwidget import AsyncWidgetBase, register, widget_serialization
+
+
 from ipylab.commands import CommandPalette, CommandRegistry
 from ipylab.dialog import Dialog, FileDialog
 from ipylab.sessions import SessionManager
@@ -74,34 +76,4 @@ class JupyterFrontEnd(AsyncWidgetBase):
         "Run by the Ipylab python backend"
         # This is called in a separate kernel started by the JavaScript frontend
         # the first time the ipylab plugin is activated.
-        pm.hook.register_launcher.call_historic(result_callback=self.create_launcher)
-        return "done"
-
-    def create_launcher(self, options: LauncherOptions) -> asyncio.Task:
-        """Create a new launcher in Jupypterlab.
-
-        ``` python
-
-        @ipylab.hookimpl(specname="register_launcher")
-        def plugin_my_launcher() -> LauncherOptions:
-            options = LauncherOptions(name="Launch my app",
-            tooltip="My app is great...",
-            entry_point='my_module.my_attr.start_my_app')
-            return options
-        ```
-
-        Note: The package should be installed (re-installed) with the entry point "ipylab-python-backend"
-
-        in pyproject.toml
-        ``` toml
-        [project.entry-points.ipylab-python-backend]
-        my_plugins = "my_module.ipylab_backend_plugin"
-        ```
-
-        entry_point: str <package_or_module>[:<object>[.<attr>[.<nested-attr>]*]]
-            The script called
-            Uses the same convention as setup tools.
-
-            https://setuptools.pypa.io/en/latest/userguide/entry_point.html#entry-points-syntax
-        """
-        return self.schedule_operation("createLauncher", **options)
+        pm.hook.run_once_at_startup.call_historic()

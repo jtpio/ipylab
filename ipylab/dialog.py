@@ -4,8 +4,8 @@ from __future__ import annotations
 
 import asyncio
 
-from ipylab.sub import HasApp
 from ipylab.asyncwidget import Widget, pack
+from ipylab.hasapp import HasApp
 
 
 class Dialog(HasApp):

@@ -51,10 +51,33 @@ def get_ipylab_backend_class() -> type[jupyterlab.labapp.LabApp]:
 
 
 @hookspec(historic=True)
-def register_launcher(callback: t.Callable[[dict], None]):
-    """Register a Jupyterlab launcher.
+def run_once_at_startup():
+    """The function will run once when Ipylab is activated (requires entry point as explained below).
 
-    see app._create_launcher for the required arguments.
+    ``` python
+
+    @ipylab.hookimpl(specname="automatic_start")
+    def plugin_my_launcher() -> LauncherOptions:
+        options = LauncherOptions(name="Launch my app",
+        tooltip="My app is great...",
+        entry_point='my_module.my_attr.start_my_app')
+        return options
+    ```
+
+    Note: The package should be installed (re-installed) with the entry point "ipylab-python-backend"
+
+    in pyproject.toml
+    ``` toml
+    [project.entry-points.ipylab-python-backend]
+    my_plugins = "my_module.ipylab_backend_plugin"
+    ```
+
+    entry_point: str <package_or_module>[:<object>[.<attr>[.<nested-attr>]*]]
+        The script called
+        Uses the same convention as setup tools.
+
+        https://setuptools.pypa.io/en/latest/userguide/entry_point.html#entry-points-syntax
+
     """
 
 
