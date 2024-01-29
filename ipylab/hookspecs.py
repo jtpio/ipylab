@@ -55,12 +55,13 @@ class IpylabHookspec:
         """The function will run once when Ipylab is activated (requires entry point as explained below).
 
         ``` python
-
         @ipylab.hookimpl(specname="run_once_at_startup")
         def plugin_my_launcher() -> LauncherOptions:
-            options = LauncherOptions(name="Launch my app",
-            tooltip="My app is great...",
-            entry_point='my_module.my_attr.start_my_app')
+            options = LauncherOptions(
+                name="Launch my app",
+                tooltip="My app is great...",
+                entry_point="my_module.my_attr.start_my_app",
+            )
             return options
         ```
 

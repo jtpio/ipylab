@@ -22,7 +22,7 @@ class MainArea(AsyncWidgetBase, HasApp):
     Also provides methods to open/close a console using the context of the loaded widget.
     """
 
-    _main_area_names: dict[str, "MainArea"] = {}
+    _main_area_names: dict[str, MainArea] = {}
     _model_name = Unicode("MainAreaModel").tag(sync=True)
 
     path = Unicode(read_only=True).tag(sync=True)

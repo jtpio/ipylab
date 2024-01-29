@@ -1,4 +1,5 @@
-import pathlib, json
+import json
+import pathlib
 
 module_name = "ipylab"
 

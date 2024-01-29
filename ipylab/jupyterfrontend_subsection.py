@@ -2,7 +2,7 @@
 # Distributed under the terms of the Modified BSD License.
 
 import asyncio
-from typing import Callable, Coroutine
+from collections.abc import Callable, Coroutine
 
 from ipylab import TransformMode
 from ipylab.hasapp import HasApp

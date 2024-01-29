@@ -5,7 +5,8 @@ from __future__ import annotations
 import asyncio
 import enum
 import uuid
-from typing import Any, Callable, Coroutine
+from collections.abc import Callable, Coroutine
+from typing import Any
 
 from IPython.core.getipython import get_ipython
 from ipywidgets import Widget, register, widget_serialization
@@ -44,8 +45,8 @@ class TransformMode(enum.StrEnum):
     ---------
     ```
     transform = {
-    mode: 'attribute',
-    parts: ['dotted.attribute.name', ...] # default transform is 'raw'
+        mode: "attribute",
+        parts: ["dotted.attribute.name", ...],  # default transform is 'raw'
     }
     ```
 
@@ -61,12 +62,7 @@ class TransformMode(enum.StrEnum):
     JS code defining a function and returning data.
 
     ```
-    transform = {
-    mode: 'function',
-    code: 'function (obj) { return String(obj); }'
-    }
-
-    """
+    transform = {mode: "function", code: "function (obj) { return String(obj); }"}"""
 
     raw = "raw"
     done = "done"
@@ -107,7 +103,7 @@ class AsyncWidgetBase(WidgetBase):
     """The base for all widgets that need async comms with the frontend model."""
 
     kernelId = Unicode(KERNEL_ID, read_only=True).tag(sync=True)
-    _ipylab_model_register: dict[str, "AsyncWidgetBase"] = {}
+    _ipylab_model_register: dict[str, AsyncWidgetBase] = {}
     _singleton_register: dict[type, str] = {}
     SINGLETON = False
     _ready_response = Instance(Response, ())

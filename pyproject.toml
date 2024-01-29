@@ -86,6 +86,7 @@ before-build-python = ["jlpm clean:all"]
 
 [tool.check-wheel-contents]
 ignore = ["W002"]
+
 [tool.ruff]
 target-version = "py311"
 line-length = 100

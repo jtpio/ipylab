@@ -2,12 +2,12 @@
 # Distributed under the terms of the Modified BSD License.
 
 import asyncio
-from typing import Callable
+from collections.abc import Callable
 
 from traitlets import Dict, Tuple, Unicode, observe
 
-from ipylab.hookspecs import pm
 from ipylab.asyncwidget import AsyncWidgetBase, TransformMode, pack, register
+from ipylab.hookspecs import pm
 from ipylab.widgets import Icon
 
 
