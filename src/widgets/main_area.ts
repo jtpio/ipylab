@@ -25,7 +25,7 @@ export class IpylabMainAreaWidget extends MainAreaWidget {
   constructor(options: IpylabMainAreaWidget.IOptions) {
     //TODO: support more parts of the MainAreaWidget
 
-    var { content, kernel_id, name, path, basePath, type } = options;
+    var { content, kernelId, name, path, basePath, type } = options;
     super({ content: content });
     if (!path) {
       path = PathExt.join(basePath || '', `${name}-${UUID.uuid4()}`);
@@ -37,7 +37,7 @@ export class IpylabMainAreaWidget extends MainAreaWidget {
       name: name,
       type: type || 'ipylab',
       kernelPreference: {
-        id: kernel_id,
+        id: kernelId,
         language: 'python3'
       }
     });
@@ -94,7 +94,7 @@ export class MainAreaModel extends IpylabModel {
       path: this.get('path'),
       name: this.get('name'),
       type: 'ipylab main area',
-      kernelPreference: { id: this.get('kernel_id'), language: 'python3' }
+      kernelPreference: { id: this.get('kernelId'), language: 'python3' }
     });
     await this.sessionContext.initialize();
     this.on('change:closed', this._on_change_closed, this);
@@ -126,14 +126,12 @@ export class MainAreaModel extends IpylabModel {
     const view = await this.widget_manager.create_view(content, {});
     const luminoWidget = new IpylabMainAreaWidget({
       content: view.luminoWidget,
-      kernel_id: this.get('kernel_id'),
+      kernelId: this.get('kernelId'),
       name: this.sessionContext.name,
       path: this.sessionContext.path,
       type: this.sessionContext.type
     });
-
-    if (luminoWidget?.toolbar?.node)
-      luminoWidget.node.removeChild(luminoWidget.toolbar.node);
+    luminoWidget.revealed;
     if (className) luminoWidget.addClass(className);
     luminoWidget.disposed.connect(() => {
       this.set('loaded', false);
@@ -162,7 +160,7 @@ export class MainAreaModel extends IpylabModel {
         basePath: this.sessionContext.path,
         // type: 'Linked Console',
         ref: this._luminoWidget?.id,
-        kernelPreference: { id: this.get('kernel_id'), language: 'python3' },
+        kernelPreference: { id: this.get('kernelId'), language: 'python3' },
         ...options
       }
     );
@@ -242,7 +240,7 @@ export namespace IpylabMainAreaWidget {
     /**
      * The id of the python kernel.
      */
-    kernel_id: string;
+    kernelId: string;
 
     /**
      * The path of an existing session.

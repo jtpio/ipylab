@@ -2,6 +2,7 @@
 // Distributed under the terms of the Modified BSD License.
 
 import { unpack_models } from '@jupyter-widgets/base';
+// import { KernelWidgetManager } from '@jupyter-widgets/jupyterlab-manager';
 import { LabShell } from '@jupyterlab/application';
 import {
   DOMUtils,
@@ -11,6 +12,7 @@ import {
 } from '@jupyterlab/apputils';
 import { FileDialog } from '@jupyterlab/filebrowser';
 import { Session } from '@jupyterlab/services';
+import { UUID } from '@lumino/coreutils';
 import {
   ISerializers,
   IpylabModel,
@@ -113,24 +115,45 @@ export class JupyterFrontEndModel extends IpylabModel {
       case 'getExistingDirectory':
         payload.manager = IpylabModel.defaultBrowser.model.manager;
         return await FileDialog.getExistingDirectory(payload).then(_get_result);
-      case 'startNewSessionExecuteCode':
-        const session = await this.sessionManager.startNew(
-          payload.createOptions,
-          payload.connectOptions
-        );
-        if (payload.code) {
-          const future = session.kernel.requestExecute({
-            code: payload.code,
-            store_history: false
-          });
-          await future.done;
-        }
-        return session.model as any;
       default:
         throw new Error(
           `operation='${op}' has not been implemented in ${JupyterFrontEndModel.model_name}!`
         );
     }
+  }
+  async newNotebook(
+    name: string,
+    path: string,
+    kernelId: string,
+    kernelName: string = 'python3'
+  ): Promise<JSONValue> {
+    const nb = await IpylabModel.app.commands.execute('notebook:create-new', {
+      kernelId: kernelId || `${UUID.uuid4()}`,
+      kernelName: kernelName
+    });
+    await nb.sessionContext.ready;
+    if (name) await nb.sessionContext.session.setName(name);
+    if (path) await nb.sessionContext.session.setPath(path);
+    return nb.sessionContext.session.model as any;
+  }
+
+  /**
+   * @param payload.kernelId
+   * @param payload.code : code to inject
+   * @returns
+   */
+  async injectCode(kernelId: string, code: string): Promise<JSONValue> {
+    const kernelModel = await IpylabModel.app.serviceManager.kernels.findById(
+      kernelId
+    );
+    const connection = IpylabModel.app.serviceManager.kernels.connectTo({
+      model: kernelModel
+    });
+    const future = connection.requestExecute({
+      code: code,
+      store_history: false
+    });
+    return (await future.done) as any;
   }
 
   /**
@@ -146,7 +169,7 @@ export class JupyterFrontEndModel extends IpylabModel {
     if (area === 'main') {
       luminoWidget = new IpylabMainAreaWidget({
         content: view.luminoWidget,
-        kernel_id: this.get('kernel_id'),
+        kernelId: this.get('kernelId'),
         name: 'Ipylab'
       });
     }
@@ -157,16 +180,6 @@ export class JupyterFrontEndModel extends IpylabModel {
     });
     return { id: luminoWidget.id };
   }
-
-  //   async executeCode(manager: ServiceManager.IManager, translator: ITranslator) {
-  //     if (!session || session.isDisposed) {
-
-  //     await session.initialize();
-  //     await session.ready;
-  //     this.execute('import ipylab.scripts; ipylab.scripts.init_ipylab_backend()');
-  //     const result = await this.future.done;
-  //     result;
-  // }
 
   static serializers: ISerializers = {
     ...IpylabModel.serializers

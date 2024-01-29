@@ -3,14 +3,14 @@
 from __future__ import annotations
 
 import asyncio
+import inspect
+import textwrap
+import types
 from typing import NotRequired, Self, TypedDict
 
 from traitlets import Dict, Instance, Tuple, Unicode
 
-from ipylab._plugin_manger import pm
 from ipylab.asyncwidget import AsyncWidgetBase, register, widget_serialization
-
-
 from ipylab.commands import CommandPalette, CommandRegistry
 from ipylab.dialog import Dialog, FileDialog
 from ipylab.sessions import SessionManager
@@ -22,6 +22,27 @@ class LauncherOptions(TypedDict):
     entry_point: str
     tooltip: NotRequired[str]
     icon: NotRequired[str]
+
+
+def pack_code(code: str | types.ModuleType) -> str:
+    """Convert code to a string suitable to run in a kernel."""
+    if not isinstance(code, str):
+        should_call = callable(code)
+        func_name = code.__name__
+        code = inspect.getsource(code)
+        if should_call:
+            code = textwrap.dedent(
+                f"""
+                import asyncio
+
+                {{code}}
+
+                result = {func_name}()
+                if asyncio.iscoroutine(result):
+                    task = asyncio.create_task(result)
+                """
+            ).format(code=code)
+    return code
 
 
 @register
@@ -73,7 +94,37 @@ class JupyterFrontEnd(AsyncWidgetBase):
         return self
 
     def _init_python_backend(self) -> str:
-        "Run by the Ipylab python backend"
+        "Run by the Ipylab python backend."
         # This is called in a separate kernel started by the JavaScript frontend
         # the first time the ipylab plugin is activated.
-        pm.hook.run_once_at_startup.call_historic()
+        from ipylab.hookspecs import pm
+
+        pm.load_setuptools_entrypoints("ipylab-python-backend")
+        result = pm.hook.run_once_at_startup()
+
+    def newNotebook(
+        self,
+        *,
+        path: str = "",
+        name: str = "",
+        kernelId="",
+        kernelName="python3",
+        code: str | types.ModuleType = "",
+    ) -> asyncio.Task:
+        """Create a new notebook."""
+        return self.execute_method(
+            "newNotebook", name, path, kernelId, kernelName, pack_code(code), transform="raw"
+        )
+
+    def injectCode(self, kernelId: str, code: str | types.ModuleType) -> asyncio.Task:
+        """
+        Inject code into a running kernel.
+
+        kernelId: Jupyterlab assigned ID of running kernel
+
+        code: str | code
+            If passing a function, the function will be executed when its injected.
+            Return objects from the function to should be retained.
+        """
+
+        return self.execute_method("injectCode", kernelId, pack_code(code), transform="raw")

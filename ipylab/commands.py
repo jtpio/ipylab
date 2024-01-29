@@ -6,7 +6,7 @@ from typing import Callable
 
 from traitlets import Dict, Tuple, Unicode, observe
 
-from ipylab._plugin_manger import pm
+from ipylab.hookspecs import pm
 from ipylab.asyncwidget import AsyncWidgetBase, TransformMode, pack, register
 from ipylab.widgets import Icon
 

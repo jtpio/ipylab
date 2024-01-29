@@ -12,11 +12,10 @@ from ipywidgets import Widget, register, widget_serialization
 from traitlets import Bool, Dict, Instance, Set, Unicode
 
 import ipylab._frontend as _fe
-from ipylab._plugin_manger import pm
 
 __all__ = ["AsyncWidgetBase", "WidgetBase", "register", "pack", "Widget"]
 
-# Currently only checks for an IPython kernel. A better way of getting the kernel_id would be useful.
+# Currently only checks for an IPython kernel. A better way of getting the kernelId would be useful.
 ip = get_ipython()
 KERNEL_ID = (
     ip.kernel.config["IPKernelApp"]["connection_file"].split("kernel-", 1)[1].removesuffix(".json")
@@ -107,7 +106,7 @@ class WidgetBase(Widget):
 class AsyncWidgetBase(WidgetBase):
     """The base for all widgets that need async comms with the frontend model."""
 
-    kernel_id = Unicode(KERNEL_ID, read_only=True).tag(sync=True)
+    kernelId = Unicode(KERNEL_ID, read_only=True).tag(sync=True)
     _ipylab_model_register: dict[str, "AsyncWidgetBase"] = {}
     _singleton_register: dict[type, str] = {}
     SINGLETON = False
@@ -132,10 +131,10 @@ class AsyncWidgetBase(WidgetBase):
     def __init__(self, *, model_id=None, **kwgs):
         if self._model_id:
             return
-        if not self.kernel_id:
+        if not self.kernelId:
             raise RuntimeError(
                 f"{self.__class__.__name__} requries a running kernel."
-                "kernel_id is not set meaning that a kernel is not running."
+                "kernelId is not set meaning that a kernel is not running."
             )
         super().__init__(model_id=model_id, **kwgs)
         self._ipylab_model_register[self.model_id] = self

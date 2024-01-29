@@ -1,6 +1,6 @@
 {
     "name": "ipylab",
-    "version": "2.0.0-rc0",
+    "version": "2.0.0-b0",
     "description": "Control JupyterLab from Python notebooks",
     "keywords": [
         "jupyter",

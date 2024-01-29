@@ -21,7 +21,7 @@ def init_ipylab_backend() -> str:
 
 
 def launch_jupyterlab():
-    from ipylab._plugin_manger import pm
+    from ipylab.hookspecs import pm
 
     cls: IPLabApp = pm.hook.get_ipylab_backend_class()
     sys.exit(cls.launch_instance())
