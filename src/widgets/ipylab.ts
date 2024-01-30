@@ -7,6 +7,7 @@ import {
   DOMWidgetModel,
   IBackboneModelOptions,
   ISerializers,
+  IWidgetRegistryData,
   WidgetModel
 } from '@jupyter-widgets/base';
 import { ILabShell, JupyterFrontEnd, LabShell } from '@jupyterlab/application';
@@ -15,12 +16,12 @@ import { IDefaultFileBrowser } from '@jupyterlab/filebrowser';
 import { ILauncher } from '@jupyterlab/launcher';
 import { IRenderMimeRegistry } from '@jupyterlab/rendermime';
 import { ITranslator } from '@jupyterlab/translation';
-import { IWidgetRegistryData } from '@jupyter-widgets/base';
 import { CommandRegistry } from '@lumino/commands';
 import { JSONValue, UUID } from '@lumino/coreutils';
 import { ObjectHash } from 'backbone';
 import { MODULE_NAME, MODULE_VERSION } from '../version';
 import { PythonBackendModel } from './python_backend';
+import { getNestedObject, transformObject } from './utils';
 
 export {
   CommandRegistry,
@@ -91,8 +92,8 @@ export class IpylabModel extends DOMWidgetModel {
   /**
    * Perform an operation for the backend returning the result if successful
    * or an error 'message' if unsuccessful.
-   * null results are replaced with IpylabModel.OPERATION_DONE to be replaced
-   * by the backend.
+   * Results are 'transformed' by the method specified in the call to the operation from the backend.
+   * The transformed result is returned to the backend using the ipylab_BE value (uuid4).
    * @param msg
    */
   private async _do_operation_for_backend(msg: any) {
@@ -128,7 +129,7 @@ export class IpylabModel extends DOMWidgetModel {
       const content = {
         ipylab_BE: ipylab_BE,
         operation: operation,
-        payload: _transform_object(result, transform, this)
+        payload: transformObject(result, transform, this)
       };
       this.send(content, null, buffers);
     } catch (e) {
@@ -146,7 +147,8 @@ export class IpylabModel extends DOMWidgetModel {
    * Perform execute request from backend.
    * Options:
    *  - execute_method: Execute the method using dotted access.
-   *
+   *      eg. 'shell.expandLeft' will execute the method this.shell.expandLeft
+   *      args must be passed in an array in the as defined in the method.
    * @param payload
    * @returns
    */
@@ -155,17 +157,19 @@ export class IpylabModel extends DOMWidgetModel {
     delete (payload as any).FE_execute;
     switch (mode) {
       case 'execute_method': {
-        const owner = get_nested_object(
+        const owner = getNestedObject(
           this,
           kwgs.method.split('.').slice(0, -1).join('.')
         );
-        var func = get_nested_object(this, kwgs.method) as Function;
+        var func = getNestedObject(this, kwgs.method) as Function;
         func = func.bind(owner, ...(payload as any).args);
         return await func();
       }
     }
   }
   /**
+   * Perform an operation and return the result. The returned result
+   * will be transformed prior to returning the response message to the backend.
    *
    * @param op Name of the operation.
    * @param payload Options relevant to the operation.
@@ -186,6 +190,14 @@ export class IpylabModel extends DOMWidgetModel {
     }
   }
 
+  /**
+   * Schedule an operation to be performed on the backend.
+   * This is a mirror of 'schedule_operation' on the backend.
+   *
+   * @param operation The name of the operation to perform on the backend.
+   * @param payload Corresponding payload as expected by the backend.
+   * @returns
+   */
   async schedule_operation(
     operation: string,
     payload: JSONValue
@@ -197,12 +209,13 @@ export class IpylabModel extends DOMWidgetModel {
       operation: operation,
       payload: payload
     };
+    // Create callbacks to be resolved when a custom message is recieved
+    // with the key `ipylab_FE`.
     const callbacks = this._pending_backend_operation_callbacks;
     const promise = new Promise<JSONValue>((resolve, reject) => {
       callbacks.set(ipylab_FE, [resolve, reject]);
     });
     this.send(msg);
-    // TODO: await a response with corresponding ipylab_FE from the backend and return it's result or thrown an exception.
     var result = await promise;
     if (result === IpylabModel.OPERATION_DONE) result = null;
     return result;
@@ -242,86 +255,4 @@ export class IpylabModel extends DOMWidgetModel {
   static launcher: ILauncher;
   static exports: IWidgetRegistryData;
   static OPERATION_DONE = '--DONE--';
-}
-
-/**
- *Returns a nested object relative to `this`.
- * @param base The starting object.
- * @param path The dotted path of the object.
- * @returns
- */
-export function get_nested_object(base: object, path: string): any {
-  var obj: Object = base;
-  var path_: String = '';
-  const parts = path.split('.');
-  var attr = '';
-  for (let i = 0; i < parts.length; i++) {
-    attr = parts[i];
-    if (attr in obj) {
-      obj = obj[attr as keyof typeof obj];
-      path_ = !path_ ? attr : `${path_}.${attr}`;
-    } else break;
-  }
-  if (path_ != path) {
-    throw new Error(
-      `Failed to get the nested attribute ${path_}.${attr} ` +
-        ` (base='${(base as any).name ?? 'unknown'}') `
-    );
-  }
-  return obj;
-}
-
-/**
- * Modify the object for sending.
- * TODO: Add in 'function'
- * @param obj
- * @param options The mode as a string or an object with mode and any other parameters.
- * @param thisArg 'function' mode only - the binding of `this`.
- * @returns
- */
-function _transform_object(
-  obj: any,
-  options: string | any,
-  thisArg: object = null
-): JSONValue {
-  const mode = typeof options == 'string' ? options : options.mode;
-  switch (mode) {
-    case 'done':
-      return IpylabModel.OPERATION_DONE;
-    case 'raw':
-      return obj as any;
-    case 'null':
-      return null;
-    case 'string':
-      return String(obj);
-    case 'attribute':
-      // expects simple: {parts:['dotted.attribute']}
-      // or advanced: {parts:[{path:'dotted.attribute', transform:'...' }]
-      const result: { [key: string]: any } = new Object();
-      for (var i = 0; i < options.parts.length; i++) {
-        if (typeof options.parts[i] == 'string') {
-          var path = options.parts[i];
-          var transform: any = 'raw';
-        } else {
-          var { path, transform } = options.parts[i];
-        }
-        var part = get_nested_object(obj, path);
-        result[path] = _transform_object(part, transform);
-      }
-      return result;
-    case 'function':
-      var func = to_function(options.code).bind(thisArg);
-      return func(obj);
-    default:
-      throw new Error(`Invalid return mode: '${options.mode}'`);
-  }
-}
-
-/**
- * Convert a string definition of a function to a function object.
- * @param code The function as a string: eg. 'function (a, b) { return a + b; }'
- * @returns
- */
-function to_function(code: string): Function {
-  return new Function('return ' + code)();
 }

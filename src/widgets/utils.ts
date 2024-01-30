@@ -159,3 +159,86 @@ function registerWidgets(manager: KernelWidgetManager) {
     exports: { OutputModel, OutputView }
   });
 }
+
+/**
+ *Returns a nested object relative to `this`.
+ * @param base The starting object.
+ * @param path The dotted path of the object.
+ * @returns
+ */
+
+export function getNestedObject(base: object, path: string): any {
+  var obj: Object = base;
+  var path_: String = '';
+  const parts = path.split('.');
+  var attr = '';
+  for (let i = 0; i < parts.length; i++) {
+    attr = parts[i];
+    if (attr in obj) {
+      obj = obj[attr as keyof typeof obj];
+      path_ = !path_ ? attr : `${path_}.${attr}`;
+    } else break;
+  }
+  if (path_ != path) {
+    throw new Error(
+      `Failed to get the nested attribute ${path_}.${attr} ` +
+        ` (base='${(base as any).name ?? 'unknown'}') `
+    );
+  }
+  return obj;
+}
+
+/**
+ * Convert a string definition of a function to a function object.
+ * @param code The function as a string: eg. 'function (a, b) { return a + b; }'
+ * @returns
+ */
+export function toFunction(code: string): Function {
+  return new Function('return ' + code)();
+}
+
+/**
+ * Transform the object for sending.
+ * TODO: Add in 'function'
+ * @param obj
+ * @param options The mode as a string or an object with mode and any other parameters.
+ * @param thisArg 'function' mode only - the binding of `this`.
+ * @returns
+ */
+export function transformObject(
+  obj: any,
+  options: string | any,
+  thisArg: object = null
+): JSONValue {
+  const mode = typeof options == 'string' ? options : options.mode;
+  switch (mode) {
+    case 'done':
+      return IpylabModel.OPERATION_DONE;
+    case 'raw':
+      return obj as any;
+    case 'null':
+      return null;
+    case 'string':
+      return String(obj);
+    case 'attribute':
+      // expects simple: {parts:['dotted.attribute']}
+      // or advanced: {parts:[{path:'dotted.attribute', transform:'...' }]
+      const result: { [key: string]: any } = new Object();
+      for (var i = 0; i < options.parts.length; i++) {
+        if (typeof options.parts[i] == 'string') {
+          var path = options.parts[i];
+          var transform: any = 'raw';
+        } else {
+          var { path, transform } = options.parts[i];
+        }
+        var part = getNestedObject(obj, path);
+        result[path] = transformObject(part, transform);
+      }
+      return result;
+    case 'function':
+      var func = toFunction(options.code).bind(thisArg);
+      return func(obj);
+    default:
+      throw new Error(`Invalid return mode: '${options.mode}'`);
+  }
+}
