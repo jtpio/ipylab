@@ -2,7 +2,6 @@
 // Distributed under the terms of the Modified BSD License.
 
 import { unpack_models } from '@jupyter-widgets/base';
-// import { KernelWidgetManager } from '@jupyter-widgets/jupyterlab-manager';
 import { LabShell } from '@jupyterlab/application';
 import {
   DOMUtils,
@@ -12,7 +11,6 @@ import {
 } from '@jupyterlab/apputils';
 import { FileDialog } from '@jupyterlab/filebrowser';
 import { Session } from '@jupyterlab/services';
-import { UUID } from '@lumino/coreutils';
 import {
   ISerializers,
   IpylabModel,
@@ -20,6 +18,7 @@ import {
   JupyterFrontEnd
 } from './ipylab';
 import { IpylabMainAreaWidget } from './main_area';
+import { injectCode, newNotebook, newSession } from './utils';
 
 /**
  * The model for a JupyterFrontEnd.
@@ -94,7 +93,6 @@ export class JupyterFrontEndModel extends IpylabModel {
         return await this._addToShell(payload);
       case 'showDialog':
         result = await showDialog(payload);
-        4;
         return { value: result.button.accept, isChecked: result.isChecked };
       case 'getBoolean':
         return await InputDialog.getBoolean(payload).then(_get_result);
@@ -115,45 +113,21 @@ export class JupyterFrontEndModel extends IpylabModel {
       case 'getExistingDirectory':
         payload.manager = IpylabModel.defaultBrowser.model.manager;
         return await FileDialog.getExistingDirectory(payload).then(_get_result);
+      case 'newSession':
+        result = await newSession(payload);
+        return result.model;
+      case 'newNotebook':
+        result = await newNotebook(payload);
+        return result.sessionContext.session.model;
+      case 'injectCode':
+        return await injectCode(payload);
+      case 'startIyplabPythonBackend':
+        return (await IpylabModel.python_backend.checkStart()) as any;
       default:
         throw new Error(
           `operation='${op}' has not been implemented in ${JupyterFrontEndModel.model_name}!`
         );
     }
-  }
-  async newNotebook(
-    name: string,
-    path: string,
-    kernelId: string,
-    kernelName: string = 'python3'
-  ): Promise<JSONValue> {
-    const nb = await IpylabModel.app.commands.execute('notebook:create-new', {
-      kernelId: kernelId || `${UUID.uuid4()}`,
-      kernelName: kernelName
-    });
-    await nb.sessionContext.ready;
-    if (name) await nb.sessionContext.session.setName(name);
-    if (path) await nb.sessionContext.session.setPath(path);
-    return nb.sessionContext.session.model as any;
-  }
-
-  /**
-   * @param payload.kernelId
-   * @param payload.code : code to inject
-   * @returns
-   */
-  async injectCode(kernelId: string, code: string): Promise<JSONValue> {
-    const kernelModel = await IpylabModel.app.serviceManager.kernels.findById(
-      kernelId
-    );
-    const connection = IpylabModel.app.serviceManager.kernels.connectTo({
-      model: kernelModel
-    });
-    const future = connection.requestExecute({
-      code: code,
-      store_history: false
-    });
-    return (await future.done) as any;
   }
 
   /**
@@ -169,7 +143,7 @@ export class JupyterFrontEndModel extends IpylabModel {
     if (area === 'main') {
       luminoWidget = new IpylabMainAreaWidget({
         content: view.luminoWidget,
-        kernelId: this.get('kernelId'),
+        kernelId: this.kernelId,
         name: 'Ipylab'
       });
     }

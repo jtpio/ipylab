@@ -3,14 +3,18 @@
 from __future__ import annotations
 
 import asyncio
-import inspect
-import textwrap
 import types
 from typing import NotRequired, Self, TypedDict
 
 from traitlets import Dict, Instance, Tuple, Unicode
 
-from ipylab.asyncwidget import AsyncWidgetBase, register, widget_serialization
+from ipylab.asyncwidget import (
+    AsyncWidgetBase,
+    TransformMode,
+    pack_code,
+    register,
+    widget_serialization,
+)
 from ipylab.commands import CommandPalette, CommandRegistry
 from ipylab.dialog import Dialog, FileDialog
 from ipylab.sessions import SessionManager
@@ -22,27 +26,6 @@ class LauncherOptions(TypedDict):
     entry_point: str
     tooltip: NotRequired[str]
     icon: NotRequired[str]
-
-
-def pack_code(code: str | types.ModuleType) -> str:
-    """Convert code to a string suitable to run in a kernel."""
-    if not isinstance(code, str):
-        should_call = callable(code)
-        func_name = code.__name__
-        code = inspect.getsource(code)
-        if should_call:
-            code = textwrap.dedent(
-                f"""
-                import asyncio
-
-                {{code}}
-
-                result = {func_name}()
-                if asyncio.iscoroutine(result):
-                    task = asyncio.create_task(result)
-                """
-            ).format(code=code)
-    return code
 
 
 @register
@@ -102,18 +85,57 @@ class JupyterFrontEnd(AsyncWidgetBase):
         pm.load_setuptools_entrypoints("ipylab-python-backend")
         result = pm.hook.run_once_at_startup()
 
+    def newSession(
+        self,
+        path: str = "",
+        *,
+        name: str = "",
+        kernelId="",
+        kernelName="python3",
+        code: str | types.ModuleType = "",
+    ) -> asyncio.Task:
+        """
+        Create a new kernel and execute code in it or execute code in an existing kernel.
+
+        path: The session path.
+        type: The type of session.
+        name: The name of the session.
+        kernel: The kernel details.
+        code: A string, module or function.
+
+        If passing a function, the function will be executed. It is important
+        that objects that must stay alive outside the function must be kept alive.
+        So it is advised to use a code.
+
+        """
+        return self.schedule_operation(
+            "newSession",
+            path=path,
+            name=name or path,
+            kernelId=kernelId,
+            kernelName=kernelName,
+            code=pack_code(code),
+            transform=TransformMode.raw,
+        )
+
     def newNotebook(
         self,
-        *,
         path: str = "",
+        *,
         name: str = "",
         kernelId="",
         kernelName="python3",
         code: str | types.ModuleType = "",
     ) -> asyncio.Task:
         """Create a new notebook."""
-        return self.execute_method(
-            "newNotebook", name, path, kernelId, kernelName, pack_code(code), transform="raw"
+        return self.schedule_operation(
+            "newNotebook",
+            path=path,
+            name=name or path,
+            kernelId=kernelId,
+            kernelName=kernelName,
+            code=pack_code(code),
+            transform=TransformMode.raw,
         )
 
     def injectCode(self, kernelId: str, code: str | types.ModuleType) -> asyncio.Task:
@@ -127,4 +149,10 @@ class JupyterFrontEnd(AsyncWidgetBase):
             Return objects from the function to should be retained.
         """
 
-        return self.execute_method("injectCode", kernelId, pack_code(code), transform="raw")
+        return self.schedule_operation(
+            "injectCode", kernelId=kernelId, code=pack_code(code), transform=TransformMode.raw
+        )
+
+    def startIyplabPythonBackend(self) -> asyncio.Task:
+        """Checks backend is running and starts it if it isn't returning the session model."""
+        return self.schedule_operation("startIyplabPythonBackend")

@@ -1,100 +1,48 @@
-import { ISessionContext, SessionContext } from '@jupyterlab/apputils';
-
-import { IOutput } from '@jupyterlab/nbformat';
-
-import { Kernel, KernelMessage } from '@jupyterlab/services';
-
-import { ISignal, Signal } from '@lumino/signaling';
-
-import { ServiceManager } from '@jupyterlab/services';
-
-import { ITranslator } from '@jupyterlab/translation';
-
+import { Session } from '@jupyterlab/services';
+import { newSession } from './utils';
+import { IpylabModel } from './ipylab';
+import { IDisposable } from '@lumino/disposable';
 /**
- *  The python backend that manages python side plugins.
+ *  The Python backend that auto loads python side plugins using `pluggy` module.
+ *
  */
 export class PythonBackendModel {
-  async checkStart(manager: ServiceManager.IManager, translator: ITranslator) {
-    if (!this._sessionContext || this._sessionContext.isDisposed) {
-      this._sessionContext = new SessionContext({
-        sessionManager: manager.sessions,
-        specsManager: manager.kernelspecs,
+  async checkStart() {
+    if (!this._backendSession || this._backendSession.disposed) {
+      this._backendSession = await newSession({
+        path: 'Ipylab backend',
         name: 'Ipylab backend',
-        translator: translator,
-        kernelPreference: {
-          autoStartDefault: true,
-          canStart: true,
-          shouldStart: true,
-          language: 'python'
-        }
+        language: 'python3',
+        code: 'import ipylab.scripts; ipylab.scripts.init_ipylab_backend()'
       });
     }
-    await this._sessionContext.initialize();
-    await this._sessionContext.ready;
-    this.execute('import ipylab.scripts; ipylab.scripts.init_ipylab_backend()');
-    const result = await this.future.done;
-    result;
-  }
+    // Add a command
+    if (!this._command || this._command.isDisposed) {
+      this._command = IpylabModel.app.commands.addCommand(
+        PythonBackendModel.checkstart,
+        {
+          label: 'Ipylab check start Python backend',
+          caption:
+            'Start the Ipylab Python backend that will run registered autostart plugins.\n ' +
+            ' in "pyproject.toml"  added entry for: \n' +
+            '[project.entry-points.ipylab-python-backend] \n' +
+            'autostart = "my_module.ipylab_backend_plugin"',
 
-  get future(): Kernel.IFuture<
-    KernelMessage.IExecuteRequestMsg,
-    KernelMessage.IExecuteReplyMsg
-  > | null {
-    return this._future;
-  }
-
-  set future(
-    value: Kernel.IFuture<
-      KernelMessage.IExecuteRequestMsg,
-      KernelMessage.IExecuteReplyMsg
-    > | null
-  ) {
-    this._future = value;
-    if (!value) {
-      return;
+          execute: () => IpylabModel.python_backend.checkStart()
+        }
+      );
+      if (this._palletItem) this._palletItem.dispose();
+      this._palletItem = IpylabModel.palette.addItem({
+        command: PythonBackendModel.checkstart,
+        category: 'ipylab',
+        rank: 500
+      });
     }
-    value.onIOPub = this._onIOPub;
+
+    return this._backendSession.model;
   }
-
-  get output(): IOutput | null {
-    return this._output;
-  }
-
-  get stateChanged(): ISignal<PythonBackendModel, void> {
-    return this._stateChanged;
-  }
-
-  execute(code: string): void {
-    if (!this._sessionContext || !this._sessionContext.session?.kernel) {
-      return;
-    }
-    this.future = this._sessionContext.session?.kernel?.requestExecute({
-      code,
-      store_history: false
-    });
-  }
-
-  private _onIOPub = (msg: KernelMessage.IIOPubMessage): void => {
-    const msgType = msg.header.msg_type;
-    switch (msgType) {
-      case 'execute_result':
-      case 'display_data':
-      case 'update_display_data':
-        this._output = msg.content as IOutput;
-        console.log(this._output);
-        this._stateChanged.emit();
-        break;
-      default:
-        break;
-    }
-    return;
-  };
-
-  private _future: Kernel.IFuture<
-    KernelMessage.IExecuteRequestMsg,
-    KernelMessage.IExecuteReplyMsg
-  > | null = null;
-  private _output: IOutput | null = null;
-  private _sessionContext: ISessionContext;
-  private _stateChanged = new Signal<PythonBackendModel, void>(this);
+  static checkstart = 'ipylab:check-start-python-backend';
+  private _command?: IDisposable;
+  private _palletItem?: IDisposable;
+  private _backendSession?: Session.ISessionConnection;
 }

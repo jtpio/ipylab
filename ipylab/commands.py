@@ -65,7 +65,7 @@ class CommandRegistry(AsyncWidgetBase):
     def execute(
         self,
         command_id: str,
-        transform: TransformMode | dict[str, str] = TransformMode.done,
+        transform: TransformMode | dict[str, str] = TransformMode.raw,
         **args,
     ) -> asyncio.Task:
         """Execute command_id.

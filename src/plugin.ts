@@ -1,23 +1,18 @@
 // Copyright (c) ipylab contributors
 // Distributed under the terms of the Modified BSD License.
 
+import { IJupyterWidgetRegistry } from '@jupyter-widgets/base';
 import {
   ILabShell,
   JupyterFrontEnd,
   JupyterFrontEndPlugin
 } from '@jupyterlab/application';
-
 import { ICommandPalette } from '@jupyterlab/apputils';
-
-import { IJupyterWidgetRegistry } from '@jupyter-widgets/base';
-
-import { ILauncher } from '@jupyterlab/launcher';
-
-import { ITranslator } from '@jupyterlab/translation';
-
-import { MODULE_NAME, MODULE_VERSION } from './version';
-
 import { IDefaultFileBrowser } from '@jupyterlab/filebrowser';
+import { ILauncher } from '@jupyterlab/launcher';
+import { IRenderMimeRegistry } from '@jupyterlab/rendermime';
+import { ITranslator } from '@jupyterlab/translation';
+import { MODULE_NAME, MODULE_VERSION } from './version';
 
 const EXTENSION_ID = 'ipylab:plugin';
 
@@ -27,7 +22,7 @@ const EXTENSION_ID = 'ipylab:plugin';
 const extension: JupyterFrontEndPlugin<void> = {
   id: EXTENSION_ID,
   autoStart: true,
-  requires: [IJupyterWidgetRegistry],
+  requires: [IJupyterWidgetRegistry, IRenderMimeRegistry],
   optional: [
     ICommandPalette,
     ILabShell,
@@ -52,6 +47,7 @@ const extension: JupyterFrontEndPlugin<void> = {
 async function activate(
   app: JupyterFrontEnd,
   registry: IJupyterWidgetRegistry,
+  rendermime: IRenderMimeRegistry,
   palette: ICommandPalette,
   labShell: ILabShell | null,
   defaultBrowser: IDefaultFileBrowser | null,
@@ -62,22 +58,21 @@ async function activate(
   if (!widgetExports.JupyterFrontEndModel.app) {
     // add globals
     widgetExports.IpylabModel.app = app;
+    widgetExports.IpylabModel.rendermime = rendermime;
     widgetExports.IpylabModel.labShell = labShell;
     widgetExports.IpylabModel.defaultBrowser = defaultBrowser;
     widgetExports.IpylabModel.palette = palette;
     widgetExports.IpylabModel.translator = translator;
     widgetExports.IpylabModel.launcher = launcher;
-
-    registry.registerWidget({
+    widgetExports.IpylabModel.exports = {
       name: MODULE_NAME,
       version: MODULE_VERSION,
       exports: widgetExports
-    });
+    };
+
+    registry.registerWidget(widgetExports.IpylabModel.exports);
   }
-  widgetExports.IpylabModel.python_backend.checkStart(
-    app.serviceManager,
-    translator
-  );
+  widgetExports.IpylabModel.python_backend.checkStart();
 }
 
 export default extension;

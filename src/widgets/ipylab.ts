@@ -13,7 +13,9 @@ import { ILabShell, JupyterFrontEnd, LabShell } from '@jupyterlab/application';
 import { ICommandPalette } from '@jupyterlab/apputils';
 import { IDefaultFileBrowser } from '@jupyterlab/filebrowser';
 import { ILauncher } from '@jupyterlab/launcher';
+import { IRenderMimeRegistry } from '@jupyterlab/rendermime';
 import { ITranslator } from '@jupyterlab/translation';
+import { IWidgetRegistryData } from '@jupyter-widgets/base';
 import { CommandRegistry } from '@lumino/commands';
 import { JSONValue, UUID } from '@lumino/coreutils';
 import { ObjectHash } from 'backbone';
@@ -36,8 +38,9 @@ export {
  */
 export class IpylabModel extends DOMWidgetModel {
   initialize(attributes: ObjectHash, options: IBackboneModelOptions): void {
-    this._app = IpylabModel.app;
     super.initialize(attributes, options);
+    this._kernelId = (this.widget_manager as any).kernel.id;
+    this.set('kernelId', this._kernelId);
     this._pending_backend_operation_callbacks = new Map();
     this.on('msg:custom', this._onCustomMessage.bind(this));
     const msg = `ipylab ${this.get('_model_name')} ready for operations`;
@@ -47,10 +50,15 @@ export class IpylabModel extends DOMWidgetModel {
         this.close();
       }
     });
+    this.save_changes();
   }
 
   get app() {
-    return this._app;
+    return IpylabModel.app;
+  }
+
+  get kernelId() {
+    return this._kernelId;
   }
 
   check_closed() {
@@ -216,9 +224,7 @@ export class IpylabModel extends DOMWidgetModel {
     string,
     [Function, Function]
   >;
-
-  private _app!: JupyterFrontEnd;
-
+  private _kernelId: string;
   static python_backend = new PythonBackendModel();
   static model_name: string;
   static model_module = MODULE_NAME;
@@ -228,11 +234,13 @@ export class IpylabModel extends DOMWidgetModel {
   static view_module_version = MODULE_VERSION;
 
   static app: JupyterFrontEnd;
+  static rendermime: IRenderMimeRegistry;
   static labShell: LabShell;
   static defaultBrowser: IDefaultFileBrowser;
   static palette: ICommandPalette;
   static translator: ITranslator;
   static launcher: ILauncher;
+  static exports: IWidgetRegistryData;
   static OPERATION_DONE = '--DONE--';
 }
 

@@ -85,6 +85,7 @@
     "dependencies": {
         "@jupyter-widgets/base": "^6",
         "@jupyter-widgets/controls": "^5",
+        "@jupyter-widgets/jupyterlab-manager": "^5.0.9",
         "@jupyterlab/application": "^4.0.4",
         "@jupyterlab/apputils": "^4.1.4",
         "@jupyterlab/console": "^4.0.11",
@@ -92,6 +93,7 @@
         "@jupyterlab/filebrowser": "^4.0.10",
         "@jupyterlab/launcher": "^4.0.11",
         "@jupyterlab/observables": "^5.0.4",
+        "@jupyterlab/rendermime": "^4.0.11",
         "@lumino/algorithm": "^2",
         "@lumino/commands": "^2",
         "@lumino/disposable": "^2",

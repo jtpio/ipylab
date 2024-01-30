@@ -21,7 +21,7 @@ class JupyterFrontEndSubsection(HasApp):
         method: str,
         *args,
         callback: Callable[[any, any], None | Coroutine] = None,
-        transform: TransformMode | dict[str, str] = TransformMode.done,
+        transform: TransformMode | dict[str, str] = TransformMode.raw,
     ) -> asyncio.Task:
         "Execute a method on the JFE_SUB_PATH to which this instance belongs."
         # validation
@@ -33,7 +33,7 @@ class JupyterFrontEndSubsection(HasApp):
         name: str,
         *,
         callback: Callable[[any, any], None | Coroutine] = None,
-        transform: TransformMode | dict[str, str] = TransformMode.done,
+        transform: TransformMode | dict[str, str] = TransformMode.raw,
     ) -> asyncio.Task:
         """A serialized verison of the attribute relative to this object."""
         raise NotImplementedError("TODO")
@@ -48,7 +48,7 @@ class JupyterFrontEndSubsection(HasApp):
         base: str = "",
         *,
         callback: Callable[[any, any], None | Coroutine] = None,
-        transform: TransformMode | dict[str, str] = TransformMode.done,
+        transform: TransformMode | dict[str, str] = TransformMode.raw,
     ) -> asyncio.Task:
         """Get a list of all attributes"""
         raise NotImplementedError("TODO")

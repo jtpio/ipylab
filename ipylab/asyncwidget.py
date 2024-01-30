@@ -4,25 +4,20 @@ from __future__ import annotations
 
 import asyncio
 import enum
+import inspect
+import textwrap
+import types
 import uuid
 from collections.abc import Callable, Coroutine
 from typing import Any
 
-from IPython.core.getipython import get_ipython
 from ipywidgets import Widget, register, widget_serialization
 from traitlets import Bool, Dict, Instance, Set, Unicode
 
 import ipylab._frontend as _fe
+from ipylab.hookspecs import pm
 
 __all__ = ["AsyncWidgetBase", "WidgetBase", "register", "pack", "Widget"]
-
-# Currently only checks for an IPython kernel. A better way of getting the kernelId would be useful.
-ip = get_ipython()
-KERNEL_ID = (
-    ip.kernel.config["IPKernelApp"]["connection_file"].split("kernel-", 1)[1].removesuffix(".json")
-    if ip
-    else "NO KERNEL"
-)
 
 
 def pack(obj: Widget):
@@ -30,6 +25,27 @@ def pack(obj: Widget):
     if isinstance(obj, Widget):
         obj = widget_serialization["to_json"](obj, None)
     return obj
+
+
+def pack_code(code: str | types.ModuleType) -> str:
+    """Convert code to a string suitable to run in a kernel."""
+    if not isinstance(code, str):
+        should_call = callable(code)
+        func_name = code.__name__
+        code = inspect.getsource(code)
+        if should_call:
+            code = textwrap.dedent(
+                f"""
+                import asyncio
+
+                {{code}}
+
+                result = {func_name}()
+                if asyncio.iscoroutine(result):
+                    task = asyncio.create_task(result)
+                """
+            ).format(code=code)
+    return code
 
 
 class TransformMode(enum.StrEnum):
@@ -102,7 +118,7 @@ class WidgetBase(Widget):
 class AsyncWidgetBase(WidgetBase):
     """The base for all widgets that need async comms with the frontend model."""
 
-    kernelId = Unicode(KERNEL_ID, read_only=True).tag(sync=True)
+    kernelId = Unicode(read_only=True).tag(sync=True)
     _ipylab_model_register: dict[str, AsyncWidgetBase] = {}
     _singleton_register: dict[type, str] = {}
     SINGLETON = False
@@ -127,11 +143,6 @@ class AsyncWidgetBase(WidgetBase):
     def __init__(self, *, model_id=None, **kwgs):
         if self._model_id:
             return
-        if not self.kernelId:
-            raise RuntimeError(
-                f"{self.__class__.__name__} requries a running kernel."
-                "kernelId is not set meaning that a kernel is not running."
-            )
         super().__init__(model_id=model_id, **kwgs)
         self._ipylab_model_register[self.model_id] = self
         if self.SINGLETON:
@@ -256,7 +267,7 @@ class AsyncWidgetBase(WidgetBase):
         operation: str,
         *,
         callback: Callable[[any, any], None | Coroutine] = None,
-        transform: TransformMode | dict[str, str] = TransformMode.done,
+        transform: TransformMode | dict[str, str] = TransformMode.raw,
         **kwgs,
     ) -> asyncio.Task:
         """
@@ -300,7 +311,7 @@ class AsyncWidgetBase(WidgetBase):
         method: str,
         *args,
         callback: Callable[[any, any], None | Coroutine] = None,
-        transform: TransformMode | dict[str, str] = TransformMode.done,
+        transform: TransformMode | dict[str, str] = TransformMode.raw,
     ) -> asyncio.Task:
         """Call a method on the corresponding frontend object.
 
@@ -334,7 +345,7 @@ class AsyncWidgetBase(WidgetBase):
         name: str,
         *,
         callback: Callable[[any, any], None | Coroutine] = None,
-        transform: TransformMode | dict[str, str] = TransformMode.done,
+        transform: TransformMode | dict[str, str] = TransformMode.raw,
     ):
         """A serialized verison of the attribute relative to this object."""
         raise NotImplementedError("TODO")
@@ -355,7 +366,7 @@ class AsyncWidgetBase(WidgetBase):
         base: str = "",
         *,
         callback: Callable[[any, any], None | Coroutine] = None,
-        transform: TransformMode | dict[str, str] = TransformMode.done,
+        transform: TransformMode | dict[str, str] = TransformMode.raw,
     ):
         """A serialized verison of the attribute relative to this object."""
         raise NotImplementedError("TODO")

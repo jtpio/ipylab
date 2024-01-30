@@ -11,9 +11,11 @@ repos:
     rev: 'v0.8.1'
     hooks:
     -   id: taplo
-  - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.1.11
+  - repo: local
     hooks:
-      - id: ruff
-        args: ["--fix"]
-      - id: ruff-format
+      - id: ruff-format-hatch-settings
+        name: hatch-ruff
+        language: system
+        entry: hatch fmt
+        pass_filenames: false
+        verbose: true
