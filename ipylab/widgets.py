@@ -6,7 +6,7 @@ from __future__ import annotations
 import asyncio
 
 import ipywidgets as ipw
-from ipywidgets import Box, Layout, register, widget_serialization
+from ipywidgets import Box, DOMWidget, Layout, register, widget_serialization
 from ipywidgets.widgets.trait_types import InstanceDict
 from traitlets import Bool, Dict, Unicode
 
@@ -17,7 +17,7 @@ from ipylab.shell import Area, InsertMode
 
 
 @register
-class Icon(WidgetBase):
+class Icon(DOMWidget, WidgetBase):
     _model_name = Unicode("IconModel").tag(sync=True)
     _view_name = Unicode("IconView").tag(sync=True)
 
