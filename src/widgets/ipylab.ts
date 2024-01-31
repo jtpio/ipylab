@@ -8,7 +8,8 @@ import {
   IBackboneModelOptions,
   ISerializers,
   IWidgetRegistryData,
-  WidgetModel
+  WidgetModel,
+  unpack_models
 } from '@jupyter-widgets/base';
 import { ILabShell, JupyterFrontEnd, LabShell } from '@jupyterlab/application';
 import { ICommandPalette } from '@jupyterlab/apputils';
@@ -157,8 +158,11 @@ export class IpylabModel extends DOMWidgetModel {
     delete (payload as any).FE_execute;
     switch (mode) {
       case 'execute_method': {
+        let obj = this;
+        if (kwgs.widget)
+          obj = await unpack_models(kwgs.widget, this.widget_manager);
         const owner = getNestedObject(
-          this,
+          obj,
           kwgs.method.split('.').slice(0, -1).join('.')
         );
         var func = getNestedObject(this, kwgs.method) as Function;

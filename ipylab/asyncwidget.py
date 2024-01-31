@@ -312,6 +312,7 @@ class AsyncWidgetBase(WidgetBase):
         *args,
         callback: Callable[[any, any], None | Coroutine] = None,
         transform: TransformMode | dict[str, str] = TransformMode.raw,
+        widget: Widget | None = None,
     ) -> asyncio.Task:
         """Call a method on the corresponding frontend object.
 
@@ -331,9 +332,7 @@ class AsyncWidgetBase(WidgetBase):
             operation="FE_execute",
             FE_execute={
                 "mode": "execute_method",
-                "kwgs": {
-                    "method": method,
-                },
+                "kwgs": {"method": method, "widget": pack(widget)},
             },
             transform=transform,
             callback=callback,
@@ -346,9 +345,16 @@ class AsyncWidgetBase(WidgetBase):
         *,
         callback: Callable[[any, any], None | Coroutine] = None,
         transform: TransformMode | dict[str, str] = TransformMode.raw,
+        widget: Widget | None = None,
     ):
         """A serialized verison of the attribute relative to this object."""
-        return self.execute_method("getAttribute", path, callback=callback, transform=transform)
+        return self.execute_method(
+            "getAttribute",
+            path,
+            callback=callback,
+            transform=transform,
+            widget=widget,
+        )
 
     def listMethods(self, path: str = "", depth=2, skip_hidden=True) -> asyncio.Task[list[str]]:
         """Get a list of methods belonging to the object 'path' of the Frontend instance.
@@ -371,6 +377,7 @@ class AsyncWidgetBase(WidgetBase):
         how="group",
         callback: Callable[[any, any], None | Coroutine] = None,
         transform: TransformMode | dict[str, str] = TransformMode.raw,
+        widget: Widget | None = None,
     ) -> asyncio.Task[dict | list]:
         """Get a mapping of attributes of the object at 'path' of the Frontend instance.
 
@@ -393,16 +400,11 @@ class AsyncWidgetBase(WidgetBase):
             return payload
 
         return self.execute_method(
-            "listAttributes", path, type, depth, callback=callback_, transform=transform
+            "listAttributes",
+            path,
+            type,
+            depth,
+            callback=callback_,
+            transform=transform,
+            widget=widget,
         )
-
-
-{
-    "ipylab_BE": "83a513b1-0ab3-443f-9521-b740be0b8cd3",
-    "operation": "FE_execute",
-    "kwgs": {
-        "FE_execute": {"mode": "execute_method", "kwgs": {"method": "listAttributes"}},
-        "args": ("app.shell", "function", 2),
-    },
-    "transform": "raw",
-}
