@@ -4,9 +4,9 @@ from __future__ import annotations
 
 import asyncio
 import types
-from typing import NotRequired, Self, TypedDict
 
 from traitlets import Dict, Instance, Tuple, Unicode
+from typing_extensions import NotRequired, Self, TypedDict
 
 from ipylab.asyncwidget import (
     AsyncWidgetBase,
@@ -70,10 +70,10 @@ class JupyterFrontEnd(AsyncWidgetBase):
     async def wait_ready(self, timeout=5) -> Self:
         """Wait until connected to app indicates it is ready."""
         if not self._ready_response.is_set():
-            async with asyncio.TaskGroup() as group, asyncio.timeout(timeout):
-                group.create_task(super().wait_ready())
-                group.create_task(self.commands.wait_ready())
-                group.create_task(self.command_pallet.wait_ready())
+            future = asyncio.gather(
+                super().wait_ready(), self.commands.wait_ready(), self.command_pallet.wait_ready()
+            )
+            await asyncio.wait_for(future, timeout)
         return self
 
     def _init_python_backend(self) -> str:

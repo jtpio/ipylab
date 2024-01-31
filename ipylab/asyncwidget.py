@@ -3,8 +3,8 @@
 from __future__ import annotations
 
 import asyncio
-import enum
 import inspect
+import sys
 import textwrap
 import types
 import uuid
@@ -16,6 +16,12 @@ from traitlets import Bool, Dict, Instance, Set, Unicode
 
 import ipylab._frontend as _fe
 from ipylab.hookspecs import pm
+
+if sys.version_info >= (3, 11):
+    from enum import StrEnum
+else:
+    from backports.strenum import StrEnum
+
 
 __all__ = ["AsyncWidgetBase", "WidgetBase", "register", "pack", "Widget"]
 
@@ -48,7 +54,7 @@ def pack_code(code: str | types.ModuleType) -> str:
     return code
 
 
-class TransformMode(enum.StrEnum):
+class TransformMode(StrEnum):
     """The transformation to apply to the result of frontend operations prior to sending.
 
     - done: [default] A string '--DONE--'

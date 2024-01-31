@@ -3,13 +3,18 @@
 from __future__ import annotations
 
 import asyncio
-import enum
+import sys
 import typing as t
 
 import ipywidgets as ipw
 
 from ipylab import pack
 from ipylab.jupyterfrontend_subsection import JupyterFrontEndSubsection
+
+if sys.version_info >= (3, 11):
+    from enum import StrEnum
+else:
+    from backports.strenum import StrEnum
 
 if t.TYPE_CHECKING:
     from ipywidgets import Widget
@@ -18,7 +23,7 @@ if t.TYPE_CHECKING:
 __all__ = ["Area", "InsertMode", "Shell"]
 
 
-class Area(enum.StrEnum):
+class Area(StrEnum):
     # https://github.com/jupyterlab/jupyterlab/blob/da8e7bda5eebd22319f59e5abbaaa9917872a7e8/packages/application/src/shell.ts#L500
     main = "main"
     left = "left"
@@ -30,7 +35,7 @@ class Area(enum.StrEnum):
     menu = "menu"
 
 
-class InsertMode(enum.StrEnum):
+class InsertMode(StrEnum):
     # ref https://lumino.readthedocs.io/en/latest/api/types/widgets.DockLayout.InsertMode.html
     split_top = "split-top"
     split_left = "split-left"

@@ -51,16 +51,15 @@ class CommandRegistry(AsyncWidgetBase):
     async def _do_operation_for_frontend(
         self, operation: str, payload: dict, buffers: list
     ) -> bool | None:
-        match operation:
-            case "execute":
-                command_id = payload.get("id")
-                cmd = self._execute_callbacks[command_id]
-                result = cmd(**payload.get("kwgs", {}))
-                if asyncio.iscoroutine(result):
-                    result = await result
-                return result
-            case _:
-                pm.hook.unhandled_frontend_operation_message(self, operation)
+        if operation == "execute":
+            command_id = payload.get("id")
+            cmd = self._execute_callbacks[command_id]
+            result = cmd(**payload.get("kwgs", {}))
+            if asyncio.iscoroutine(result):
+                result = await result
+            return result
+        else:
+            pm.hook.unhandled_frontend_operation_message(self, operation)
 
     def execute(
         self,
