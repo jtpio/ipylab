@@ -100,7 +100,7 @@ class JupyterFrontEnd(AsyncWidgetBase):
         path: The session path.
         type: The type of session.
         name: The name of the session.
-        kernel: The kernel details.
+        kernelName: The name of the kernel (only Python kernel implemented).
         code: A string, module or function.
 
         If passing a function, the function will be executed. It is important
@@ -142,7 +142,7 @@ class JupyterFrontEnd(AsyncWidgetBase):
         """
         Inject code into a running kernel.
 
-        kernelId: Jupyterlab assigned ID of running kernel
+        kernelId: Jupyterlab assigned ID of running kernel to inject the code into.
 
         code: str | code
             If passing a function, the function will be executed when its injected.
@@ -154,5 +154,5 @@ class JupyterFrontEnd(AsyncWidgetBase):
         )
 
     def startIyplabPythonBackend(self) -> asyncio.Task:
-        """Checks backend is running and starts it if it isn't returning the session model."""
+        """Checks backend is running and starts it if it isn't, returning the session model."""
         return self.schedule_operation("startIyplabPythonBackend")

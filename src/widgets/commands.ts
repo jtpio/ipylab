@@ -44,10 +44,8 @@ export class CommandRegistryModel extends IpylabModel {
     this._commands = IpylabModel.app.commands;
     super.initialize(attributes, options);
     this.on('comm_live_update', () => {
-      if (this.comm_live) {
-        return;
-      }
-      Private.customCommands.values().forEach(command => command.dispose());
+      if (!this.comm_live)
+        Private.customCommands.values().forEach(command => command.dispose());
     });
 
     this._commands.commandChanged.connect(this._sendCommandList, this);

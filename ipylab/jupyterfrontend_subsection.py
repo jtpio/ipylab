@@ -23,7 +23,9 @@ class JupyterFrontEndSubsection(HasApp):
         callback: Callable[[any, any], None | Coroutine] = None,
         transform: TransformMode | dict[str, str] = TransformMode.raw,
     ) -> asyncio.Task:
-        "Execute a method on the JFE_SUB_PATH to which this instance belongs."
+        """Execute a nested method on this objects JFE_SUB_PATH relative to the instance of the
+        JupyterFrontEndModel in the JS frontend.
+        """
         # validation
         method = f"{self.JFE_JS_SUB_PATH}.{method}"
         return self.app.execute_method(method, *args, callback=callback, transform=transform)

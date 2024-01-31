@@ -150,7 +150,7 @@ export class JupyterFrontEndModel extends IpylabModel {
     if (!luminoWidget.id) luminoWidget.id = DOMUtils.createDomID();
     this.shell.add(luminoWidget, area, options);
     model.on('comm_live_update', () => {
-      if (!model.comm_live) luminoWidget.close();
+      if (!model.comm_live) luminoWidget.dispose();
     });
     return { id: luminoWidget.id };
   }
