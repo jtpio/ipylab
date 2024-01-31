@@ -315,7 +315,7 @@ class AsyncWidgetBase(WidgetBase):
     ) -> asyncio.Task:
         """Call a method on the corresponding frontend object.
 
-        method: dotted.access.to.the.method relative to app.
+        method: 'dotted.access.to.the.method' relative to the Frontend instance.
 
         *args
         `args` are passed in order so must correspond with the order in the JS method.
@@ -326,7 +326,7 @@ class AsyncWidgetBase(WidgetBase):
 
         # validation
         if callback:
-            assert Callable(callback)
+            assert callable(callback)
         return self.schedule_operation(
             operation="FE_execute",
             FE_execute={
@@ -340,42 +340,69 @@ class AsyncWidgetBase(WidgetBase):
             args=args,
         )
 
-    def get_attribute(
+    def getAttribute(
         self,
-        name: str,
+        path: str,
         *,
         callback: Callable[[any, any], None | Coroutine] = None,
         transform: TransformMode | dict[str, str] = TransformMode.raw,
     ):
         """A serialized verison of the attribute relative to this object."""
-        raise NotImplementedError("TODO")
-        return self.schedule_operation(
-            operation="FE_execute",
-            FE_execute={
-                "mode": "get_attribute",
-                "kwgs": {
-                    "name": name,
-                },
-            },
-            transform=transform,
-            callback=callback,
+        return self.execute_method("getAttribute", path, callback=callback, transform=transform)
+
+    def listMethods(self, path: str = "", depth=2, skip_hidden=True) -> asyncio.Task[list[str]]:
+        """Get a list of methods belonging to the object 'path' of the Frontend instance.
+        depth: The depth in the object inheritence to search for methods.
+        """
+
+        def callback(content: dict, payload: list):
+            if skip_hidden:
+                return [n for n in payload if not n.startswith("_")]
+            return payload
+
+        return self.listAttributes(path, "function", depth, how="names", callback=callback)
+
+    def listAttributes(
+        self,
+        path: str = "",
+        type="",
+        depth=2,
+        *,
+        how="group",
+        callback: Callable[[any, any], None | Coroutine] = None,
+        transform: TransformMode | dict[str, str] = TransformMode.raw,
+    ) -> asyncio.Task[dict | list]:
+        """Get a mapping of attributes of the object at 'path' of the Frontend instance.
+
+        depth: The depth in the object inheritence to search for attributes.
+        how: ['names', 'group', 'raw'] (ignored if callback provided)
+        """
+
+        def callback_(content: dict, payload: list):
+            if how == "names":
+                payload = [row["name"] for row in payload]
+            elif how == "group":
+                groups = {}
+                for item in payload:
+                    st = groups.get(item["type"], [])
+                    st.append(item["name"])
+                    groups[item["type"]] = st
+                payload = groups
+            if callback:
+                payload = callback(content, payload)
+            return payload
+
+        return self.execute_method(
+            "listAttributes", path, type, depth, callback=callback_, transform=transform
         )
 
-    def list_attributes(
-        self,
-        base: str = "",
-        *,
-        callback: Callable[[any, any], None | Coroutine] = None,
-        transform: TransformMode | dict[str, str] = TransformMode.raw,
-    ):
-        """A serialized verison of the attribute relative to this object."""
-        raise NotImplementedError("TODO")
-        return self.schedule_operation(
-            operation="FE_execute",
-            FE_execute={
-                "mode": "list_attributes",
-                "kwgs": {"base": base},
-            },
-            callback=callback,
-            transform=transform,
-        )
+
+{
+    "ipylab_BE": "83a513b1-0ab3-443f-9521-b740be0b8cd3",
+    "operation": "FE_execute",
+    "kwgs": {
+        "FE_execute": {"mode": "execute_method", "kwgs": {"method": "listAttributes"}},
+        "args": ("app.shell", "function", 2),
+    },
+    "transform": "raw",
+}

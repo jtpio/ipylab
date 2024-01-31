@@ -242,3 +242,53 @@ export function transformObject(
       throw new Error(`Invalid return mode: '${options.mode}'`);
   }
 }
+
+/**
+ * Provide a list of all methods belonging to obj.
+ *
+ * @param obj Any object.
+ * @returns
+ */
+export function findAllAttributes({
+  obj,
+  items = [],
+  type = '',
+  depth = 1
+}: {
+  obj: any;
+  items?: Array<string>;
+  type?: string;
+  depth?: number;
+}): Array<string> {
+  if (!obj || depth === 0) {
+    return [...new Set(items)];
+  }
+
+  const props = Object.getOwnPropertyNames(obj);
+  return findAllAttributes({
+    obj: Object.getPrototypeOf(obj),
+    items: [...items, ...props],
+    type,
+    depth: depth - 1
+  });
+}
+
+/**
+ * Returns a mapping of types and names for obj.
+ * @param obj Any object
+ * @returns
+ */
+export function listAttributes({
+  obj,
+  type = '',
+  depth = 1
+}: {
+  obj: any;
+  type?: string;
+  depth?: number;
+}) {
+  return findAllAttributes({ obj, items: [], type, depth }).map(p => ({
+    name: p,
+    type: typeof obj[p]
+  }));
+}

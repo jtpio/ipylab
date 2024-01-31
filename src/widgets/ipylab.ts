@@ -21,7 +21,7 @@ import { JSONValue, UUID } from '@lumino/coreutils';
 import { ObjectHash } from 'backbone';
 import { MODULE_NAME, MODULE_VERSION } from '../version';
 import { PythonBackendModel } from './python_backend';
-import { getNestedObject, transformObject } from './utils';
+import { getNestedObject, listAttributes, transformObject } from './utils';
 
 export {
   CommandRegistry,
@@ -219,6 +219,18 @@ export class IpylabModel extends DOMWidgetModel {
     var result = await promise;
     if (result === IpylabModel.OPERATION_DONE) result = null;
     return result;
+  }
+
+  listAttributes(path: string, type = '', depth = 2) {
+    return listAttributes({
+      obj: getNestedObject(this, path),
+      type: type,
+      depth: depth
+    });
+  }
+
+  getAttribute(path: string) {
+    return getNestedObject(this, path);
   }
 
   close(comm_closed?: boolean): Promise<void> {
