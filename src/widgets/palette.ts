@@ -2,11 +2,8 @@
 // Distributed under the terms of the Modified BSD License.
 
 import { ICommandPalette, IPaletteItem } from '@jupyterlab/apputils';
-
 import { ObservableMap } from '@jupyterlab/observables';
-
 import { IDisposable } from '@lumino/disposable';
-
 import { IpylabModel, JSONValue } from './ipylab';
 
 /**

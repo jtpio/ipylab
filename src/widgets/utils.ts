@@ -1,20 +1,23 @@
 // Copyright (c) ipylab contributors
 // Distributed under the terms of the Modified BSD License.
 
-import { UUID } from '@lumino/coreutils';
-import { IpylabModel, JSONValue } from './ipylab';
-import { Session } from '@jupyterlab/services';
-import { KernelWidgetManager } from '@jupyter-widgets/jupyterlab-manager';
-import { SessionContext } from '@jupyterlab/apputils';
-// import { Signal } from '@lumino/signaling';
 import * as base from '@jupyter-widgets/base';
 import { JUPYTER_CONTROLS_VERSION } from '@jupyter-widgets/controls/lib/version';
+import { KernelWidgetManager } from '@jupyter-widgets/jupyterlab-manager';
 import {
+  OUTPUT_WIDGET_VERSION,
   OutputModel,
-  OutputView,
-  OUTPUT_WIDGET_VERSION
+  OutputView
 } from '@jupyter-widgets/output';
+import { SessionContext } from '@jupyterlab/apputils';
+import { Session } from '@jupyterlab/services';
+import { UUID } from '@lumino/coreutils';
+import { IpylabModel, JSONValue } from './ipylab';
 
+/**
+ * Start a new session that support comms needed for iplab needs for comms.
+ * @returns
+ */
 export async function newSession({
   name,
   path,
@@ -47,6 +50,10 @@ export async function newSession({
     session.kernel,
     IpylabModel.rendermime
   );
+  // TODO: register widgets from IpyWidgets widget registry.
+  // Currently it looks like IpyWidgets prefer to be attached to Document.
+  // Notebooks (.ipynb) are the only implementation provided IpyWidgets (Feb 2024).
+  // https://github.com/jupyter-widgets/ipywidgets/blob/b2531796d414b0970f18050d6819d932417b9953/python/jupyterlab_widgets/src/plugin.ts#L112
 
   registerWidgets(manager);
 
@@ -85,8 +92,8 @@ export async function newNotebook({
   return nb;
 }
 
-/**
- * @param payload.kernelId
+/**Inject code into the kernel.
+ * @param payload.kernelId : Normally kernel.id
  * @param payload.code : code to inject
  * @returns
  */
@@ -107,6 +114,7 @@ export async function injectCode({
     code: code,
     store_history: false
   });
+  // TODO: Is there a better result to return?
   return (await future.done) as any;
 }
 
@@ -167,6 +175,12 @@ function registerWidgets(manager: KernelWidgetManager) {
  * @returns
  */
 
+/**
+ * Get the nested object of base at path.
+ * @param base Starting object
+ * @param path Dotted path to an object below base
+ * @returns
+ */
 export function getNestedObject(base: object, path: string): any {
   var obj: Object = base;
   var path_: String = '';

@@ -2,18 +2,15 @@
 // Distributed under the terms of the Modified BSD License.
 
 import {
-  unpack_models,
+  IBackboneModelOptions,
   JupyterLuminoPanelWidget,
   WidgetView,
-  IBackboneModelOptions
+  unpack_models
 } from '@jupyter-widgets/base';
-
 import { BoxModel, BoxView } from '@jupyter-widgets/controls';
-
-import { MODULE_NAME, MODULE_VERSION } from '../version';
-
-import { TitleModel } from '../widgets/title';
 import { ObjectHash } from 'backbone';
+import { MODULE_NAME, MODULE_VERSION } from '../version';
+import { TitleModel } from '../widgets/title';
 
 /**
  * The model for a panel.

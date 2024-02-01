@@ -213,7 +213,7 @@ export class IpylabModel extends DOMWidgetModel {
       operation: operation,
       payload: payload
     };
-    // Create callbacks to be resolved when a custom message is recieved
+    // Create callbacks to be resolved when a custom message is received
     // with the key `ipylab_FE`.
     const callbacks = this._pending_backend_operation_callbacks;
     const promise = new Promise<JSONValue>((resolve, reject) => {

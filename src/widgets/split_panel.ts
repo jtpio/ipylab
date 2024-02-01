@@ -2,9 +2,7 @@
 // Distributed under the terms of the Modified BSD License.
 
 import { Message } from '@lumino/messaging';
-
 import { SplitPanel } from '@lumino/widgets';
-
 import { PanelModel, PanelView } from './panel';
 
 export declare namespace JupyterLuminoSplitPanelWidget {

@@ -1,10 +1,8 @@
 // Copyright (c) ipylab contributors
 // Distributed under the terms of the Modified BSD License.
 
+import { DOMWidgetModel, DOMWidgetView } from '@jupyter-widgets/base';
 import { LabIcon } from '@jupyterlab/ui-components';
-
-import { DOMWidgetView, DOMWidgetModel } from '@jupyter-widgets/base';
-
 import { MODULE_NAME, MODULE_VERSION } from '../version';
 
 export class IconView extends DOMWidgetView {

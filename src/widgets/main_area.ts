@@ -9,11 +9,11 @@ import {
 } from '@jupyterlab/apputils';
 import { ConsolePanel } from '@jupyterlab/console';
 import { PathExt } from '@jupyterlab/coreutils';
+import { UUID } from '@lumino/coreutils';
 import { Message } from '@lumino/messaging';
 import { Widget } from '@lumino/widgets';
 import { ObjectHash } from 'backbone';
 import { IpylabModel, JSONValue } from './ipylab';
-import { UUID } from '@lumino/coreutils';
 /**
  * A main area widget with a sessionContext and the ability to add other children.
  */

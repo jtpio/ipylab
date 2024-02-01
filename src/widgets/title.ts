@@ -2,10 +2,8 @@
 // Distributed under the terms of the Modified BSD License.
 
 import { WidgetModel, unpack_models } from '@jupyter-widgets/base';
-
-import { MODULE_NAME, MODULE_VERSION } from '../version';
-
 import { Title } from '@lumino/widgets';
+import { MODULE_NAME, MODULE_VERSION } from '../version';
 import { IconModel } from './icon';
 
 /**

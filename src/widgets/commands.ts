@@ -1,20 +1,16 @@
 // Copyright (c) ipylab contributors
 // Distributed under the terms of the Modified BSD License.
 
+import { unpack_models } from '@jupyter-widgets/base';
 import { ObservableMap } from '@jupyterlab/observables';
-
+import { LabIcon } from '@jupyterlab/ui-components';
+import { IDisposable } from '@lumino/disposable';
 import {
   CommandRegistry,
   ISerializers,
   IpylabModel,
   JSONValue
 } from './ipylab';
-
-import { IDisposable } from '@lumino/disposable';
-
-import { LabIcon } from '@jupyterlab/ui-components';
-
-import { unpack_models } from '@jupyter-widgets/base';
 
 /**
  * The model for a command registry.
