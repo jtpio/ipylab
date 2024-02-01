@@ -31,7 +31,9 @@ export class PythonBackendModel {
           execute: () => IpylabModel.python_backend.checkStart()
         }
       );
-      if (this._palletItem) this._palletItem.dispose();
+      if (this._palletItem) {
+        this._palletItem.dispose();
+      }
       this._palletItem = IpylabModel.palette.addItem({
         command: PythonBackendModel.checkstart,
         category: 'ipylab',

@@ -106,6 +106,11 @@ jlpm && jlpm run build
 pip install pre-commit
 pre-commit install
 
+# Use jlpm script to lint the JS
+jlpm lint
+#or
+jlpm lint:check
+
 
 ```
 

@@ -84,10 +84,12 @@ export class JupyterFrontEndModel extends IpylabModel {
 
   async operation(op: string, payload: any): Promise<JSONValue> {
     function _get_result(result: any): any {
-      if (result.value === null) throw new Error('Cancelled');
+      if (result.value === null) {
+        throw new Error('Cancelled');
+      }
       return result.value;
     }
-    var result: any;
+    let result: any;
     switch (op) {
       case 'addToShell':
         return await this._addToShell(payload);
@@ -100,9 +102,9 @@ export class JupyterFrontEndModel extends IpylabModel {
         return await InputDialog.getItem(payload).then(_get_result);
       case 'getNumber':
         return await InputDialog.getNumber(payload).then(_get_result);
-      case `getText`:
+      case 'getText':
         return await InputDialog.getText(payload).then(_get_result);
-      case `getPassword`:
+      case 'getPassword':
         return await InputDialog.getPassword(payload).then(_get_result);
       case 'showErrorMessage':
         await showErrorMessage(payload.title, payload.error, payload.buttons);
@@ -139,7 +141,7 @@ export class JupyterFrontEndModel extends IpylabModel {
     const { serializedWidget, area, options } = payload;
     const model = await unpack_models(serializedWidget, this.widget_manager);
     const view = await this.widget_manager.create_view(model, {});
-    var luminoWidget = view.luminoWidget;
+    let luminoWidget = view.luminoWidget;
     if (area === 'main') {
       luminoWidget = new IpylabMainAreaWidget({
         content: view.luminoWidget,
@@ -147,10 +149,14 @@ export class JupyterFrontEndModel extends IpylabModel {
         name: 'Ipylab'
       });
     }
-    if (!luminoWidget.id) luminoWidget.id = DOMUtils.createDomID();
+    if (!luminoWidget.id) {
+      luminoWidget.id = DOMUtils.createDomID();
+    }
     this.shell.add(luminoWidget, area, options);
     model.on('comm_live_update', () => {
-      if (!model.comm_live) luminoWidget.dispose();
+      if (!model.comm_live) {
+        luminoWidget.dispose();
+      }
     });
     return { id: luminoWidget.id };
   }

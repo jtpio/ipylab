@@ -64,7 +64,9 @@ export class IpylabModel extends DOMWidgetModel {
   }
 
   check_closed() {
-    if (this.get('closed')) throw Error('This object is closed');
+    if (this.get('closed')) {
+      throw Error('This object is closed');
+    }
   }
 
   /**
@@ -82,8 +84,11 @@ export class IpylabModel extends DOMWidgetModel {
       const [resolve, reject] =
         this._pending_backend_operation_callbacks.get(ipylab_FE);
       this._pending_backend_operation_callbacks.delete(ipylab_FE);
-      if (msg.error) reject(msg.error);
-      else resolve(msg);
+      if (msg.error) {
+        reject(msg.error);
+      } else {
+        resolve(msg);
+      }
     } else {
       // Backend operation (don't await it)
       this._do_operation_for_backend(msg);
@@ -104,29 +109,32 @@ export class IpylabModel extends DOMWidgetModel {
 
     try {
       if (!operation) {
-        throw new Error(`operation not provided`);
+        throw new Error('operation not provided');
       }
 
       if (!ipylab_BE) {
-        throw new Error(`ipylab_BE not provided}`);
+        throw new Error('ipylab_BE not provided}');
       }
 
-      if (typeof operation != 'string')
+      if (typeof operation !== 'string') {
         throw new Error(
           `operation must be a string not ${typeof operation}  operation='${operation}'`
         );
-
-      if (operation === 'FE_execute') {
-        var result: JSONValue = await this._fe_execute(msg.kwgs);
-      } else {
-        var result: JSONValue = await this.operation(operation, msg.kwgs);
       }
-      var buffers = null;
+      let result;
+      if (operation === 'FE_execute') {
+        result = await this._fe_execute(msg.kwgs);
+      } else {
+        result = await this.operation(operation, msg.kwgs);
+      }
+      let buffers = null;
       if ((result as any)?.buffers) {
         buffers = (result as any).buffers;
         delete (result as any).buffers;
       }
-      if ((result as any)?.payload) result = (result as any).payload;
+      if ((result as any)?.payload) {
+        result = (result as any).payload;
+      }
       const content = {
         ipylab_BE: ipylab_BE,
         operation: operation,
@@ -158,14 +166,16 @@ export class IpylabModel extends DOMWidgetModel {
     delete (payload as any).FE_execute;
     switch (mode) {
       case 'execute_method': {
-        let obj = this;
-        if (kwgs.widget)
+        let obj;
+        (obj as any) = this;
+        if (kwgs.widget) {
           obj = await unpack_models(kwgs.widget, this.widget_manager);
+        }
         const owner = getNestedObject(
           obj,
           kwgs.method.split('.').slice(0, -1).join('.')
         );
-        var func = getNestedObject(this, kwgs.method) as Function;
+        let func = getNestedObject(this, kwgs.method) as Function;
         func = func.bind(owner, ...(payload as any).args);
         return await func();
       }
@@ -220,8 +230,10 @@ export class IpylabModel extends DOMWidgetModel {
       callbacks.set(ipylab_FE, [resolve, reject]);
     });
     this.send(msg);
-    var result = await promise;
-    if (result === IpylabModel.OPERATION_DONE) result = null;
+    let result = await promise;
+    if (result === IpylabModel.OPERATION_DONE) {
+      result = null;
+    }
     return result;
   }
 

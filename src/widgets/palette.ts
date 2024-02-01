@@ -106,7 +106,9 @@ export class CommandPaletteModel extends IpylabModel {
     const itemId = `${id} | ${category}`;
     if (this._customItems.has(itemId)) {
       const cmd = this._customItems.get(itemId);
-      if (cmd) cmd.dispose();
+      if (cmd) {
+        cmd.dispose();
+      }
     }
     this._customItems.delete(itemId);
     return null;

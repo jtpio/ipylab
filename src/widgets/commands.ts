@@ -40,8 +40,9 @@ export class CommandRegistryModel extends IpylabModel {
     this._commands = IpylabModel.app.commands;
     super.initialize(attributes, options);
     this.on('comm_live_update', () => {
-      if (!this.comm_live)
+      if (!this.comm_live) {
         Private.customCommands.values().forEach(command => command.dispose());
+      }
     });
 
     this._commands.commandChanged.connect(this._sendCommandList, this);
@@ -90,7 +91,9 @@ export class CommandRegistryModel extends IpylabModel {
    */
   private _sendCommandList(sender?: object, args?: any): void {
     // this._commands.notifyCommandChanged();
-    if (args && args.type != 'added' && args.type != 'removed') return;
+    if (args && args.type !== 'added' && args.type !== 'removed') {
+      return;
+    }
     this.set('commands', this._commands.listCommands());
     this.save_changes();
   }
@@ -109,7 +112,9 @@ export class CommandRegistryModel extends IpylabModel {
     const { id, caption, label, iconClass, icon } = options;
     if (this._commands.hasCommand(id)) {
       const cmd = Private.customCommands.get(id);
-      if (cmd) cmd.dispose();
+      if (cmd) {
+        cmd.dispose();
+      }
     }
 
     let labIcon: LabIcon | null = null;
@@ -150,7 +155,9 @@ export class CommandRegistryModel extends IpylabModel {
   private _removeCommand(command_id: string): null {
     if (Private.customCommands.has(command_id)) {
       const cmd = Private.customCommands.get(command_id);
-      if (cmd) cmd.dispose();
+      if (cmd) {
+        cmd.dispose();
+      }
     }
     this.save_changes();
     return null;

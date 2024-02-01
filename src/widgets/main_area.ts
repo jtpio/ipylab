@@ -25,7 +25,8 @@ export class IpylabMainAreaWidget extends MainAreaWidget {
   constructor(options: IpylabMainAreaWidget.IOptions) {
     //TODO: support more parts of the MainAreaWidget
 
-    var { content, kernelId, name, path, basePath, type } = options;
+    const { content, kernelId, name, basePath, type } = options;
+    let path = options.path;
     super({ content: content });
     if (!path) {
       path = PathExt.join(basePath || '', `${name}-${UUID.uuid4()}`);
@@ -121,7 +122,7 @@ export class MainAreaModel extends IpylabModel {
   }
 
   async _load_main_area_widget(payload: any) {
-    var { area, options, className } = payload;
+    const { area, options, className } = payload;
     const content = this.get('content');
     const view = await this.widget_manager.create_view(content, {});
     const luminoWidget = new IpylabMainAreaWidget({
@@ -132,7 +133,9 @@ export class MainAreaModel extends IpylabModel {
       type: this.sessionContext.type
     });
     luminoWidget.revealed;
-    if (className) luminoWidget.addClass(className);
+    if (className) {
+      luminoWidget.addClass(className);
+    }
     luminoWidget.disposed.connect(() => {
       this.set('loaded', false);
       this.save_changes();
@@ -148,7 +151,9 @@ export class MainAreaModel extends IpylabModel {
   }
 
   _unload_mainarea_widget() {
-    if (this._luminoWidget) this._luminoWidget.dispose();
+    if (this._luminoWidget) {
+      this._luminoWidget.dispose();
+    }
     this._close_console();
   }
   async _open_console(options: any) {
@@ -165,7 +170,9 @@ export class MainAreaModel extends IpylabModel {
       }
     );
     // The console toobar takes up space and currently only provides a debugger
-    if (cp?.toolbar?.node) cp.node.removeChild(cp.toolbar.node);
+    if (cp?.toolbar?.node) {
+      cp.node.removeChild(cp.toolbar.node);
+    }
     await cp.sessionContext.ready;
     cp.disposed.connect(() => {
       if (this._consolePanel === cp) {
@@ -187,7 +194,9 @@ export class MainAreaModel extends IpylabModel {
   }
 
   _close_console() {
-    if (this._consolePanel) this._consolePanel.dispose();
+    if (this._consolePanel) {
+      this._consolePanel.dispose();
+    }
   }
 
   /**

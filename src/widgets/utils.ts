@@ -87,8 +87,12 @@ export async function newNotebook({
     kernelName: kernelName
   });
   await nb.sessionContext.ready;
-  if (name) await nb.sessionContext.session.setName(name);
-  if (path) await nb.sessionContext.session.setPath(path);
+  if (name) {
+    await nb.sessionContext.session.setName(name);
+  }
+  if (path) {
+    await nb.sessionContext.session.setPath(path);
+  }
   return nb;
 }
 
@@ -182,18 +186,20 @@ function registerWidgets(manager: KernelWidgetManager) {
  * @returns
  */
 export function getNestedObject(base: object, path: string): any {
-  var obj: Object = base;
-  var path_: String = '';
+  let obj: object = base;
+  let path_: string = '';
   const parts = path.split('.');
-  var attr = '';
+  let attr = '';
   for (let i = 0; i < parts.length; i++) {
     attr = parts[i];
     if (attr in obj) {
       obj = obj[attr as keyof typeof obj];
       path_ = !path_ ? attr : `${path_}.${attr}`;
-    } else break;
+    } else {
+      break;
+    }
   }
-  if (path_ != path) {
+  if (path_ !== path) {
     throw new Error(
       `Failed to get the nested attribute ${path_}.${attr} ` +
         ` (base='${(base as any).name ?? 'unknown'}') `
@@ -207,7 +213,7 @@ export function getNestedObject(base: object, path: string): any {
  * @param code The function as a string: eg. 'function (a, b) { return a + b; }'
  * @returns
  */
-export function toFunction(code: string): Function {
+export function toFunction(code: string) {
   return new Function('return ' + code)();
 }
 
@@ -224,7 +230,7 @@ export function transformObject(
   options: string | any,
   thisArg: object = null
 ): JSONValue {
-  const mode = typeof options == 'string' ? options : options.mode;
+  const mode = typeof options === 'string' ? options : options.mode;
   switch (mode) {
     case 'done':
       return IpylabModel.OPERATION_DONE;
@@ -238,14 +244,14 @@ export function transformObject(
       // expects simple: {parts:['dotted.attribute']}
       // or advanced: {parts:[{path:'dotted.attribute', transform:'...' }]
       const result: { [key: string]: any } = new Object();
-      for (var i = 0; i < options.parts.length; i++) {
-        if (typeof options.parts[i] == 'string') {
+      for (let i = 0; i < options.parts.length; i++) {
+        if (typeof options.parts[i] === 'string') {
           var path = options.parts[i];
           var transform: any = 'raw';
         } else {
           var { path, transform } = options.parts[i];
         }
-        var part = getNestedObject(obj, path);
+        const part = getNestedObject(obj, path);
         result[path] = transformObject(part, transform);
       }
       return result;

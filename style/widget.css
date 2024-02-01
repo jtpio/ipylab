@@ -3,12 +3,10 @@
 | Distributed under the terms of the Modified BSD License.
 |---------------------------------------------------------------------------- */
 
-
 .jp-SideAreaWidget {
   background: var(--jp-layout-color1);
   display: flex;
 }
-
 
 .ipylab-panel {
   display: flex;
@@ -18,7 +16,7 @@
   width: 100%;
   margin: var(--jp-widgets-margin);
   color: var(--jp-widgets-color);
-  overflow: auto;  
+  overflow: auto;
 }
 
 .ipylab-splitpanel {
@@ -37,11 +35,11 @@
   background-color: var(--jp-border-color2);
 }
 
-.ipylab-main-area{
-  display:block;
+.ipylab-main-area {
+  display: block;
   height: 100%;
   padding: var(--jp-notebook-padding);
   outline: none;
   overflow: auto;
-  background: var(--jp-layout-color0);  
+  background: var(--jp-layout-color0);
 }

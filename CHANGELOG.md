@@ -6,12 +6,12 @@
 
 ### Enhancements made
 
-- Upgraded to provide asynchronous bi-directional comms for performing operations 
+- Upgraded to provide asynchronous bi-directional comms for performing operations
   in the Frontend. Each operation returns a task that when complete returns the response or raise an error if unsuccessful.
-- On the Python side `JupyterFrontEnd`, `CommandRegistry`, & `CommandPalette` 
-are all derived from `AsyncWidgetBase` and are now single instance objects.
+- On the Python side `JupyterFrontEnd`, `CommandRegistry`, & `CommandPalette`
+  are all derived from `AsyncWidgetBase` and are now single instance objects.
 - On the JavaScript frontend side `JupyterFrontendModel`, `CommandRegistryModel`,
- `CommandPalletModel`,  extend the new `IpylabModel`.
+  `CommandPalletModel`, extend the new `IpylabModel`.
 
 ### Added
 
@@ -24,6 +24,7 @@ are all derived from `AsyncWidgetBase` and are now single instance objects.
 - app.dialogs described [here](https://jupyterlab.readthedocs.io/en/stable/extension/ui_helpers.html#user-interface-helpers).
 
 ### Removed
+
 - Callback functionality
 - Drop Python < 3.11
 - Drop Jupyterlab < 4.0

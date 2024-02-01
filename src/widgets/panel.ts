@@ -43,7 +43,9 @@ export class PanelModel extends BoxModel {
   close(comm_closed?: boolean): Promise<void> {
     if (!this.get('closed')) {
       this.set('closed', true);
-      if (this.comm) this.save_changes();
+      if (this.comm) {
+        this.save_changes();
+      }
     }
     return super.close(comm_closed);
   }

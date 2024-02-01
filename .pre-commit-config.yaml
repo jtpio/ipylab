@@ -4,6 +4,8 @@ ci:
     - prettier
     - eslint
     - stylelint
+    - jlpm-lint
+    - ruff-format-hatch-settings
 default_language_version:
   node: system
 repos:
