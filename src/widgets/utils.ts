@@ -231,6 +231,9 @@ export function transformObject(
   thisArg: object = null
 ): JSONValue {
   const mode = typeof options === 'string' ? options : options.mode;
+
+  let path: string, transform: string, result, part: string, func;
+
   switch (mode) {
     case 'done':
       return IpylabModel.OPERATION_DONE;
@@ -243,20 +246,21 @@ export function transformObject(
     case 'attribute':
       // expects simple: {parts:['dotted.attribute']}
       // or advanced: {parts:[{path:'dotted.attribute', transform:'...' }]
-      const result: { [key: string]: any } = new Object();
+      result = new Object();
       for (let i = 0; i < options.parts.length; i++) {
         if (typeof options.parts[i] === 'string') {
-          var path = options.parts[i];
-          var transform: any = 'raw';
+          path = options.parts[i];
+          transform = 'raw';
         } else {
-          var { path, transform } = options.parts[i];
+          path = options.parts[i].path;
+          transform = options.parts[i].transform;
         }
-        const part = getNestedObject(obj, path);
-        result[path] = transformObject(part, transform);
+        part = getNestedObject(obj, path);
+        (result as any)[path] = transformObject(part, transform);
       }
-      return result;
+      return result as any;
     case 'function':
-      var func = toFunction(options.code).bind(thisArg);
+      func = toFunction(options.code).bind(thisArg);
       return func(obj);
     default:
       throw new Error(`Invalid return mode: '${options.mode}'`);

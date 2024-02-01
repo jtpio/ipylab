@@ -175,7 +175,7 @@ export class IpylabModel extends DOMWidgetModel {
           obj,
           kwgs.method.split('.').slice(0, -1).join('.')
         );
-        let func = getNestedObject(this, kwgs.method) as Function;
+        let func = getNestedObject(this, kwgs.method);
         func = func.bind(owner, ...(payload as any).args);
         return await func();
       }
@@ -261,10 +261,7 @@ export class IpylabModel extends DOMWidgetModel {
     ...WidgetModel.serializers
   };
 
-  private _pending_backend_operation_callbacks: Map<
-    string,
-    [Function, Function]
-  >;
+  private _pending_backend_operation_callbacks: Map<string, [any, any]>;
   private _kernelId: string;
   static python_backend = new PythonBackendModel();
   static model_name: string;

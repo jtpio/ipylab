@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 extensions = ["myst_parser", "jupyterlite_sphinx"]
 
 jupyterlite_config = "jupyter_lite_config.json"

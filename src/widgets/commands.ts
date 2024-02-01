@@ -63,14 +63,16 @@ export class CommandRegistryModel extends IpylabModel {
   }
 
   async operation(op: string, payload: any): Promise<JSONValue> {
+    let id, args, result, commands;
     switch (op) {
       case 'execute':
-        const { id, args } = payload;
+        id = payload.id;
+        args = payload.args;
         return await this._commands.execute(id, args);
       case 'addPythonCommand': {
-        const result = await this._addCommand(payload);
+        result = await this._addCommand(payload);
         // keep track of the commands
-        const commands = this.get('_commands');
+        commands = this.get('_commands');
         this.set('_commands', commands.concat(payload));
         this.save_changes();
         return result;
