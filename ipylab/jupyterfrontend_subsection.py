@@ -37,7 +37,7 @@ class JupyterFrontEndSubsection(HasApp):
         callback: Callable[[any, any], None | Coroutine] = None,
         transform: TransformMode | dict[str, str] = TransformMode.raw,
     ) -> asyncio.Task:
-        """A serialized verison of the attribute relative to this object."""
+        """A serialized version of the attribute relative to this object."""
         raise NotImplementedError("TODO")
         return self.app.get_attribute(
             f"{self.JFE_JS_SUB_PATH}.{name}",

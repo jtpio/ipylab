@@ -44,7 +44,7 @@ class MainArea(AsyncWidgetBase, HasApp):
     @observe("closed")
     def _observe_closed(self, change):
         if self.closed:
-            self.laoded = False
+            self.loaded = False
 
     def __new__(cls, *, name: str, model_id=None, content: Panel = None, **kwgs):
         if not name:

@@ -23,7 +23,7 @@ class IpylabHookspec:
     ) -> t.NoReturn | None:
         """Intercept an error message for logging purposes.
 
-        Fired when the task handling comms recieves the error prior to raising it.
+        Fired when the task handling comms receives the error prior to raising it.
 
         Args: AsyncWidgetBase
             obj:
@@ -31,12 +31,12 @@ class IpylabHookspec:
             error: str
                 The message from the JupyterFrontend.
             content:
-                The content of the message acompanying the frontend error.
+                The content of the message accompanying the frontend error.
         """
 
     @hookspec
     def on_send_error(self, obj: AsyncWidgetBase, error: Exception, content: dict, buffers) -> None:
-        """This is called when a send exception occurrs."""
+        """This is called when a send exception occurs."""
 
     @hookspec(firstresult=True)
     def on_frontend_operation_error(self, obj: AsyncWidgetBase, error: Exception, content: dict):

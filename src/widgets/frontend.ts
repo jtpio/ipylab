@@ -73,7 +73,7 @@ export class JupyterFrontEndModel extends IpylabModel {
   private _updateSessionDetails(): void {
     const currentWidget = this.shell.currentWidget as any;
     const current_session = currentWidget?.sessionContext?.session?.model ?? {};
-    this.set('current_widget_id', currentWidget.id ?? '');
+    this.set('current_widget_id', currentWidget?.id ?? '');
     this.set('current_session', current_session);
     this.save_changes();
   }

@@ -1,16 +1,16 @@
 ci:
-    autoupdate_schedule: monthly
-    skip:
+  autoupdate_schedule: monthly
+  skip:
     - prettier
     - eslint
     - stylelint
 default_language_version:
-    node: system
+  node: system
 repos:
   - repo: https://github.com/ComPWA/mirrors-taplo
     rev: 'v0.8.1'
     hooks:
-    -   id: taplo
+      - id: taplo
   - repo: local
     hooks:
       - id: ruff-format-hatch-settings
@@ -19,3 +19,17 @@ repos:
         entry: hatch fmt
         pass_filenames: false
         verbose: true
+  - repo: https://github.com/codespell-project/codespell
+    rev: 'v2.2.6'
+    hooks:
+      - id: codespell
+        args: ['-L', 'sur,nd']
+  - repo: https://github.com/pre-commit/mirrors-prettier
+    rev: 'v3.1.0'
+    hooks:
+      - id: prettier
+        types_or: [yaml, markdown, html, css, scss, javascript, json]
+  - repo: https://github.com/kynan/nbstripout
+    rev: '0.6.1'
+    hooks:
+      - id: nbstripout

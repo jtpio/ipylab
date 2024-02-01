@@ -64,7 +64,7 @@ export class IconModel extends DOMWidgetModel {
   }
 
   /**
-   * Update the LabIcon when model chenges occur
+   * Update the LabIcon when model changes occur
    */
   updateIcon() {
     const name = this.get('name');

@@ -40,7 +40,7 @@ const extension: JupyterFrontEndPlugin<void> = {
  * @param registry Jupyter Widget Registry
  * @param palette Jupyter Commands
  * @param labShell Jupyter Shell
- * @param defaultBrowser Jupyter Default File Brower
+ * @param defaultBrowser Jupyter Default File Browser
  * @param launcher [optional] Jupyter Launcher
  * @param translator Jupyter Translator
  */

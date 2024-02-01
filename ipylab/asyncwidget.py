@@ -353,7 +353,7 @@ class AsyncWidgetBase(WidgetBase):
         transform: TransformMode | dict[str, str] = TransformMode.raw,
         widget: Widget | None = None,
     ):
-        """A serialized verison of the attribute relative to this object."""
+        """A serialized version of the attribute relative to this object."""
         return self.execute_method(
             "getAttribute",
             path,
@@ -364,7 +364,7 @@ class AsyncWidgetBase(WidgetBase):
 
     def listMethods(self, path: str = "", depth=2, skip_hidden=True) -> asyncio.Task[list[str]]:
         """Get a list of methods belonging to the object 'path' of the Frontend instance.
-        depth: The depth in the object inheritence to search for methods.
+        depth: The depth in the object inheritance to search for methods.
         """
 
         def callback(content: dict, payload: list):
@@ -387,7 +387,7 @@ class AsyncWidgetBase(WidgetBase):
     ) -> asyncio.Task[dict | list]:
         """Get a mapping of attributes of the object at 'path' of the Frontend instance.
 
-        depth: The depth in the object inheritence to search for attributes.
+        depth: The depth in the object inheritance to search for attributes.
         how: ['names', 'group', 'raw'] (ignored if callback provided)
         """
 
