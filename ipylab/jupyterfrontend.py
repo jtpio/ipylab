@@ -82,8 +82,14 @@ class JupyterFrontEnd(AsyncWidgetBase):
         # the first time the ipylab plugin is activated.
         from ipylab.hookspecs import pm
 
-        pm.load_setuptools_entrypoints("ipylab-python-backend")
+        try:
+            count = pm.load_setuptools_entrypoints("ipylab-python-backend")
+            self.log.info(f"Ipylab python backend found {count} plugin entry points.")
+        except Exception as e:
+            self.log.error("An exception occurred when loading plugins")
+            self.dialog.show_error_message("Plugin failure", str(e))
         result = pm.hook.run_once_at_startup()
+        self.log.info("Finished loading plugins.")
 
     def newSession(
         self,

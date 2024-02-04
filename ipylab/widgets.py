@@ -6,7 +6,7 @@ from __future__ import annotations
 import asyncio
 
 import ipywidgets as ipw
-from ipywidgets import Box, DOMWidget, Layout, register, widget_serialization
+from ipywidgets import Box, DOMWidget, register, widget_serialization
 from ipywidgets.widgets.trait_types import InstanceDict
 from traitlets import Bool, Dict, Unicode
 
@@ -105,4 +105,3 @@ class SplitPanel(Panel):
     _view_name = Unicode("SplitPanelView").tag(sync=True)
     orientation = Unicode("vertical").tag(sync=True)
     class_name = Unicode("ipylab-splitpanel").tag(sync=True)
-    layout = InstanceDict(Layout, kw={"min_height": "100px"}).tag(sync=True, **widget_serialization)

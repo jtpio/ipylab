@@ -11,7 +11,7 @@ import { ConsolePanel } from '@jupyterlab/console';
 import { PathExt } from '@jupyterlab/coreutils';
 import { UUID } from '@lumino/coreutils';
 import { Message } from '@lumino/messaging';
-import { Widget } from '@lumino/widgets';
+import { SplitPanel, Widget } from '@lumino/widgets';
 import { ObjectHash } from 'backbone';
 import { IpylabModel, JSONValue } from './ipylab';
 /**
@@ -25,7 +25,7 @@ export class IpylabMainAreaWidget extends MainAreaWidget {
   constructor(options: IpylabMainAreaWidget.IOptions) {
     //TODO: support more parts of the MainAreaWidget
 
-    const { content, kernelId, name, basePath, type } = options;
+    const { content, kernelId, name, basePath, type, className } = options;
     let path = options.path;
     super({ content: content });
     if (!path) {
@@ -43,6 +43,8 @@ export class IpylabMainAreaWidget extends MainAreaWidget {
       }
     });
     this._sessionContext.initialize();
+    this.addClass(className ?? 'ipylab-main-area');
+    SplitPanel.setStretch(this.content, 1);
     this.node.removeChild(this.toolbar.node); // Temp until toolbar is supported
   }
 
@@ -89,6 +91,7 @@ export class MainAreaModel extends IpylabModel {
     options: IBackboneModelOptions
   ): Promise<void> {
     super.initialize(attributes, options);
+    this._mutex_key = `main_area ${this.model_id}`;
     this._sessionContext = new SessionContext({
       sessionManager: IpylabModel.app.serviceManager.sessions,
       specsManager: IpylabModel.app.serviceManager.kernelspecs,
@@ -104,16 +107,23 @@ export class MainAreaModel extends IpylabModel {
   async operation(op: string, payload: any): Promise<JSONValue> {
     switch (op) {
       case 'load':
-        await this._load_main_area_widget(payload);
-        return IpylabModel.OPERATION_DONE;
+        // Using lock for mutex
+        return await navigator.locks.request(this._mutex_key, () =>
+          this._load_main_area_widget(payload)
+        );
+        this;
       case 'unload':
-        this._unload_mainarea_widget();
-        return IpylabModel.OPERATION_DONE;
+        return await navigator.locks.request(this._mutex_key, () =>
+          this._unload_mainarea_widget()
+        );
       case 'open_console':
-        return await this._open_console(payload);
+        return await navigator.locks.request(this._mutex_key, () =>
+          this._open_console(payload)
+        );
       case 'close_console':
-        this._close_console();
-        return IpylabModel.OPERATION_DONE;
+        return await navigator.locks.request(this._mutex_key, () =>
+          this._close_console()
+        );
       default:
         throw new Error(
           `operation='${op}' has not been implemented in ${MainAreaModel.model_name}!`
@@ -122,6 +132,7 @@ export class MainAreaModel extends IpylabModel {
   }
 
   async _load_main_area_widget(payload: any) {
+    this._unload_mainarea_widget();
     const { area, options, className } = payload;
     const content = this.get('content');
     const view = await this.widget_manager.create_view(content, {});
@@ -130,14 +141,11 @@ export class MainAreaModel extends IpylabModel {
       kernelId: this.kernelId,
       name: this.sessionContext.name,
       path: this.sessionContext.path,
-      type: this.sessionContext.type
+      type: this.sessionContext.type,
+      className: className
     });
-    luminoWidget.revealed;
-    if (className) {
-      luminoWidget.addClass(className);
-    }
     luminoWidget.disposed.connect(() => {
-      this.set('loaded', false);
+      this.set('loaded', 'unloaded');
       this.save_changes();
       this._luminoWidget = null;
       this._close_console();
@@ -146,8 +154,9 @@ export class MainAreaModel extends IpylabModel {
     IpylabModel.app.shell.add(luminoWidget, area, options);
     await luminoWidget.sessionContext.ready;
     this._luminoWidget = luminoWidget;
-    this.set('loaded', true);
+    this.set('status', 'loaded');
     this.save_changes();
+    return { id: this._luminoWidget.id };
   }
 
   _unload_mainarea_widget() {
@@ -177,12 +186,12 @@ export class MainAreaModel extends IpylabModel {
     cp.disposed.connect(() => {
       if (this._consolePanel === cp) {
         this._consolePanel = null;
-        this.set('console_loaded', false);
+        this.set('console_status', 'unloaded');
         this.save_changes();
       }
     }, this);
     this._consolePanel = cp;
-    this.set('console_loaded', true);
+    this.set('console_status', 'loaded');
     this.save_changes();
     return { id: cp.id };
   }
@@ -193,10 +202,11 @@ export class MainAreaModel extends IpylabModel {
     }
   }
 
-  _close_console() {
+  _close_console(): Promise<null> {
     if (this._consolePanel) {
       this._consolePanel.dispose();
     }
+    return null;
   }
 
   /**
@@ -220,6 +230,7 @@ export class MainAreaModel extends IpylabModel {
       _view_module_version: IpylabModel.model_module_version
     };
   }
+  private _mutex_key: string;
   private _luminoWidget: IpylabMainAreaWidget;
   private _consolePanel: ConsolePanel;
   private _sessionContext: ISessionContext;
@@ -265,6 +276,11 @@ export namespace IpylabMainAreaWidget {
      * The name of the IpylabMainAreaWidget.
      */
     name: string;
+
+    /**
+     * The name of class.
+     */
+    className?: string;
 
     /**
      * The type of session.

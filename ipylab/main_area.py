@@ -5,14 +5,27 @@ from __future__ import annotations
 
 import asyncio
 import pathlib
+import sys
 
 from ipywidgets import register
-from traitlets import Bool, Instance, Unicode, observe, validate
+from traitlets import Instance, Unicode, UseEnum, observe, validate
 
 from ipylab.asyncwidget import AsyncWidgetBase, pack, widget_serialization
 from ipylab.hasapp import HasApp
 from ipylab.shell import Area, InsertMode
 from ipylab.widgets import Panel
+
+if sys.version_info >= (3, 11):
+    from enum import StrEnum
+else:
+    from backports.strenum import StrEnum
+
+
+class ViewStatus(StrEnum):
+    unloaded = "unloaded"
+    loaded = "loaded"
+    loading = "loading"
+    unloading = "unloading"
 
 
 @register
@@ -27,9 +40,9 @@ class MainArea(AsyncWidgetBase, HasApp):
 
     path = Unicode(read_only=True).tag(sync=True)
     name = Unicode(read_only=True).tag(sync=True)
-    loaded = Bool(read_only=True).tag(sync=True)
-    console_loaded = Bool(read_only=True).tag(sync=True)
     content = Instance(Panel, (), read_only=True).tag(sync=True, **widget_serialization)
+    status = UseEnum(ViewStatus, read_only=True).tag(sync=True)
+    console_status = UseEnum(ViewStatus, read_only=True).tag(sync=True)
 
     @validate("name", "path")
     def _validate_name_path(self, proposal):
@@ -44,7 +57,8 @@ class MainArea(AsyncWidgetBase, HasApp):
     @observe("closed")
     def _observe_closed(self, change):
         if self.closed:
-            self.loaded = False
+            self.set_trait("status", ViewStatus.unloaded)
+            self.set_trait("console_status", ViewStatus.unloaded)
 
     def __new__(cls, *, name: str, model_id=None, content: Panel = None, **kwgs):
         if not name:
@@ -85,9 +99,14 @@ class MainArea(AsyncWidgetBase, HasApp):
     ) -> asyncio.Task:
         """Load into the shell.
 
-        Use `unload` to remove it from the shell (will also close any open consoles).
+        Only one main_area_widget (view) can exist at a time, any existing widget will be disposed
+        prior to loading a new widget.
 
-        If it is in the shell, this will move it.
+        When this function is call the trait `status` will be set to 'loading'. It will change to 'loaded' once
+        the widget has been loaded in the Frontend.
+
+        Use `unload` to dispose the widget from the shell (will also close the linked console if it is open).
+
         content: [Panel]
             The content
         ref:
@@ -97,8 +116,10 @@ class MainArea(AsyncWidgetBase, HasApp):
         class_name:
             The css class to add to the widget.
         """
+        self._check_closed()
         if content:
             self.set_trait("content", content)
+        self.set_trait("status", ViewStatus.loading)
         return self.schedule_operation(
             "load",
             area=area,
@@ -108,6 +129,7 @@ class MainArea(AsyncWidgetBase, HasApp):
 
     def unload(self) -> asyncio.Task:
         "Remove from the shell"
+        self.set_trait("status", ViewStatus.unloading)
         return self.schedule_operation("unload")
 
     def load_console(
@@ -121,10 +143,12 @@ class MainArea(AsyncWidgetBase, HasApp):
 
         Opening the console will close any existing consoles.
         """
+        self.set_trait("console_status", ViewStatus.loading)
         return self.schedule_operation(
             "open_console", insertMode=InsertMode(mode), name=name, **kwgs
         )
 
     def unload_console(self) -> asyncio.Task:
         """Unload the console."""
+        self.set_trait("console_status", ViewStatus.unloading)
         return self.schedule_operation("close_console")

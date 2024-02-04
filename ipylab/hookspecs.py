@@ -55,14 +55,18 @@ class IpylabHookspec:
         """The function will run once when Ipylab is activated (requires entry point as explained below).
 
         ``` python
-        @ipylab.hookimpl(specname="run_once_at_startup")
-        def plugin_my_launcher() -> LauncherOptions:
-            options = LauncherOptions(
-                name="Launch my app",
-                tooltip="My app is great...",
-                entry_point="my_module.my_attr.start_my_app",
-            )
-            return options
+        # @ ipylab_plugin.py
+        import ipylab
+
+        class myPluginDefs:
+            @ipylab.hookimpl(specname="run_once_at_startup")
+            def plugin_my_launcher():
+                # Do my startup tasks
+
+
+
+        myPlugins = myPluginDefs()
+
         ```
 
         Note: The package should be installed (re-installed) with the entry point "ipylab-python-backend"
@@ -70,7 +74,8 @@ class IpylabHookspec:
         in pyproject.toml
         ``` toml
         [project.entry-points.ipylab-python-backend]
-        autostart = "my_module.ipylab_backend_plugin"
+        my-plugins-name = "my_module.ipylab_plugin:myPlugins"
+
         ```
 
         entry_point: str <package_or_module>[:<object>[.<attr>[.<nested-attr>]*]]

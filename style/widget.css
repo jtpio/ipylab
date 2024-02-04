@@ -9,25 +9,15 @@
 }
 
 .ipylab-panel {
-  display: flex;
-  box-sizing: border-box;
-  flex-direction: column;
   height: 100%;
   width: 100%;
-  margin: var(--jp-widgets-margin);
-  color: var(--jp-widgets-color);
   overflow: auto;
 }
 
 .ipylab-splitpanel {
-  display: flex;
-  box-sizing: border-box;
-  flex-direction: column;
   height: 100%;
   width: 100%;
   overflow: hidden;
-  margin: var(--jp-widgets-margin);
-  color: var(--jp-widgets-color);
 }
 
 /* Default Split Handle Color */
@@ -37,9 +27,4 @@
 
 .ipylab-main-area {
   display: block;
-  height: 100%;
-  padding: var(--jp-notebook-padding);
-  outline: none;
-  overflow: auto;
-  background: var(--jp-layout-color0);
 }

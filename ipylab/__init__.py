@@ -11,22 +11,21 @@ __all__ = [
     "Panel",
     "SplitPanel",
     "MainArea",
+    "ViewStatus",
     "Icon",
     "Area",
     "InsertMode",
     "hookimpl",
-    "hookspecs",
     "LauncherOptions",
     "TransformMode",
     "pack",
 ]
 
-"""Marker to be imported and used in plugins (and for own implementations)"""
-from ipylab import hookspecs
 from ipylab.asyncwidget import TransformMode, pack
 from ipylab.hasapp import HasApp
+from ipylab.hookspecs import hookimpl
 from ipylab.jupyterfrontend import JupyterFrontEnd, LauncherOptions
-from ipylab.main_area import MainArea
+from ipylab.main_area import MainArea, ViewStatus
 from ipylab.shell import Area, InsertMode
 from ipylab.widgets import Icon, Panel, SplitPanel
 
