@@ -37,7 +37,7 @@ class Title(WidgetBase):
     dataset = Dict().tag(sync=True)
     icon_label = Unicode().tag(sync=True)
     # Widgets
-    icon = InstanceDict(Icon, allow_none=True).tag(sync=True, **widget_serialization)
+    icon: Icon = InstanceDict(Icon, allow_none=True).tag(sync=True, **widget_serialization)
 
 
 @register
@@ -49,7 +49,7 @@ class Panel(Box, HasApp):
 
     _model_name = Unicode("PanelModel").tag(sync=True)
     _view_name = Unicode("PanelView").tag(sync=True)
-    title = InstanceDict(Title, ()).tag(sync=True, **widget_serialization)
+    title: Title = InstanceDict(Title, ()).tag(sync=True, **widget_serialization)
     class_name = Unicode("ipylab-panel").tag(sync=True)
     _comm = None
     closed = Bool(read_only=True).tag(sync=True)

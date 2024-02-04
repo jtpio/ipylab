@@ -41,8 +41,8 @@ class MainArea(AsyncWidgetBase, HasApp):
     path = Unicode(read_only=True).tag(sync=True)
     name = Unicode(read_only=True).tag(sync=True)
     content = Instance(Panel, (), read_only=True).tag(sync=True, **widget_serialization)
-    status = UseEnum(ViewStatus, read_only=True).tag(sync=True)
-    console_status = UseEnum(ViewStatus, read_only=True).tag(sync=True)
+    status: ViewStatus = UseEnum(ViewStatus, read_only=True).tag(sync=True)
+    console_status: ViewStatus = UseEnum(ViewStatus, read_only=True).tag(sync=True)
 
     @validate("name", "path")
     def _validate_name_path(self, proposal):
