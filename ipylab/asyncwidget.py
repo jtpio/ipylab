@@ -15,6 +15,7 @@ from ipywidgets import Widget, register, widget_serialization
 from traitlets import Bool, Dict, Instance, Set, Unicode
 
 import ipylab._frontend as _fe
+from ipylab.hasapp import HasApp
 from ipylab.hookspecs import pm
 
 if sys.version_info >= (3, 11):
@@ -113,7 +114,7 @@ class IpylabFrontendError(IOError):
     pass
 
 
-class WidgetBase(Widget):
+class WidgetBase(Widget, HasApp):
     _model_module = Unicode(_fe.module_name, read_only=True).tag(sync=True)
     _model_module_version = Unicode(_fe.module_version, read_only=True).tag(sync=True)
     _view_module = Unicode(_fe.module_name, read_only=True).tag(sync=True)
@@ -156,6 +157,7 @@ class AsyncWidgetBase(WidgetBase):
         self.on_msg(self._on_frontend_msg)
 
     async def __aenter__(self):
+        self._check_closed()
         if not self._ready_response.is_set():
             await self.wait_ready()
 
@@ -180,25 +182,31 @@ class AsyncWidgetBase(WidgetBase):
     def _check_get_error(self, content={}) -> IpylabFrontendError | None:
         error = content.get("error")
         if error:
-            if operation := content.get("operation"):
-                return IpylabFrontendError(
-                    f"{self.__class__.__name__} operation '{operation}' failed with message \"{error}\""
-                )
+            operation = content.get("operation")
+            if operation:
+                msg = f"{self.__class__.__name__} operation '{operation}' failed with message \"{error}\""
+                if "cyclic" in error:
+                    msg += (
+                        "\nNote: A cyclic error may be due a return value that cannot be converted to JSON. "
+                        "Try changing the transform (eg: transform=ipylab.TransformMode.done)."
+                    )
+                return IpylabFrontendError(msg)
+
             return IpylabFrontendError(f'{self.__class__.__name__} failed with message "{error}"')
         else:
             return None
 
     async def wait_ready(self) -> None:
         if not self._ready_response.is_set():
-            self.log.info(f"Connecting to frontend {self._model_name}")
+            self.log.info(f"Connecting to frontend model '{self._model_name}'")
             await self._ready_response.wait()
-            self.log.info(f"Connected to frontend {self._model_name}")
+            self.log.info(f"Connected to frontend model '{self._model_name}'")
 
     def send(self, content, buffers=None):
         try:
             super().send(content, buffers)
         except Exception as error:
-            pm.hook.on_send_error(self, error, content, buffers)
+            pm.hook.on_send_error(obj=self, error=error, content=content, buffers=buffers)
 
     async def _send_receive(self, content: dict, callback: Callable):
         async with self:
@@ -223,8 +231,6 @@ class AsyncWidgetBase(WidgetBase):
             payload = content.get("payload", {})
             if ipylab_BE:
                 self._pending_operations.pop(ipylab_BE).set(payload, error)
-            elif error:
-                pm.hook.on_frontend_error(obj=self, error=self.error, content=content)
             ipylab_FE = content.get("ipylab_FE", "")
             if ipylab_FE:
                 task = asyncio.create_task(
@@ -232,6 +238,8 @@ class AsyncWidgetBase(WidgetBase):
                 )
                 self._tasks.add(task)
                 task.add_done_callback(self._tasks.discard)
+            if error:
+                pm.hook.on_frontend_error(obj=self, error=error, content=content)
         elif init_message := content.get("init"):
             self._ready_response.set(content)
             print(init_message)
@@ -247,9 +255,6 @@ class AsyncWidgetBase(WidgetBase):
         buffers = []
         try:
             result = await self._do_operation_for_frontend(operation, payload, buffers)
-            if result is None:
-                pm.hook.unhandled_frontend_operation_message(self, operation)
-                raise ValueError(f"{operation=}")
             if isinstance(result, dict) and "buffers" in result:
                 buffers = result["buffers"]
                 result = result["payload"]
@@ -258,7 +263,7 @@ class AsyncWidgetBase(WidgetBase):
             content["error"] = "Cancelled"
         except Exception as e:
             content["error"] = str(e)
-            pm.hook.on_frontend_operation_error(self, error=e, content=payload)
+            pm.hook.on_frontend_operation_error(obj=self, error=e, content=payload)
         finally:
             self.send(content, buffers)
 
@@ -266,7 +271,7 @@ class AsyncWidgetBase(WidgetBase):
         """Overload this function as required.
         or if there is a buffer can return a dict {"payload":dict, "buffers":[]}
         """
-        pm.hook.unhandled_frontend_operation_message(self, operation)
+        pm.hook.unhandled_frontend_operation_message(obj=self, operation=operation)
 
     def schedule_operation(
         self,
@@ -414,3 +419,20 @@ class AsyncWidgetBase(WidgetBase):
             transform=transform,
             widget=widget,
         )
+
+    def execute_command(
+        self,
+        command_id: str,
+        transform: TransformMode | dict[str, str] = TransformMode.done,
+        **args,
+    ) -> asyncio.Task:
+        """Execute command_id.
+
+        `args` correspond to `args` in JupyterLab.
+
+        Finding what the `args` are remains an outstanding issue in JupyterLab.
+
+        see: https://github.com/jtpio/ipylab/issues/128#issuecomment-1683097383 for hints
+        about how args can be found.
+        """
+        return self.execute_method("app.commands.execute", command_id, args, transform=transform)

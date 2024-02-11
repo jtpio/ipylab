@@ -3,10 +3,6 @@
 from __future__ import annotations
 
 import sys
-import typing as t
-
-if t.TYPE_CHECKING:
-    from ipylab.labapp import IPLabApp
 
 
 def init_ipylab_backend() -> str:
@@ -21,7 +17,6 @@ def init_ipylab_backend() -> str:
 
 
 def launch_jupyterlab():
-    from ipylab.hookspecs import pm
+    from ipylab.labapp import IPLabApp
 
-    cls: IPLabApp = pm.hook.get_ipylab_backend_class()
-    sys.exit(cls.launch_instance())
+    sys.exit(IPLabApp.launch_instance())

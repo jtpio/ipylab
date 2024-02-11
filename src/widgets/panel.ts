@@ -11,6 +11,7 @@ import { BoxModel, BoxView } from '@jupyter-widgets/controls';
 import { ObjectHash } from 'backbone';
 import { MODULE_NAME, MODULE_VERSION } from '../version';
 import { TitleModel } from '../widgets/title';
+import { onKernelLost } from './utils';
 
 /**
  * The model for a panel.
@@ -33,11 +34,7 @@ export class PanelModel extends BoxModel {
 
   initialize(attributes: ObjectHash, options: IBackboneModelOptions): void {
     super.initialize(attributes, options);
-    this.on('comm_live_update', () => {
-      if (!this.comm_live && this.comm) {
-        this.close();
-      }
-    });
+    onKernelLost((this.widget_manager as any).kernel, this.close, this);
   }
 
   close(comm_closed?: boolean): Promise<void> {

@@ -10,8 +10,10 @@ import {
   OutputView
 } from '@jupyter-widgets/output';
 import { SessionContext } from '@jupyterlab/apputils';
-import { Session } from '@jupyterlab/services';
+import { ObservableMap } from '@jupyterlab/observables';
+import { Kernel, Session } from '@jupyterlab/services';
 import { UUID } from '@lumino/coreutils';
+import { Signal } from '@lumino/signaling';
 import { IpylabModel, JSONValue } from './ipylab';
 
 /**
@@ -315,4 +317,57 @@ export function listAttributes({
     name: p,
     type: typeof obj[p]
   }));
+}
+
+/**
+ * Call slot when kernel is restarting or dead.
+ *
+ * As soon as the kernel is restarted, all Python objects are lost. Use this
+ * function to close the corresponding frontend objects.
+ * @param kernel
+ * @param slot
+ * @param thisArg
+ * @param onceOnly -  [true] Once called the slot will be disconnected.
+ */
+export function onKernelLost(
+  kernel: Kernel.IKernelConnection,
+  slot: any,
+  thisArg?: any,
+  onceOnly = true
+) {
+  if (!Private.kernelLostSlot.has(kernel.id)) {
+    kernel.statusChanged.connect(_onKernelStatusChanged);
+    Private.kernelLostSlot.set(kernel.id, new Signal<any, null>(kernel));
+    kernel.disposed.connect(() => {
+      Private.kernelLostSlot.get(kernel.id).emit(null);
+      Signal.clearData(Private.kernelLostSlot.get(kernel.id));
+      Private.kernelLostSlot.delete(kernel.id);
+      kernel.statusChanged.disconnect(_onKernelStatusChanged);
+    });
+  }
+  const callback = () => {
+    slot.bind(thisArg)();
+    if (onceOnly) {
+      Private.kernelLostSlot.get(kernel.id)?.disconnect(callback);
+    }
+  };
+  Private.kernelLostSlot.get(kernel.id).connect(callback);
+}
+
+/**
+ * React to changes to the kernel status.
+ */
+function _onKernelStatusChanged(kernel: Kernel.IKernelConnection) {
+  if (['dead', 'restarting'].includes(kernel.status)) {
+    Private.kernelLostSlot.get(kernel.id).emit(null);
+  }
+}
+
+/**
+ * A namespace for private data
+ */
+namespace Private {
+  export const kernelLostSlot = new ObservableMap<
+    Signal<Kernel.IKernelConnection, null>
+  >();
 }

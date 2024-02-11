@@ -18,7 +18,7 @@ import {
   JupyterFrontEnd
 } from './ipylab';
 import { IpylabMainAreaWidget } from './main_area';
-import { injectCode, newNotebook, newSession } from './utils';
+import { injectCode, newNotebook, newSession, onKernelLost } from './utils';
 
 /**
  * The model for a JupyterFrontEnd.
@@ -125,6 +125,15 @@ export class JupyterFrontEndModel extends IpylabModel {
         return await injectCode(payload);
       case 'startIyplabPythonBackend':
         return (await IpylabModel.python_backend.checkStart()) as any;
+      case 'shutdownKernel':
+        if (payload.kernelId) {
+          await IpylabModel.app.commands.execute('kernelmenu:shutdown', {
+            id: payload.kernelId ?? this.kernelId
+          });
+        } else {
+          (this.widget_manager as any).kernel.shutdown();
+        }
+        return null;
       default:
         throw new Error(
           `operation='${op}' has not been implemented in ${JupyterFrontEndModel.model_name}!`
@@ -153,11 +162,11 @@ export class JupyterFrontEndModel extends IpylabModel {
       luminoWidget.id = DOMUtils.createDomID();
     }
     this.shell.add(luminoWidget, area, options);
-    model.on('comm_live_update', () => {
-      if (!model.comm_live) {
-        luminoWidget.dispose();
-      }
-    });
+    onKernelLost(
+      (this.widget_manager as any).kernel,
+      luminoWidget.dispose,
+      luminoWidget
+    );
     return { id: luminoWidget.id };
   }
 

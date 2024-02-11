@@ -3,11 +3,12 @@
 from __future__ import annotations
 
 import asyncio
+import inspect
 from collections.abc import Callable
 
-from traitlets import Dict, Tuple, Unicode, observe
+from traitlets import Dict, Tuple, Unicode
 
-from ipylab.asyncwidget import AsyncWidgetBase, TransformMode, pack, register
+from ipylab.asyncwidget import AsyncWidgetBase, pack, register
 from ipylab.hookspecs import pm
 from ipylab.widgets import Icon
 
@@ -15,7 +16,6 @@ from ipylab.widgets import Icon
 @register
 class CommandPalette(AsyncWidgetBase):
     _model_name = Unicode("CommandPaletteModel").tag(sync=True)
-
     items = Tuple(read_only=True).tag(sync=True)
 
     def add_item(
@@ -31,7 +31,12 @@ class CommandPalette(AsyncWidgetBase):
         )
 
     def remove_item(self, command_id: str, category) -> asyncio.Task:
-        return self.schedule_operation(operation="addItem", id=command_id, category=category)
+        return self.schedule_operation(operation="removeItem", id=command_id, category=category)
+
+
+@register
+class Launcher(CommandPalette):
+    _model_name = Unicode("LauncherModel").tag(sync=True)
 
 
 @register
@@ -39,45 +44,30 @@ class CommandRegistry(AsyncWidgetBase):
     _model_name = Unicode("CommandRegistryModel").tag(sync=True)
     SINGLETON = True
     commands = Tuple(read_only=True).tag(sync=True)
-
     _execute_callbacks: dict[str : Callable[[], None]] = Dict()
-
-    @observe("commands")
-    def _observe_commands(self, change):
-        commands = self.commands
-        for k in tuple(self._execute_callbacks):
-            if k not in commands:
-                self._execute_callbacks.pop(k)
 
     async def _do_operation_for_frontend(
         self, operation: str, payload: dict, buffers: list
     ) -> bool | None:
         if operation == "execute":
             command_id = payload.get("id")
-            cmd = self._execute_callbacks[command_id]
-            result = cmd(**payload.get("kwgs", {}))
+            cmd = self._get_command(command_id)
+            kwgs = dict(payload.get("kwgs", {}))
+            for k in set(inspect.signature(cmd).parameters.keys()).difference(kwgs):
+                kwgs.pop(k)
+            result = cmd(**kwgs)
             if asyncio.iscoroutine(result):
                 result = await result
             return result
         else:
-            pm.hook.unhandled_frontend_operation_message(self, operation)
+            pm.hook.unhandled_frontend_operation_message(obj=self, operation=operation)
 
-    def execute(
-        self,
-        command_id: str,
-        transform: TransformMode | dict[str, str] = TransformMode.raw,
-        **args,
-    ) -> asyncio.Task:
-        """Execute command_id.
-
-        `args` correspond to `args` in JupyterLab.
-
-        Finding what the `args` are remains an outstanding issue in JupyterLab.
-
-        see: https://github.com/jtpio/ipylab/issues/128#issuecomment-1683097383 for hints
-        about how args can be found.
-        """
-        return self.execute_method("app.commands.execute", command_id, args, transform=transform)
+    def _get_command(self, command_id: str) -> Callable:
+        "Get a registered Python command"
+        if command_id not in self._execute_callbacks:
+            msg = f"{command_id} is not a registered command!"
+            raise KeyError(msg)
+        return self._execute_callbacks[command_id]
 
     def addPythonCommand(
         self,
@@ -90,8 +80,6 @@ class CommandRegistry(AsyncWidgetBase):
         icon: Icon = None,
         **kwgs,
     ):
-        if command_id in self.commands:
-            raise Exception(f"Command '{command_id} is already registered!")
         # TODO: support other parameters (isEnabled, isVisible...)
         self._execute_callbacks = self._execute_callbacks | {command_id: execute}
         return self.schedule_operation(
@@ -104,8 +92,14 @@ class CommandRegistry(AsyncWidgetBase):
             **kwgs,
         )
 
-    def remove_command(self, command_id: str, **kwgs) -> asyncio.Task:
+    def removePythonCommand(self, command_id: str, **kwgs) -> asyncio.Task:
         # TODO: check whether to keep this method, or return disposables like in lab
-        if command_id not in self.commands:
+        if command_id not in self._execute_callbacks:
             raise ValueError(f"{command_id=} is not a registered command!")
-        return self.schedule_operation("removePythonCommand", command_id=command_id, **kwgs)
+
+        def callback(content: dict, payload: list):
+            self._execute_callbacks.pop(command_id, None)
+
+        return self.schedule_operation(
+            "removePythonCommand", command_id=command_id, callback=callback, **kwgs
+        )

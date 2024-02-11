@@ -144,13 +144,13 @@ export class MainAreaModel extends IpylabModel {
       type: this.sessionContext.type,
       className: className
     });
+    this._unload_mainarea_widget(); // unload any existing widgets.
     luminoWidget.disposed.connect(() => {
-      this.set('loaded', 'unloaded');
+      this.set('status', 'unloaded');
       this.save_changes();
       this._luminoWidget = null;
       this._close_console();
     }, this);
-    this._unload_mainarea_widget();
     IpylabModel.app.shell.add(luminoWidget, area, options);
     await luminoWidget.sessionContext.ready;
     this._luminoWidget = luminoWidget;

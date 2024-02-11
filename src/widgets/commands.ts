@@ -5,12 +5,7 @@ import { unpack_models } from '@jupyter-widgets/base';
 import { ObservableMap } from '@jupyterlab/observables';
 import { LabIcon } from '@jupyterlab/ui-components';
 import { IDisposable } from '@lumino/disposable';
-import {
-  CommandRegistry,
-  ISerializers,
-  IpylabModel,
-  JSONValue
-} from './ipylab';
+import { ISerializers, IpylabModel, JSONValue } from './ipylab';
 
 /**
  * The model for a command registry.
@@ -37,16 +32,13 @@ export class CommandRegistryModel extends IpylabModel {
    * @param options The initialization options.
    */
   initialize(attributes: any, options: any): void {
-    this._commands = IpylabModel.app.commands;
     super.initialize(attributes, options);
-    this.on('comm_live_update', () => {
-      if (!this.comm_live) {
-        Private.customCommands.values().forEach(command => command.dispose());
-      }
-    });
-
-    this._commands.commandChanged.connect(this._sendCommandList, this);
+    this.commands.commandChanged.connect(this._sendCommandList, this);
     this._sendCommandList();
+  }
+
+  get commands() {
+    return IpylabModel.app.commands;
   }
 
   /**
@@ -57,8 +49,7 @@ export class CommandRegistryModel extends IpylabModel {
    * @returns - a promise that is fulfilled when all the associated views have been removed.
    */
   close(comm_closed = false): Promise<void> {
-    // can only be closed once.
-    this._commands.commandChanged.disconnect(this._sendCommandList, this);
+    this.commands.commandChanged.disconnect(this._sendCommandList, this);
     return super.close(comm_closed);
   }
 
@@ -68,7 +59,7 @@ export class CommandRegistryModel extends IpylabModel {
       case 'execute':
         id = payload.id;
         args = payload.args;
-        return await this._commands.execute(id, args);
+        return await this.commands.execute(id, args);
       case 'addPythonCommand': {
         result = await this._addCommand(payload);
         // keep track of the commands
@@ -96,7 +87,7 @@ export class CommandRegistryModel extends IpylabModel {
     if (args && args.type !== 'added' && args.type !== 'removed') {
       return;
     }
-    this.set('commands', this._commands.listCommands());
+    this.set('commands', this.commands.listCommands());
     this.save_changes();
   }
 
@@ -112,7 +103,7 @@ export class CommandRegistryModel extends IpylabModel {
    */
   private async _addCommand(options: any): Promise<JSONValue> {
     const { id, caption, label, iconClass, icon } = options;
-    if (this._commands.hasCommand(id)) {
+    if (this.commands.hasCommand(id)) {
       const cmd = Private.customCommands.get(id);
       if (cmd) {
         cmd.dispose();
@@ -129,7 +120,7 @@ export class CommandRegistryModel extends IpylabModel {
     const commandEnabled = (command: IDisposable): boolean => {
       return !command.isDisposed && !!this.comm && this.comm_live;
     };
-    const command = this._commands.addCommand(id, {
+    const command = this.commands.addCommand(id, {
       caption,
       label,
       iconClass,
@@ -170,8 +161,6 @@ export class CommandRegistryModel extends IpylabModel {
   };
 
   static model_name = 'CommandRegistryModel';
-
-  private _commands!: CommandRegistry;
 }
 
 /**

@@ -15,7 +15,7 @@ from ipylab.asyncwidget import (
     register,
     widget_serialization,
 )
-from ipylab.commands import CommandPalette, CommandRegistry
+from ipylab.commands import CommandPalette, CommandRegistry, Launcher
 from ipylab.dialog import Dialog, FileDialog
 from ipylab.sessions import SessionManager
 from ipylab.shell import Shell
@@ -34,10 +34,11 @@ class JupyterFrontEnd(AsyncWidgetBase):
     SINGLETON = True
 
     version = Unicode(read_only=True).tag(sync=True)
-    commands = Instance(CommandRegistry, (), read_only=True).tag(sync=True, **widget_serialization)
+    command = Instance(CommandRegistry, (), read_only=True).tag(sync=True, **widget_serialization)
     command_pallet = Instance(CommandPalette, (), read_only=True).tag(
         sync=True, **widget_serialization
     )
+    launcher = Instance(Launcher, (), read_only=True).tag(sync=True, **widget_serialization)
 
     current_widget_id = Unicode(read_only=True).tag(sync=True)
     current_session = Dict(read_only=True).tag(sync=True)
@@ -71,7 +72,10 @@ class JupyterFrontEnd(AsyncWidgetBase):
         """Wait until connected to app indicates it is ready."""
         if not self._ready_response.is_set():
             future = asyncio.gather(
-                super().wait_ready(), self.commands.wait_ready(), self.command_pallet.wait_ready()
+                super().wait_ready(),
+                self.command.wait_ready(),
+                self.command_pallet.wait_ready(),
+                self.launcher.wait_ready(),
             )
             await asyncio.wait_for(future, timeout)
         return self
@@ -88,8 +92,10 @@ class JupyterFrontEnd(AsyncWidgetBase):
         except Exception as e:
             self.log.error("An exception occurred when loading plugins")
             self.dialog.show_error_message("Plugin failure", str(e))
-        result = pm.hook.run_once_at_startup()
-        self.log.info("Finished loading plugins.")
+
+    def shutdownKernel(self, kernelId: str | None = None) -> asyncio.Task:
+        """Shutdown the kernel"""
+        return self.schedule_operation("shutdownKernel", kernelId=kernelId)
 
     def newSession(
         self,

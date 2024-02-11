@@ -22,7 +22,12 @@ import { JSONValue, UUID } from '@lumino/coreutils';
 import { ObjectHash } from 'backbone';
 import { MODULE_NAME, MODULE_VERSION } from '../version';
 import { PythonBackendModel } from './python_backend';
-import { getNestedObject, listAttributes, transformObject } from './utils';
+import {
+  getNestedObject,
+  listAttributes,
+  transformObject,
+  onKernelLost
+} from './utils';
 
 export {
   CommandRegistry,
@@ -45,14 +50,10 @@ export class IpylabModel extends DOMWidgetModel {
     this.set('kernelId', this._kernelId);
     this._pending_backend_operation_callbacks = new Map();
     this.on('msg:custom', this._onCustomMessage.bind(this));
+    this.save_changes();
     const msg = `ipylab ${this.get('_model_name')} ready for operations`;
     this.send({ init: msg });
-    this.on('comm_live_update', () => {
-      if (!this.comm_live && this.comm) {
-        this.close();
-      }
-    });
-    this.save_changes();
+    onKernelLost((this.widget_manager as any).kernel, this.close, this);
   }
 
   get app() {
