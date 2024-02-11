@@ -118,10 +118,20 @@ export async function injectCode({
   });
   const future = connection.requestExecute({
     code: code,
-    store_history: false
+    store_history: false,
+    stop_on_error: true,
+    silent: true,
+    allow_stdin: false
   });
   // TODO: Is there a better result to return?
-  return (await future.done) as any;
+  const result = (await future.done) as any;
+  if (result.content.status === 'ok') {
+    return result.content.payload;
+  } else {
+    throw new Error(
+      `Execution status = ${result.status} not 'ok' traceback=${result.content.traceback}`
+    );
+  }
 }
 
 /**
