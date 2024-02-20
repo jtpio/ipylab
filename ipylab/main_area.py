@@ -123,7 +123,12 @@ class MainArea(AsyncWidgetBase, HasApp):
         return self.schedule_operation(
             "load",
             area=area,
-            options={"mode": mode, "rank": rank, "activate": activate, "ref": pack(ref)},
+            options={
+                "mode": InsertMode(mode),
+                "rank": rank,
+                "activate": activate,
+                "ref": pack(ref),
+            },
             className=class_name,
         )
 

@@ -258,6 +258,12 @@ export class IpylabModel extends DOMWidgetModel {
     return super.close(comm_closed);
   }
 
+  save_changes(callbacks?: {}): void {
+    if (this.comm_live) {
+      super.save_changes(callbacks);
+    }
+  }
+
   static serializers: ISerializers = {
     ...WidgetModel.serializers
   };

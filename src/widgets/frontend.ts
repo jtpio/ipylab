@@ -59,6 +59,16 @@ export class JupyterFrontEndModel extends IpylabModel {
     this.save_changes();
   }
 
+  close(comm_closed?: boolean): Promise<void> {
+    this.labShell.currentChanged.disconnect(this._updateSessionDetails, this);
+    this.labShell.activeChanged.disconnect(this._updateSessionDetails, this);
+    this.sessionManager.runningChanged.disconnect(
+      this._updateAllSessionDetails,
+      this
+    );
+    return super.close(comm_closed);
+  }
+
   get shell(): JupyterFrontEnd.IShell {
     return IpylabModel.app.shell;
   }
