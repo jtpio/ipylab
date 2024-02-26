@@ -37,12 +37,15 @@ export class PanelModel extends BoxModel {
     onKernelLost((this.widget_manager as any).kernel, this.close, this);
   }
 
+  get kernelLive() {
+    return !['dead'].includes((this.widget_manager as any).kernel.status);
+  }
+
   close(comm_closed?: boolean): Promise<void> {
-    if (!this.get('closed')) {
-      this.set('closed', true);
-      if (this.comm) {
-        this.save_changes();
-      }
+    comm_closed = comm_closed ?? !this.kernelLive;
+    this.set('closed', true);
+    if (!comm_closed) {
+      this.save_changes();
     }
     return super.close(comm_closed);
   }

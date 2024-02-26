@@ -5,7 +5,7 @@ from __future__ import annotations
 import asyncio
 import inspect
 import sys
-import textwrap
+import traceback
 import types
 import uuid
 from collections.abc import Callable, Coroutine
@@ -37,21 +37,7 @@ def pack(obj: Widget):
 def pack_code(code: str | types.ModuleType) -> str:
     """Convert code to a string suitable to run in a kernel."""
     if not isinstance(code, str):
-        should_call = callable(code)
-        func_name = code.__name__
         code = inspect.getsource(code)
-        if should_call:
-            code = textwrap.dedent(
-                f"""
-                import asyncio
-
-                {{code}}
-
-                result = {func_name}()
-                if asyncio.iscoroutine(result):
-                    task = asyncio.create_task(result)
-                """
-            ).format(code=code)
     return code
 
 
@@ -75,17 +61,23 @@ class TransformMode(StrEnum):
 
     #### To specify a separate transform per part:
 
+    ```
     transform = {
     mode: 'attribute',
     parts:  [{'path':'model', 'transform':...},, ...]
     }
+    ```
 
     `function`
     --------
-    JS code defining a function and returning data.
+    JS code defining a function and the data to return.
 
     ```
-    transform = {mode: "function", code: "function (obj) { return String(obj); }"}"""
+    transform = {
+    "mode": "function",
+    "code": "function (obj) { return obj.id; }",
+    }
+    """
 
     raw = "raw"
     done = "done"
@@ -198,15 +190,15 @@ class AsyncWidgetBase(WidgetBase):
 
     async def wait_ready(self) -> None:
         if not self._ready_response.is_set():
-            self.log.info(f"Connecting to frontend model '{self._model_name}'")
+            self.log.info("Connecting to frontend model '%s'", self._model_name)
             await self._ready_response.wait()
-            self.log.info(f"Connected to frontend model '{self._model_name}'")
+            self.log.info("Connected to frontend model '%s'", self._model_name)
 
     def send(self, content, buffers=None):
         try:
             super().send(content, buffers)
         except Exception as error:
-            pm.hook.on_send_error(obj=self, error=error, content=content, buffers=buffers)
+            pm.hook.on_frontend_error(obj=self, error=error, content=content, buffers=buffers)
 
     async def _send_receive(self, content: dict, callback: Callable):
         async with self:
@@ -239,7 +231,7 @@ class AsyncWidgetBase(WidgetBase):
                 self._tasks.add(task)
                 task.add_done_callback(self._tasks.discard)
             if error:
-                pm.hook.on_frontend_error(obj=self, error=error, content=content)
+                pm.hook.on_frontend_error(obj=self, error=error, content=content, buffers=buffers)
         elif init_message := content.get("init"):
             self._ready_response.set(content)
             print(init_message)
@@ -262,10 +254,19 @@ class AsyncWidgetBase(WidgetBase):
         except asyncio.CancelledError:
             content["error"] = "Cancelled"
         except Exception as e:
-            content["error"] = str(e)
-            pm.hook.on_frontend_operation_error(obj=self, error=e, content=payload)
+            content["error"] = {"repr": repr(e), "traceback": traceback.format_tb(e.__traceback__)}
+            pm.hook.on_frontend_error(obj=self, error=e, content=content, buffers=buffers)
         finally:
-            self.send(content, buffers)
+            try:
+                self.send(content, buffers)
+            except ValueError as e:
+                content.pop("payload", None)
+                content["error"] = {
+                    "repr": repr(e),
+                    "traceback": traceback.format_tb(e.__traceback__),
+                }
+                self.send(content, buffers)
+                pm.hook.on_frontend_error(obj=self, error=e, content=content, buffers=buffers)
 
     async def _do_operation_for_frontend(self, operation: str, payload: dict, buffers):
         """Overload this function as required.
@@ -317,7 +318,7 @@ class AsyncWidgetBase(WidgetBase):
         task.add_done_callback(self._tasks.discard)
         return task
 
-    def execute_method(
+    def executeMethod(
         self,
         method: str,
         *args,
@@ -342,7 +343,7 @@ class AsyncWidgetBase(WidgetBase):
         return self.schedule_operation(
             operation="FE_execute",
             FE_execute={
-                "mode": "execute_method",
+                "mode": "executeMethod",
                 "kwgs": {"method": method, "widget": pack(widget)},
             },
             transform=transform,
@@ -359,7 +360,7 @@ class AsyncWidgetBase(WidgetBase):
         widget: Widget | None = None,
     ):
         """A serialized version of the attribute relative to this object."""
-        return self.execute_method(
+        return self.executeMethod(
             "getAttribute",
             path,
             callback=callback,
@@ -410,7 +411,7 @@ class AsyncWidgetBase(WidgetBase):
                 payload = callback(content, payload)
             return payload
 
-        return self.execute_method(
+        return self.executeMethod(
             "listAttributes",
             path,
             type,
@@ -420,7 +421,7 @@ class AsyncWidgetBase(WidgetBase):
             widget=widget,
         )
 
-    def execute_command(
+    def executeCommand(
         self,
         command_id: str,
         transform: TransformMode | dict[str, str] = TransformMode.done,
@@ -435,4 +436,4 @@ class AsyncWidgetBase(WidgetBase):
         see: https://github.com/jtpio/ipylab/issues/128#issuecomment-1683097383 for hints
         about how args can be found.
         """
-        return self.execute_method("app.commands.execute", command_id, args, transform=transform)
+        return self.executeMethod("app.commands.execute", command_id, args, transform=transform)

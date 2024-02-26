@@ -17,7 +17,7 @@ if t.TYPE_CHECKING:
 class IpylabHookspec:
     @hookspec
     def on_frontend_error(
-        self, obj: AsyncWidgetBase, error: Exception, content: dict
+        self, obj: AsyncWidgetBase, error: Exception, content: dict, buffers
     ) -> t.NoReturn | None:
         """Intercept an error message for logging purposes.
 
@@ -32,14 +32,6 @@ class IpylabHookspec:
                 The content of the message accompanying the frontend error.
         """
 
-    @hookspec
-    def on_send_error(self, obj: AsyncWidgetBase, error: Exception, content: dict, buffers) -> None:
-        """This is called when a send exception occurs."""
-
-    @hookspec(firstresult=True)
-    def on_frontend_operation_error(self, obj: AsyncWidgetBase, error: Exception, content: dict):
-        """Handle an error processing an operation from the frontend."""
-
     @hookspec(firstresult=True)
     def unhandled_frontend_operation_message(self, obj: AsyncWidgetBase, operation: str):
         """Handle a message from the frontend."""
@@ -53,14 +45,3 @@ class IpylabDefaultsPlugin:
 
 pm.add_hookspecs(IpylabHookspec)
 pm.register(IpylabDefaultsPlugin())
-
-
-def before(hook_name, hook_impls, kwargs):
-    pass
-
-
-def after(outcome, hook_name, hook_impls, kwargs):
-    pass
-
-
-stop_trace = pm.add_hookcall_monitoring(before, after)

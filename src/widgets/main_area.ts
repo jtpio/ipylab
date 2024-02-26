@@ -111,7 +111,6 @@ export class MainAreaModel extends IpylabModel {
         return await navigator.locks.request(this._mutex_key, () =>
           this._load_main_area_widget(payload)
         );
-        this;
       case 'unload':
         return await navigator.locks.request(this._mutex_key, () =>
           this._unload_mainarea_widget()

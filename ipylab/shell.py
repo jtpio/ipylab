@@ -96,13 +96,13 @@ class Shell(JupyterFrontEndSubsection):
         )
 
     def expandLeft(self) -> asyncio.Task:
-        return self.execute_method("expandLeft")
+        return self.executeMethod("expandLeft")
 
     def expandRight(self) -> asyncio.Task:
-        return self.execute_method("expandRight")
+        return self.executeMethod("expandRight")
 
     def collapseLeft(self) -> asyncio.Task:
-        return self.execute_method("collapseLeft")
+        return self.executeMethod("collapseLeft")
 
     def collapseRight(self) -> asyncio.Task:
-        return self.execute_method("collapseRight")
+        return self.executeMethod("collapseRight")

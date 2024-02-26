@@ -15,10 +15,10 @@ class SessionManager(JupyterFrontEndSubsection):
 
     def refreshRunning(self) -> asyncio.Task:
         """Force a call to refresh running sessions."""
-        return self.execute_method("refreshRunning")
+        return self.executeMethod("refreshRunning")
 
     def stopIfNeeded(self, path) -> asyncio.Task:
         """
         https://jupyterlab.readthedocs.io/en/latest/api/interfaces/services.Session.IManager.html#stopIfNeeded
         """
-        return self.execute_method("stopIfNeeded", path=path)
+        return self.executeMethod("stopIfNeeded", path=path)

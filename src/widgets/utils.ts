@@ -14,7 +14,7 @@ import { ObservableMap } from '@jupyterlab/observables';
 import { Kernel, Session } from '@jupyterlab/services';
 import { UUID } from '@lumino/coreutils';
 import { Signal } from '@lumino/signaling';
-import { IpylabModel, JSONValue } from './ipylab';
+import { IpylabModel, JSONValue, JSONObject } from './ipylab';
 
 /**
  * Start a new session that support comms needed for iplab needs for comms.
@@ -37,7 +37,7 @@ export async function newSession({
     sessionManager: IpylabModel.app.serviceManager.sessions,
     specsManager: IpylabModel.app.serviceManager.kernelspecs,
     path: path,
-    name: name,
+    name: name ?? path,
     type: 'ipylab',
     kernelPreference: {
       id: kernelId || `${UUID.uuid4()}`,
@@ -58,7 +58,6 @@ export async function newSession({
   // https://github.com/jupyter-widgets/ipywidgets/blob/b2531796d414b0970f18050d6819d932417b9953/python/jupyterlab_widgets/src/plugin.ts#L112
 
   registerWidgets(manager);
-
   if (code) {
     const future = session.kernel.requestExecute(
       {
@@ -105,10 +104,12 @@ export async function newNotebook({
  */
 export async function injectCode({
   kernelId,
-  code
+  code,
+  user_expressions
 }: {
   kernelId: string;
   code: string;
+  user_expressions?: JSONObject;
 }): Promise<JSONValue> {
   const kernelModel = await IpylabModel.app.serviceManager.kernels.findById(
     kernelId
@@ -121,9 +122,9 @@ export async function injectCode({
     store_history: false,
     stop_on_error: true,
     silent: true,
-    allow_stdin: false
+    allow_stdin: false,
+    user_expressions: user_expressions
   });
-  // TODO: Is there a better result to return?
   const result = (await future.done) as any;
   if (result.content.status === 'ok') {
     return result.content.payload;
@@ -237,11 +238,11 @@ export function toFunction(code: string) {
  * @param thisArg 'function' mode only - the binding of `this`.
  * @returns
  */
-export function transformObject(
+export async function transformObject(
   obj: any,
   options: string | any,
   thisArg: object = null
-): JSONValue {
+): Promise<JSONValue> {
   const mode = typeof options === 'string' ? options : options.mode;
 
   let path: string, transform: string, result, part: string, func;
@@ -268,11 +269,14 @@ export function transformObject(
           transform = options.parts[i].transform;
         }
         part = getNestedObject(obj, path);
-        (result as any)[path] = transformObject(part, transform);
+        (result as any)[path] = await transformObject(part, transform);
       }
       return result as any;
     case 'function':
       func = toFunction(options.code).bind(thisArg);
+      if (func.constructor.name === 'AsyncFunction') {
+        return await func(obj);
+      }
       return func(obj);
     default:
       throw new Error(`Invalid return mode: '${options.mode}'`);

@@ -8,7 +8,7 @@ from collections.abc import Callable
 
 from traitlets import Dict, Tuple, Unicode
 
-from ipylab.asyncwidget import AsyncWidgetBase, pack, register
+from ipylab.asyncwidget import AsyncWidgetBase, TransformMode, pack, register
 from ipylab.hookspecs import pm
 from ipylab.widgets import Icon
 
@@ -46,21 +46,20 @@ class CommandRegistry(AsyncWidgetBase):
     commands = Tuple(read_only=True).tag(sync=True)
     _execute_callbacks: dict[str : Callable[[], None]] = Dict()
 
-    async def _do_operation_for_frontend(
-        self, operation: str, payload: dict, buffers: list
-    ) -> bool | None:
-        if operation == "execute":
-            command_id = payload.get("id")
-            cmd = self._get_command(command_id)
-            kwgs = dict(payload.get("kwgs", {}))
-            for k in set(inspect.signature(cmd).parameters.keys()).difference(kwgs):
-                kwgs.pop(k)
-            result = cmd(**kwgs)
-            if asyncio.iscoroutine(result):
-                result = await result
-            return result
-        else:
-            pm.hook.unhandled_frontend_operation_message(obj=self, operation=operation)
+    async def _do_operation_for_frontend(self, operation: str, payload: dict, buffers: list) -> any:
+        match operation:
+            case "execute":
+                command_id = payload.get("id")
+                cmd = self._get_command(command_id)
+                kwgs = payload.get("kwgs") or {} | {"buffers": buffers}
+                for k in set(kwgs).difference(inspect.signature(cmd).parameters.keys()):
+                    kwgs.pop(k)
+                result = cmd(**kwgs)
+                if inspect.isawaitable(result):
+                    return await result
+                return result
+            case _:
+                pm.hook.unhandled_frontend_operation_message(obj=self, operation=operation)
 
     def _get_command(self, command_id: str) -> Callable:
         "Get a registered Python command"
@@ -78,6 +77,7 @@ class CommandRegistry(AsyncWidgetBase):
         label="",
         icon_class="",
         icon: Icon = None,
+        command_result_transform: TransformMode = TransformMode.raw,
         **kwgs,
     ):
         # TODO: support other parameters (isEnabled, isVisible...)
@@ -89,6 +89,7 @@ class CommandRegistry(AsyncWidgetBase):
             label=label,
             iconClass=icon_class,
             icon=pack(icon),
+            command_result_transform=command_result_transform,
             **kwgs,
         )
 

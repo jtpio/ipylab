@@ -18,15 +18,15 @@ import { ILauncher } from '@jupyterlab/launcher';
 import { IRenderMimeRegistry } from '@jupyterlab/rendermime';
 import { ITranslator } from '@jupyterlab/translation';
 import { CommandRegistry } from '@lumino/commands';
-import { JSONValue, UUID } from '@lumino/coreutils';
+import { JSONObject, JSONValue, UUID } from '@lumino/coreutils';
 import { ObjectHash } from 'backbone';
 import { MODULE_NAME, MODULE_VERSION } from '../version';
 import { PythonBackendModel } from './python_backend';
 import {
   getNestedObject,
   listAttributes,
-  transformObject,
-  onKernelLost
+  onKernelLost,
+  transformObject
 } from './utils';
 
 export {
@@ -36,6 +36,7 @@ export {
   ILauncher,
   ISerializers,
   ITranslator,
+  JSONObject,
   JSONValue,
   JupyterFrontEnd
 };
@@ -64,6 +65,10 @@ export class IpylabModel extends DOMWidgetModel {
     return this._kernelId;
   }
 
+  get kernelLive() {
+    return !['dead'].includes((this.widget_manager as any).kernel.status);
+  }
+
   check_closed() {
     if (this.get('closed')) {
       throw Error('This object is closed');
@@ -88,7 +93,7 @@ export class IpylabModel extends DOMWidgetModel {
       if (msg.error) {
         reject(msg.error);
       } else {
-        resolve(msg);
+        resolve(msg.payload);
       }
     } else {
       // Backend operation (don't await it)
@@ -139,7 +144,7 @@ export class IpylabModel extends DOMWidgetModel {
       const content = {
         ipylab_BE: ipylab_BE,
         operation: operation,
-        payload: transformObject(result, transform, this)
+        payload: await transformObject(result, transform, this)
       };
       this.send(content, null, buffers);
     } catch (e) {
@@ -156,7 +161,7 @@ export class IpylabModel extends DOMWidgetModel {
   /**
    * Perform execute request from backend.
    * Options:
-   *  - execute_method: Execute the method using dotted access.
+   *  - executeMethod: Execute the method using dotted access.
    *      eg. 'shell.expandLeft' will execute the method this.shell.expandLeft
    *      args must be passed in an array in the as defined in the method.
    * @param payload
@@ -166,7 +171,7 @@ export class IpylabModel extends DOMWidgetModel {
     const { mode, kwgs } = (payload as any).FE_execute;
     delete (payload as any).FE_execute;
     switch (mode) {
-      case 'execute_method': {
+      case 'executeMethod': {
         let obj;
         (obj as any) = this;
         if (kwgs.widget) {
@@ -213,9 +218,10 @@ export class IpylabModel extends DOMWidgetModel {
    * @param payload Corresponding payload as expected by the backend.
    * @returns
    */
-  async schedule_operation(
+  async scheduleOperation(
     operation: string,
-    payload: JSONValue
+    payload: JSONValue,
+    transform?: object | string
   ): Promise<JSONValue> {
     this.check_closed();
     const ipylab_FE = `${UUID.uuid4()}`;
@@ -231,11 +237,8 @@ export class IpylabModel extends DOMWidgetModel {
       callbacks.set(ipylab_FE, [resolve, reject]);
     });
     this.send(msg);
-    let result = await promise;
-    if (result === IpylabModel.OPERATION_DONE) {
-      result = null;
-    }
-    return result;
+    const result: any = await promise;
+    return await transformObject(result, transform ?? 'raw', this);
   }
 
   listAttributes(path: string, type = '', depth = 2) {
@@ -251,15 +254,16 @@ export class IpylabModel extends DOMWidgetModel {
   }
 
   close(comm_closed?: boolean): Promise<void> {
-    if (!this.get('closed')) {
+    comm_closed = comm_closed ?? !this.kernelLive;
+    if (!comm_closed) {
       this.set('closed', true);
       this.save_changes();
+      return super.close(comm_closed);
     }
-    return super.close(comm_closed);
   }
 
-  save_changes(callbacks?: {}): void {
-    if (this.comm_live) {
+  save_changes(callbacks?: unknown): void {
+    if (this.comm_live && this.kernelLive) {
       super.save_changes(callbacks);
     }
   }

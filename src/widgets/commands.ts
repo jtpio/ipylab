@@ -102,7 +102,8 @@ export class CommandRegistryModel extends IpylabModel {
    * @param options.icon
    */
   private async _addCommand(options: any): Promise<JSONValue> {
-    const { id, caption, label, iconClass, icon } = options;
+    const { id, caption, label, iconClass, icon, command_result_transform } =
+      options;
     if (this.commands.hasCommand(id)) {
       const cmd = Private.customCommands.get(id);
       if (cmd) {
@@ -130,7 +131,11 @@ export class CommandRegistryModel extends IpylabModel {
           command.dispose();
           return;
         }
-        return this.schedule_operation('execute', { id: id, kwgs: args });
+        return this.scheduleOperation(
+          'execute',
+          { id: id, kwgs: args },
+          command_result_transform
+        );
       },
       isEnabled: () => commandEnabled(command),
       isVisible: () => commandEnabled(command)
@@ -147,7 +152,7 @@ export class CommandRegistryModel extends IpylabModel {
    */
   private _removeCommand(command_id: string): null {
     if (Private.customCommands.has(command_id)) {
-      const cmd = Private.customCommands.get(command_id);
+      const cmd = Private.customCommands.delete(command_id);
       if (cmd) {
         cmd.dispose();
       }

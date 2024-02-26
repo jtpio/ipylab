@@ -137,6 +137,9 @@ export class CommandPaletteModel extends IpylabModel {
   private _customItems: ObservableMap<IDisposable>;
 }
 
+/**
+ * The model for the Launcher.
+ */
 export class LauncherModel extends CommandPaletteModel {
   get interface() {
     if (!IpylabModel.launcher) {
@@ -146,7 +149,7 @@ export class LauncherModel extends CommandPaletteModel {
   }
 
   /**
-   * Add an item for the interface
+   * Add an item for the launcher (interface)
    * @param options
    * @returns
    */

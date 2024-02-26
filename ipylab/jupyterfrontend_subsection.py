@@ -17,7 +17,7 @@ class JupyterFrontEndSubsection(HasApp):
     # see ipylab/src/widgets/frontend.ts -> JupyterFrontEndModel
     JFE_JS_SUB_PATH = ""
 
-    def execute_method(
+    def executeMethod(
         self,
         method: str,
         *args,
@@ -29,7 +29,7 @@ class JupyterFrontEndSubsection(HasApp):
         """
         # validation
         method = f"{self.JFE_JS_SUB_PATH}.{method}"
-        return self.app.execute_method(method, *args, callback=callback, transform=transform)
+        return self.app.executeMethod(method, *args, callback=callback, transform=transform)
 
     def get_attribute(
         self,

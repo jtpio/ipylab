@@ -45,6 +45,7 @@ export class JupyterFrontEndModel extends IpylabModel {
   initialize(attributes: any, options: any): void {
     super.initialize(attributes, options);
     this.set('version', this.app.version);
+    Private.jupyterFrontEndModels.set(this.kernelId, this);
 
     this.sessionManager.runningChanged.connect(
       this._updateAllSessionDetails,
@@ -60,6 +61,7 @@ export class JupyterFrontEndModel extends IpylabModel {
   }
 
   close(comm_closed?: boolean): Promise<void> {
+    Private.jupyterFrontEndModels.delete(this.kernelId);
     this.labShell.currentChanged.disconnect(this._updateSessionDetails, this);
     this.labShell.activeChanged.disconnect(this._updateSessionDetails, this);
     this.sessionManager.runningChanged.disconnect(
@@ -99,7 +101,7 @@ export class JupyterFrontEndModel extends IpylabModel {
       }
       return result.value;
     }
-    let result: any;
+    let result, jfem: any;
     switch (op) {
       case 'addToShell':
         return await this._addToShell(payload);
@@ -127,12 +129,16 @@ export class JupyterFrontEndModel extends IpylabModel {
         return await FileDialog.getExistingDirectory(payload).then(_get_result);
       case 'newSession':
         result = await newSession(payload);
-        return result.model;
+        return result.model as any;
       case 'newNotebook':
         result = await newNotebook(payload);
-        return result.sessionContext.session.model;
+        return (result as any).sessionContext.session.model;
       case 'injectCode':
         return await injectCode(payload);
+      case 'execEval':
+        // Use the JupyterFrontEndModel associated with the kernel to execute the code
+        jfem = await this.getJupyterFrontEndModel(payload);
+        return await jfem.scheduleOperation('execEval', payload);
       case 'startIyplabPythonBackend':
         return (await IpylabModel.python_backend.checkStart()) as any;
       case 'shutdownKernel':
@@ -180,9 +186,53 @@ export class JupyterFrontEndModel extends IpylabModel {
     return { id: luminoWidget.id };
   }
 
+  /**
+   * Obtain the instance of the JupyterFrontEndModel for the sessions kernel.
+   * If sessionId is not provided, a new session is created.
+   * @param payload
+   * @returns
+   */
+  async getJupyterFrontEndModel(payload: any): Promise<JupyterFrontEndModel> {
+    let session: Session.ISessionConnection;
+    if (payload.sessionId) {
+      session = this.app.serviceManager.sessions.findById(
+        payload.sessionId
+      ) as any;
+    } else {
+      session = await newSession(payload);
+    }
+    if (!Private.jupyterFrontEndModels.has(session.kernel.id)) {
+      const future = session.kernel.requestExecute({
+        code: 'import ipylab;app=ipylab.JupyterFrontEnd()',
+        store_history: false,
+        stop_on_error: true,
+        silent: true,
+        allow_stdin: false,
+        user_expressions: { frontendId: 'app.model_id' }
+      });
+      const result = (await future.done) as any;
+      if (
+        result.content.status !== 'ok' ||
+        !result.content.user_expressions.frontendId
+      ) {
+        throw new Error(
+          `Failed to setup the JupyterFrontEnd in the new kernel with traceback=${result.content.traceback}`
+        );
+      }
+    }
+    return Private.jupyterFrontEndModels.get(session.kernel.id);
+  }
+
   static serializers: ISerializers = {
     ...IpylabModel.serializers
   };
 
   static model_name = 'JupyterFrontEndModel';
+}
+
+/**
+ * A namespace for private data
+ */
+namespace Private {
+  export const jupyterFrontEndModels = new Map<string, JupyterFrontEndModel>();
 }
