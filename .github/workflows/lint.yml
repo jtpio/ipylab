@@ -2,34 +2,36 @@ name: Lint
 
 on:
   push:
-    branches: [ main ]
+    branches:
+      - main
   pull_request:
-    branches: '*'
+    branches:
+      - '*'
 
 jobs:
   lint_ts:
     runs-on: ubuntu-latest
     steps:
-    - name: Checkout
-      uses: actions/checkout@v3
-    - name: Base Setup
-      uses: jupyterlab/maintainer-tools/.github/actions/base-setup@v1
-    - name: Install JupyterLab
-      run: python -m pip install 'jupyterlab >=3.1,<4'
-    - name: Lint TypeScript
-      run: |
-        jlpm
-        jlpm run lint:check
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Base Setup
+        uses: jupyterlab/maintainer-tools/.github/actions/base-setup@v1
+      - name: Install JupyterLab
+        run: python -m pip install 'jupyterlab >=4,<5'
+      - name: Lint TypeScript
+        run: |
+          jlpm
+          jlpm run lint:check
 
   lint_python:
     runs-on: ubuntu-latest
     steps:
-    - name: Checkout
-      uses: actions/checkout@v3
-    - name: Base Setup
-      uses: jupyterlab/maintainer-tools/.github/actions/base-setup@v1
-    - name: Install black
-      run: python -m pip install black
-    - name: Lint Python
-      run: |
-        black --check .
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Base Setup
+        uses: jupyterlab/maintainer-tools/.github/actions/base-setup@v1
+      - name: Install ruff
+        run: python -m pip install ruff
+      - name: Lint Python
+        run: |
+          ruff check .

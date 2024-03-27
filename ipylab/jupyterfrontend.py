@@ -1,50 +1,252 @@
-#!/usr/bin/env python
-# coding: utf-8
-
 # Copyright (c) ipylab contributors.
 # Distributed under the terms of the Modified BSD License.
+from __future__ import annotations
 
 import asyncio
+import inspect
+import types
 
-from ipywidgets import CallbackDispatcher, Widget, register, widget_serialization
-from traitlets import Instance, Unicode
-from ._frontend import module_name, module_version
+from traitlets import Dict, Instance, Tuple, Unicode
+from typing_extensions import NotRequired, Self, TypedDict
 
-from .commands import CommandRegistry
-from .shell import Shell
-from .sessions import SessionManager
+from ipylab.asyncwidget import (
+    AsyncWidgetBase,
+    TransformMode,
+    pack_code,
+    register,
+    widget_serialization,
+)
+from ipylab.commands import CommandPalette, CommandRegistry, Launcher
+from ipylab.dialog import Dialog, FileDialog
+from ipylab.hookspecs import pm
+from ipylab.sessions import SessionManager
+from ipylab.shell import Shell
+
+
+class LauncherOptions(TypedDict):
+    name: str
+    entry_point: str
+    tooltip: NotRequired[str]
+    icon: NotRequired[str]
 
 
 @register
-class JupyterFrontEnd(Widget):
+class JupyterFrontEnd(AsyncWidgetBase):
     _model_name = Unicode("JupyterFrontEndModel").tag(sync=True)
-    _model_module = Unicode(module_name).tag(sync=True)
-    _model_module_version = Unicode(module_version).tag(sync=True)
+    SINGLETON = True
 
     version = Unicode(read_only=True).tag(sync=True)
-    shell = Instance(Shell).tag(sync=True, **widget_serialization)
-    commands = Instance(CommandRegistry).tag(sync=True, **widget_serialization)
-    sessions = Instance(SessionManager).tag(sync=True, **widget_serialization)
+    command = Instance(CommandRegistry, (), read_only=True).tag(sync=True, **widget_serialization)
+    command_pallet = Instance(CommandPalette, (), read_only=True).tag(
+        sync=True, **widget_serialization
+    )
+    launcher = Instance(Launcher, (), read_only=True).tag(sync=True, **widget_serialization)
 
-    def __init__(self, *args, **kwargs):
-        super().__init__(
-            *args,
-            shell=Shell(),
-            commands=CommandRegistry(),
-            sessions=SessionManager(),
-            **kwargs,
+    current_widget_id = Unicode(read_only=True).tag(sync=True)
+    current_session = Dict(read_only=True).tag(sync=True)
+    all_sessions = Tuple(read_only=True).tag(sync=True)
+
+    @property
+    def dialog(self) -> Dialog:
+        if not hasattr(self, "_dialog"):
+            self._dialog = Dialog()
+        return self._dialog
+
+    @property
+    def file_dialog(self) -> FileDialog:
+        if not hasattr(self, "_fileDialog"):
+            self._fileDialog = FileDialog()
+        return self._fileDialog
+
+    @property
+    def shell(self) -> Shell:
+        if not hasattr(self, "_shell"):
+            self._shell = Shell()
+        return self._shell
+
+    @property
+    def sessionManager(self) -> SessionManager:
+        if not hasattr(self, "_sessionManger"):
+            self._sessionManger = SessionManager()
+        return self._sessionManger
+
+    async def wait_ready(self, timeout=5) -> Self:
+        """Wait until connected to app indicates it is ready."""
+        if not self._ready_response.is_set():
+            future = asyncio.gather(
+                super().wait_ready(),
+                self.command.wait_ready(),
+                self.command_pallet.wait_ready(),
+                self.launcher.wait_ready(),
+            )
+            await asyncio.wait_for(future, timeout)
+        return self
+
+    def _init_python_backend(self) -> str:
+        "Run by the Ipylab python backend."
+        # This is called in a separate kernel started by the JavaScript frontend
+        # the first time the ipylab plugin is activated.
+        from ipylab.hookspecs import pm
+
+        try:
+            count = pm.load_setuptools_entrypoints("ipylab_backend")
+            self.log.info(f"Ipylab python backend found {count} plugin entry points.")
+        except Exception as e:
+            self.log.error("An exception occurred when loading plugins")
+            self.dialog.show_error_message("Plugin failure", str(e))
+
+    async def _do_operation_for_frontend(self, operation: str, payload: dict, buffers: list) -> any:
+        match operation:
+            case "execEval":
+                return await self._execEval(payload, buffers)
+            case _:
+                pm.hook.unhandled_frontend_operation_message(obj=self, operation=operation)
+
+    def shutdownKernel(self, kernelId: str | None = None) -> asyncio.Task:
+        """Shutdown the kernel"""
+        return self.schedule_operation("shutdownKernel", kernelId=kernelId)
+
+    def newSession(
+        self,
+        path: str = "",
+        *,
+        name: str = "",
+        kernelId="",
+        kernelName="python3",
+        code: str | types.ModuleType = "",
+    ) -> asyncio.Task:
+        """
+        Create a new kernel and execute code in it or execute code in an existing kernel.
+
+        path: The session path.
+        type: The type of session.
+        name: The name of the session.
+        kernelName: The name of the kernel (only Python kernel implemented).
+        code: A string, module or function.
+
+        If passing a function, the function will be executed. It is important
+        that objects that must stay alive outside the function must be kept alive.
+        So it is advised to use a code.
+
+        """
+        return self.schedule_operation(
+            "newSession",
+            path=path,
+            name=name or path,
+            kernelId=kernelId,
+            kernelName=kernelName,
+            code=pack_code(code),
+            transform=TransformMode.raw,
         )
-        self._ready_event = asyncio.Event()
-        self._on_ready_callbacks = CallbackDispatcher()
-        self.on_msg(self._on_frontend_msg)
 
-    def _on_frontend_msg(self, _, content, buffers):
-        if content.get("event", "") == "lab_ready":
-            self._ready_event.set()
-            self._on_ready_callbacks()
+    def newNotebook(
+        self,
+        path: str = "",
+        *,
+        name: str = "",
+        kernelId="",
+        kernelName="python3",
+        code: str | types.ModuleType = "",
+    ) -> asyncio.Task:
+        """Create a new notebook."""
+        return self.schedule_operation(
+            "newNotebook",
+            path=path,
+            name=name or path,
+            kernelId=kernelId,
+            kernelName=kernelName,
+            code=pack_code(code),
+            transform=TransformMode.raw,
+        )
 
-    async def ready(self):
-        await self._ready_event.wait()
+    def injectCode(
+        self,
+        kernelId: str,
+        code: str | types.ModuleType,
+        user_expressions: dict[str, str | types.ModuleType] | None,
+    ) -> asyncio.Task:
+        """
+        Inject code into a running kernel using the Jupyter builtin `requestExecute`.
 
-    def on_ready(self, callback, remove=False):
-        self._on_ready_callbacks.register_callback(callback, remove)
+        This is equivalent to running code in a notebook cell and the same rules apply.
+        Use `execEval` instead to wait for the result of asynchronous code.
+
+        kernelId: Jupyterlab assigned ID of running kernel to inject the code into.
+
+        code: str | code
+            If passing a function, the function will be executed when its injected.
+
+        user_expressions: dict
+            mapping of key to an eval expression (awaitiable objects are awaited.)
+            The result of the user expression is returned in the payload. It must be
+            jsonizable.
+        """
+
+        return self.schedule_operation(
+            "injectCode",
+            kernelId=kernelId,
+            code=pack_code(code),
+            user_expressions=user_expressions,
+            transform=TransformMode.raw,
+        )
+
+    def execEval(
+        self,
+        code: str | types.ModuleType,
+        user_expressions: dict[str, str | types.ModuleType] | None,
+        sessionId="",
+        **kwgs,
+    ) -> asyncio.Task:
+        """exec and eval code on the Python kernel.
+
+        Similar to injectCode in functionality but avoids blocking kernel comms. Will only work in a Python kernel.
+
+        Handling of execution is performed by `_execEval` of the `JupyterFrontEnd` instance running in
+        the kernel with kernelId.
+
+        exec:
+            The code as a script or function to pass to the builtin `exec`, returns `None`.
+            ref: https://docs.python.org/3/library/functions.html#exec
+        eval:
+            An expression to evalate using the builtin `eval`.
+            If the evaluation returns an executable, it will be executed. I the
+            result is awaitable, the result will be awaited.
+            The serialized result or result of the awaitable will be returned via the frontend.
+            ref: https://docs.python.org/3/library/functions.html#eval
+        sessionId:
+            The the session.
+        Addnl kwgs:
+            path, name for a new session.
+        """
+        return self.app.schedule_operation(
+            "execEval",
+            code=pack_code(code),
+            user_expressions=user_expressions,
+            sessionId=sessionId,
+            **kwgs,
+        )
+
+    async def _execEval(self, payload: dict, buffers: list) -> any:
+        """exec/eval code corresponding to a call from execEval, likely from
+        another kernel."""
+        # TODO: consider if globals / locals / async scope should be supported.
+        code = payload.get("code")
+        user_expressions = payload.get("user_expressions") or {}
+        glbls = payload | {"buffers": buffers}
+        if code:
+            exec(code, glbls)
+        if user_expressions:
+            results = {}
+            for name, expression in user_expressions.items():
+                result = eval(expression, glbls)
+                if callable(result):
+                    result = result()
+                if inspect.isawaitable(result):
+                    result = await result
+                results[name] = result
+            return
+        return None
+
+    def startIyplabPythonBackend(self) -> asyncio.Task:
+        """Checks backend is running and starts it if it isn't, returning the session model."""
+        return self.schedule_operation("startIyplabPythonBackend")

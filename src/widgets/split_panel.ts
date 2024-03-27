@@ -1,19 +1,15 @@
 // Copyright (c) ipylab contributors
 // Distributed under the terms of the Modified BSD License.
 
-import { JupyterLuminoWidget, DOMWidgetView } from '@jupyter-widgets/base';
-
-import { VBoxView } from '@jupyter-widgets/controls';
-
 import { Message } from '@lumino/messaging';
-
 import { SplitPanel } from '@lumino/widgets';
+import { PanelModel, PanelView } from './panel';
 
-import $ from 'jquery';
-
-import { PanelModel } from './panel';
-
-import { MODULE_NAME, MODULE_VERSION } from '../version';
+export declare namespace JupyterLuminoSplitPanelWidget {
+  interface IOptions {
+    view: SplitPanelView;
+  }
+}
 
 /**
  * A Lumino widget for split panels.
@@ -24,18 +20,20 @@ class JupyterLuminoSplitPanelWidget extends SplitPanel {
    *
    * @param options The instantiation options for a JupyterLuminoSplitPanelWidget.
    */
-  constructor(options: JupyterLuminoWidget.IOptions & SplitPanel.IOptions) {
+  constructor(
+    options: JupyterLuminoSplitPanelWidget.IOptions & SplitPanel.IOptions
+  ) {
     const view = options.view;
-    delete options.view;
+    delete (options as any).view;
     super(options);
-    this.addClass('jp-JupyterLuminoSplitPanelWidget');
     this._view = view;
   }
 
   /**
-   * Handle a lumino message.
+   * Process the Lumino message.
    *
-   * @param msg The message to handle.
+   * Any custom Lumino widget used inside a Jupyter widget should override
+   * the processMessage function like this.
    */
   processMessage(msg: Message): void {
     super.processMessage(msg);
@@ -44,19 +42,19 @@ class JupyterLuminoSplitPanelWidget extends SplitPanel {
 
   /**
    * Dispose the widget.
+   *
+   * This causes the view to be destroyed as well with 'remove'
    */
   dispose(): void {
     if (this.isDisposed) {
       return;
     }
     super.dispose();
-    if (this._view) {
-      this._view.remove();
-    }
-    this._view = null;
+    this._view?.remove();
+    this._view = null!;
   }
 
-  private _view: DOMWidgetView;
+  private _view: SplitPanelView;
 }
 
 /**
@@ -72,24 +70,21 @@ export class SplitPanelModel extends PanelModel {
       _model_name: SplitPanelModel.model_name,
       _model_module: SplitPanelModel.model_module,
       _model_module_version: SplitPanelModel.model_module_version,
-      _view_name: SplitPanelModel.model_name,
+      _view_name: SplitPanelModel.view_name,
       _view_module: SplitPanelModel.model_module,
       _view_module_version: SplitPanelModel.model_module_version
     };
   }
 
   static model_name = 'SplitPanelModel';
-  static model_module = MODULE_NAME;
-  static model_module_version = MODULE_VERSION;
   static view_name = 'SplitPanelView';
-  static view_module = MODULE_NAME;
-  static view_module_name = MODULE_VERSION;
+  class_name = 'ipylab-splitpanel';
 }
 
 /**
  * The view for a split panel.
  */
-export class SplitPanelView extends VBoxView {
+export class SplitPanelView extends PanelView {
   /**
    * Create the widget and return the DOM element.
    *
@@ -97,49 +92,23 @@ export class SplitPanelView extends VBoxView {
    */
   _createElement(tagName: string): HTMLElement {
     this.luminoWidget = new JupyterLuminoSplitPanelWidget({
-      view: this,
-      orientation: this.model.get('orientation')
+      view: this
     }) as any;
     return this.luminoWidget.node;
   }
 
   /**
-   * Set the DOM element.
-   *
-   * @param el The element.
-   */
-  _setElement(el: HTMLElement): void {
-    if (this.el || el !== this.luminoWidget.node) {
-      throw new Error('Cannot reset the DOM element.');
-    }
-
-    this.el = this.luminoWidget.node;
-    this.$el = $(this.luminoWidget.node);
-  }
-
-  /**
-   * Initialize a SplitPanelView instance.
-   *
-   * @param parameters The view parameters.
-   */
-  initialize(parameters: any): void {
-    super.initialize(parameters);
-    const luminoWidget = this
-      .luminoWidget as any as JupyterLuminoSplitPanelWidget;
-    this.model.on('change:orientation', () => {
-      const orientation = this.model.get('orientation');
-      luminoWidget.orientation = orientation;
-    });
-  }
-
-  /**
    * Render the view.
    */
-  async render(): Promise<void> {
+  render() {
     super.render();
-    const views = await Promise.all(this.children_views.views);
-    views.forEach(async (view: DOMWidgetView) => {
-      this.luminoWidget.addWidget(view.luminoWidget);
-    });
+    this.update_luminoWidget();
+    this.listenTo(this.model, 'change:orientation', this.update_luminoWidget);
+  }
+
+  update_luminoWidget() {
+    const luminoWidget = this
+      .luminoWidget as any as JupyterLuminoSplitPanelWidget;
+    luminoWidget.orientation = this.model.get('orientation');
   }
 }

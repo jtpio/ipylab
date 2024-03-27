@@ -1,24 +1,15 @@
 // Copyright (c) ipylab contributors
 // Distributed under the terms of the Modified BSD License.
 
-import { ICommandPalette, IPaletteItem } from '@jupyterlab/apputils';
-
+import { IPaletteItem } from '@jupyterlab/apputils';
 import { ObservableMap } from '@jupyterlab/observables';
-
-import {
-  DOMWidgetModel,
-  ISerializers,
-  WidgetModel
-} from '@jupyter-widgets/base';
-
 import { IDisposable } from '@lumino/disposable';
-
-import { MODULE_NAME, MODULE_VERSION } from '../version';
+import { IpylabModel, JSONValue } from './ipylab';
 
 /**
  * The model for a command palette.
  */
-export class CommandPaletteModel extends WidgetModel {
+export class CommandPaletteModel extends IpylabModel {
   /**
    * The default attributes.
    */
@@ -28,7 +19,7 @@ export class CommandPaletteModel extends WidgetModel {
       _model_name: CommandPaletteModel.model_name,
       _model_module: CommandPaletteModel.model_module,
       _model_module_version: CommandPaletteModel.model_module_version,
-      _items: []
+      items: []
     };
   }
 
@@ -39,34 +30,54 @@ export class CommandPaletteModel extends WidgetModel {
    * @param options The initialization options.
    */
   initialize(attributes: any, options: any): void {
-    this._palette = CommandPaletteModel.palette;
     super.initialize(attributes, options);
+    this._customItems = new ObservableMap<IDisposable>();
+    this._customItems.changed.connect(this._sendItems, this);
+  }
 
-    this.on('msg:custom', this._onMessage.bind(this));
-
-    // restore existing items
-    const items = this.get('_items');
-    items.forEach((item: any) => this._addItem(item));
+  async operation(op: string, payload: any): Promise<JSONValue> {
+    switch (op) {
+      case 'addItem': {
+        return this._addItem(payload);
+      }
+      case 'removeItem': {
+        return this._removeItem(payload);
+      }
+      default:
+        throw new Error(
+          `operation='${op}' has not been implemented in CommandPaletteModel!`
+        );
+    }
   }
 
   /**
-   * Handle a custom message from the backend.
+   * Close model
    *
-   * @param msg The message to handle.
+   * @param comm_closed - true if the comm is already being closed. If false, the comm will be closed.
+   *
+   * @returns - a promise that is fulfilled when all the associated views have been removed.
    */
-  private _onMessage(msg: any): void {
-    switch (msg.func) {
-      case 'addItem': {
-        this._addItem(msg.payload);
-        // keep track of the items
-        const items = this.get('_items');
-        this.set('_items', items.concat(msg.payload));
-        this.save_changes();
-        break;
-      }
-      default:
-        break;
+  close(comm_closed = false): Promise<void> {
+    // can only be closed once.
+    if (this._customItems) {
+      this._customItems.changed.disconnect(this._sendItems, this);
+      this._customItems.values().forEach(item => {
+        if (!item.isDisposed) {
+          item.dispose();
+        }
+      });
+      this._customItems.clear();
+      this._customItems = null;
     }
+    return super.close(comm_closed);
+  }
+
+  /**
+   * Send the list of items to the backend.
+   */
+  private _sendItems(sender?: object, args?: any): void {
+    this.set('items', this._customItems.keys());
+    this.save_changes();
   }
 
   /**
@@ -74,40 +85,78 @@ export class CommandPaletteModel extends WidgetModel {
    *
    * @param options The item options.
    */
-  private _addItem(options: IPaletteItem & { id: string }): void {
-    if (!this._palette) {
-      // no-op if no palette
-      return;
+  private _addItem(options: IPaletteItem & { id: string }): JSONValue {
+    const itemId = `${options.id} | ${options.category}`;
+    if (this._customItems.has(itemId)) {
+      this._removeItem(options);
     }
-    const { id, category, args, rank } = options;
-    const itemId = `${id}-${category}`;
-    if (Private.customItems.has(itemId)) {
-      // no-op if the item is already in the palette
-      return;
-    }
-    const item = this._palette.addItem({ command: id, category, args, rank });
-    Private.customItems.set(itemId, item);
+    const item = this.addItem(options);
+    this._customItems.set(itemId, item);
+    return { id: itemId };
   }
 
-  static serializers: ISerializers = {
-    ...DOMWidgetModel.serializers
-  };
+  /**
+   * Add an item for the interface
+   * @param options
+   * @returns
+   */
+  addItem(options: any) {
+    options.command = options.id;
+    return this.interface.addItem(options);
+  }
+
+  /**
+   * Remove an item (custom only) from the command pallet.
+   *
+   * @param payload The command payload.
+   * @param payload.id
+   */
+  private _removeItem(options: IPaletteItem & { id: string }): null {
+    const { id, category } = options;
+    const itemId = `${id} | ${category}`;
+    if (this._customItems.has(itemId)) {
+      const cmd = this._customItems.get(itemId);
+      if (cmd) {
+        cmd.dispose();
+      }
+    }
+    this._customItems.delete(itemId);
+    return null;
+  }
+
+  get interface(): any {
+    if (!IpylabModel.palette) {
+      throw new Error('The command pallet is not loaded!');
+    }
+
+    return IpylabModel.palette;
+  }
 
   static model_name = 'CommandPaletteModel';
-  static model_module = MODULE_NAME;
-  static model_module_version = MODULE_VERSION;
-  static view_name: string = null;
-  static view_module: string = null;
-  static view_module_version = MODULE_VERSION;
 
-  private _palette: ICommandPalette;
-
-  static palette: ICommandPalette;
+  private _customItems: ObservableMap<IDisposable>;
 }
 
 /**
- * A namespace for private data
+ * The model for the Launcher.
  */
-namespace Private {
-  export const customItems = new ObservableMap<IDisposable>();
+export class LauncherModel extends CommandPaletteModel {
+  get interface() {
+    if (!IpylabModel.launcher) {
+      throw new Error('The launcher is not loaded!');
+    }
+    return IpylabModel.launcher;
+  }
+
+  /**
+   * Add an item for the launcher (interface)
+   * @param options
+   * @returns
+   */
+  addItem(options: any) {
+    options.command = options.id;
+    return this.interface.add(options);
+  }
+
+  static model_name = 'LauncherModel';
 }

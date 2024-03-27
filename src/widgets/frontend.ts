@@ -1,20 +1,29 @@
 // Copyright (c) ipylab contributors
 // Distributed under the terms of the Modified BSD License.
 
-import { JupyterFrontEnd } from '@jupyterlab/application';
-
+import { unpack_models } from '@jupyter-widgets/base';
+import { LabShell } from '@jupyterlab/application';
 import {
-  DOMWidgetModel,
+  DOMUtils,
+  InputDialog,
+  showDialog,
+  showErrorMessage
+} from '@jupyterlab/apputils';
+import { FileDialog } from '@jupyterlab/filebrowser';
+import { Session } from '@jupyterlab/services';
+import {
   ISerializers,
-  WidgetModel
-} from '@jupyter-widgets/base';
-
-import { MODULE_NAME, MODULE_VERSION } from '../version';
+  IpylabModel,
+  JSONValue,
+  JupyterFrontEnd
+} from './ipylab';
+import { IpylabMainAreaWidget } from './main_area';
+import { injectCode, newNotebook, newSession, onKernelLost } from './utils';
 
 /**
  * The model for a JupyterFrontEnd.
  */
-export class JupyterFrontEndModel extends WidgetModel {
+export class JupyterFrontEndModel extends IpylabModel {
   /**
    * The default attributes.
    */
@@ -34,24 +43,196 @@ export class JupyterFrontEndModel extends WidgetModel {
    * @param options The initialization options.
    */
   initialize(attributes: any, options: any): void {
-    this._app = JupyterFrontEndModel.app;
     super.initialize(attributes, options);
-    this.send({ event: 'lab_ready' }, {});
-    this.set('version', this._app.version);
+    this.set('version', this.app.version);
+    Private.jupyterFrontEndModels.set(this.kernelId, this);
+
+    this.sessionManager.runningChanged.connect(
+      this._updateAllSessionDetails,
+      this
+    );
+    if (this.labShell) {
+      this.labShell.currentChanged.connect(this._updateSessionDetails, this);
+      this.labShell.activeChanged.connect(this._updateSessionDetails, this);
+      this._updateSessionDetails();
+    }
+    this._updateAllSessionDetails();
     this.save_changes();
   }
 
+  close(comm_closed?: boolean): Promise<void> {
+    Private.jupyterFrontEndModels.delete(this.kernelId);
+    this.labShell.currentChanged.disconnect(this._updateSessionDetails, this);
+    this.labShell.activeChanged.disconnect(this._updateSessionDetails, this);
+    this.sessionManager.runningChanged.disconnect(
+      this._updateAllSessionDetails,
+      this
+    );
+    return super.close(comm_closed);
+  }
+
+  get shell(): JupyterFrontEnd.IShell {
+    return IpylabModel.app.shell;
+  }
+  get labShell(): LabShell {
+    return IpylabModel.labShell;
+  }
+
+  get sessionManager(): Session.IManager {
+    return IpylabModel.app.serviceManager.sessions;
+  }
+
+  private _updateSessionDetails(): void {
+    const currentWidget = this.shell.currentWidget as any;
+    const current_session = currentWidget?.sessionContext?.session?.model ?? {};
+    this.set('current_widget_id', currentWidget?.id ?? '');
+    this.set('current_session', current_session);
+    this.save_changes();
+  }
+  private _updateAllSessionDetails(): void {
+    this.set('all_sessions', Array.from(this.sessionManager.running()));
+    this.save_changes();
+  }
+
+  async operation(op: string, payload: any): Promise<JSONValue> {
+    function _get_result(result: any): any {
+      if (result.value === null) {
+        throw new Error('Cancelled');
+      }
+      return result.value;
+    }
+    let result, jfem: any;
+    switch (op) {
+      case 'addToShell':
+        return await this._addToShell(payload);
+      case 'showDialog':
+        result = await showDialog(payload);
+        return { value: result.button.accept, isChecked: result.isChecked };
+      case 'getBoolean':
+        return await InputDialog.getBoolean(payload).then(_get_result);
+      case 'getItem':
+        return await InputDialog.getItem(payload).then(_get_result);
+      case 'getNumber':
+        return await InputDialog.getNumber(payload).then(_get_result);
+      case 'getText':
+        return await InputDialog.getText(payload).then(_get_result);
+      case 'getPassword':
+        return await InputDialog.getPassword(payload).then(_get_result);
+      case 'showErrorMessage':
+        await showErrorMessage(payload.title, payload.error, payload.buttons);
+        return IpylabModel.OPERATION_DONE;
+      case 'getOpenFiles':
+        payload.manager = IpylabModel.defaultBrowser.model.manager;
+        return await FileDialog.getOpenFiles(payload).then(_get_result);
+      case 'getExistingDirectory':
+        payload.manager = IpylabModel.defaultBrowser.model.manager;
+        return await FileDialog.getExistingDirectory(payload).then(_get_result);
+      case 'newSession':
+        result = await newSession(payload);
+        return result.model as any;
+      case 'newNotebook':
+        result = await newNotebook(payload);
+        return (result as any).sessionContext.session.model;
+      case 'injectCode':
+        return await injectCode(payload);
+      case 'execEval':
+        // Use the JupyterFrontEndModel associated with the kernel to execute the code
+        jfem = await this.getJupyterFrontEndModel(payload);
+        return await jfem.scheduleOperation('execEval', payload);
+      case 'startIyplabPythonBackend':
+        return (await IpylabModel.python_backend.checkStart()) as any;
+      case 'shutdownKernel':
+        if (payload.kernelId) {
+          await IpylabModel.app.commands.execute('kernelmenu:shutdown', {
+            id: payload.kernelId ?? this.kernelId
+          });
+        } else {
+          (this.widget_manager as any).kernel.shutdown();
+        }
+        return null;
+      default:
+        throw new Error(
+          `operation='${op}' has not been implemented in ${JupyterFrontEndModel.model_name}!`
+        );
+    }
+  }
+
+  /**
+   * Add a widget to the application shell
+   *
+   * @param payload The payload to add
+   */
+  private async _addToShell(payload: any): Promise<JSONValue> {
+    const { serializedWidget, area, options } = payload;
+    const model = await unpack_models(serializedWidget, this.widget_manager);
+    const view = await this.widget_manager.create_view(model, {});
+    let luminoWidget = view.luminoWidget;
+    if (area === 'main') {
+      luminoWidget = new IpylabMainAreaWidget({
+        content: view.luminoWidget,
+        kernelId: this.kernelId,
+        name: 'Ipylab'
+      });
+    }
+    if (!luminoWidget.id) {
+      luminoWidget.id = DOMUtils.createDomID();
+    }
+    this.shell.add(luminoWidget, area, options);
+    onKernelLost(
+      (this.widget_manager as any).kernel,
+      luminoWidget.dispose,
+      luminoWidget
+    );
+    return { id: luminoWidget.id };
+  }
+
+  /**
+   * Obtain the instance of the JupyterFrontEndModel for the sessions kernel.
+   * If sessionId is not provided, a new session is created.
+   * @param payload
+   * @returns
+   */
+  async getJupyterFrontEndModel(payload: any): Promise<JupyterFrontEndModel> {
+    let session: Session.ISessionConnection;
+    if (payload.sessionId) {
+      session = this.app.serviceManager.sessions.findById(
+        payload.sessionId
+      ) as any;
+    } else {
+      session = await newSession(payload);
+    }
+    if (!Private.jupyterFrontEndModels.has(session.kernel.id)) {
+      const future = session.kernel.requestExecute({
+        code: 'import ipylab;app=ipylab.JupyterFrontEnd()',
+        store_history: false,
+        stop_on_error: true,
+        silent: true,
+        allow_stdin: false,
+        user_expressions: { frontendId: 'app.model_id' }
+      });
+      const result = (await future.done) as any;
+      if (
+        result.content.status !== 'ok' ||
+        !result.content.user_expressions.frontendId
+      ) {
+        throw new Error(
+          `Failed to setup the JupyterFrontEnd in the new kernel with traceback=${result.content.traceback}`
+        );
+      }
+    }
+    return Private.jupyterFrontEndModels.get(session.kernel.id);
+  }
+
   static serializers: ISerializers = {
-    ...DOMWidgetModel.serializers
+    ...IpylabModel.serializers
   };
 
   static model_name = 'JupyterFrontEndModel';
-  static model_module = MODULE_NAME;
-  static model_module_version = MODULE_VERSION;
-  static view_name: string = null;
-  static view_module: string = null;
-  static view_module_version = MODULE_VERSION;
+}
 
-  private _app: JupyterFrontEnd;
-  static app: JupyterFrontEnd;
+/**
+ * A namespace for private data
+ */
+namespace Private {
+  export const jupyterFrontEndModels = new Map<string, JupyterFrontEndModel>();
 }

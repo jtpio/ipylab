@@ -1,28 +1,16 @@
 // Copyright (c) ipylab contributors
 // Distributed under the terms of the Modified BSD License.
 
+import { unpack_models } from '@jupyter-widgets/base';
 import { ObservableMap } from '@jupyterlab/observables';
 import { LabIcon } from '@jupyterlab/ui-components';
-import {
-  ISerializers,
-  unpack_models,
-  WidgetModel
-} from '@jupyter-widgets/base';
-
-import { ArrayExt } from '@lumino/algorithm';
-
-import { CommandRegistry } from '@lumino/commands';
-
-import { ReadonlyPartialJSONObject } from '@lumino/coreutils';
-
 import { IDisposable } from '@lumino/disposable';
-
-import { MODULE_NAME, MODULE_VERSION } from '../version';
+import { ISerializers, IpylabModel, JSONValue } from './ipylab';
 
 /**
  * The model for a command registry.
  */
-export class CommandRegistryModel extends WidgetModel {
+export class CommandRegistryModel extends IpylabModel {
   /**
    * The default attributes.
    */
@@ -44,85 +32,83 @@ export class CommandRegistryModel extends WidgetModel {
    * @param options The initialization options.
    */
   initialize(attributes: any, options: any): void {
-    this._commands = CommandRegistryModel.commands;
     super.initialize(attributes, options);
-    this.on('msg:custom', this._onMessage.bind(this));
-    this.on('comm_live_update', () => {
-      if (this.comm_live) {
-        return;
-      }
-      Private.customCommands.values().forEach(command => command.dispose());
-      this._sendCommandList();
-    });
+    this.commands.commandChanged.connect(this._sendCommandList, this);
+    this._sendCommandList();
+  }
 
-    // restore existing commands
-    const commands = this.get('_commands');
-    Promise.all(commands.map((command: any) => this._addCommand(command)))
-      .then(() => this._sendCommandList())
-      .catch(console.warn);
+  get commands() {
+    return IpylabModel.app.commands;
   }
 
   /**
-   * Handle a custom message from the backend.
+   * Close model
    *
-   * @param msg The message to handle.
+   * @param comm_closed - true if the comm is already being closed. If false, the comm will be closed.
+   *
+   * @returns - a promise that is fulfilled when all the associated views have been removed.
    */
-  private async _onMessage(msg: any): Promise<void> {
-    switch (msg.func) {
+  close(comm_closed = false): Promise<void> {
+    this.commands.commandChanged.disconnect(this._sendCommandList, this);
+    return super.close(comm_closed);
+  }
+
+  async operation(op: string, payload: any): Promise<JSONValue> {
+    let id, args, result, commands;
+    switch (op) {
       case 'execute':
-        this._execute(msg.payload);
-        break;
-      case 'addCommand': {
-        await this._addCommand(msg.payload);
+        id = payload.id;
+        args = payload.args;
+        return await this.commands.execute(id, args);
+      case 'addPythonCommand': {
+        result = await this._addCommand(payload);
         // keep track of the commands
-        const commands = this.get('_commands');
-        this.set('_commands', commands.concat(msg.payload));
+        commands = this.get('_commands');
+        this.set('_commands', commands.concat(payload));
         this.save_changes();
-        break;
+        return result;
       }
-      case 'removeCommand':
-        this._removeCommand(msg.payload);
-        break;
+      case 'removePythonCommand':
+        return this._removeCommand(payload.command_id);
       default:
-        break;
+        throw new Error(
+          `operation='${op}' has not been implemented in ${this.get(
+            '_model_name'
+          )}!`
+        );
     }
   }
 
   /**
    * Send the list of commands to the backend.
    */
-  private _sendCommandList(): void {
-    this._commands.notifyCommandChanged();
-    this.set('_command_list', this._commands.listCommands());
+  private _sendCommandList(sender?: object, args?: any): void {
+    // this._commands.notifyCommandChanged();
+    if (args && args.type !== 'added' && args.type !== 'removed') {
+      return;
+    }
+    this.set('commands', this.commands.listCommands());
     this.save_changes();
-  }
-
-  /**
-   * Execute a command
-   *
-   * @param bundle The command bundle.
-   * @param bundle.id
-   * @param bundle.args
-   */
-  private _execute(bundle: {
-    id: string;
-    args: ReadonlyPartialJSONObject;
-  }): void {
-    const { id, args } = bundle;
-    void this._commands.execute(id, args);
   }
 
   /**
    * Add a new command to the command registry.
    *
-   * @param options The command options.
+   * @param payload The command options.
+   * @param options.id
+   * @param options.caption
+   * @param options.label
+   * @param options.iconClass
+   * @param options.icon
    */
-  private async _addCommand(
-    options: CommandRegistry.ICommandOptions & { id: string }
-  ): Promise<void> {
-    const { id, caption, label, iconClass, icon } = options;
-    if (this._commands.hasCommand(id)) {
-      Private.customCommands.get(id).dispose();
+  private async _addCommand(options: any): Promise<JSONValue> {
+    const { id, caption, label, iconClass, icon, command_result_transform } =
+      options;
+    if (this.commands.hasCommand(id)) {
+      const cmd = Private.customCommands.get(id);
+      if (cmd) {
+        cmd.dispose();
+      }
     }
 
     let labIcon: LabIcon | null = null;
@@ -130,60 +116,56 @@ export class CommandRegistryModel extends WidgetModel {
       labIcon = (await unpack_models(icon, this.widget_manager))?.labIcon;
     }
 
+    // TODO: Add better support for enabling/disabling commands
+    // Add synchronized lists for disabled and hidden
     const commandEnabled = (command: IDisposable): boolean => {
       return !command.isDisposed && !!this.comm && this.comm_live;
     };
-    const command = this._commands.addCommand(id, {
+    const command = this.commands.addCommand(id, {
       caption,
       label,
       iconClass,
       icon: labIcon,
-      execute: () => {
+      execute: (args: any) => {
         if (!this.comm_live) {
           command.dispose();
           return;
         }
-        this.send({ event: 'execute', id }, {});
+        return this.scheduleOperation(
+          'execute',
+          { id: id, kwgs: args },
+          command_result_transform
+        );
       },
       isEnabled: () => commandEnabled(command),
       isVisible: () => commandEnabled(command)
     });
     Private.customCommands.set(id, command);
-    this._sendCommandList();
+    return { id: id };
   }
 
   /**
    * Remove a command from the command registry.
    *
-   * @param bundle The command bundle.
-   * @param bundle.id
+   * @param payload The command payload.
+   * @param payload.id
    */
-  private _removeCommand(bundle: { id: string }): void {
-    const { id } = bundle;
-    if (Private.customCommands.has(id)) {
-      Private.customCommands.get(id).dispose();
+  private _removeCommand(command_id: string): null {
+    if (Private.customCommands.has(command_id)) {
+      const cmd = Private.customCommands.delete(command_id);
+      if (cmd) {
+        cmd.dispose();
+      }
     }
-    const commands = this.get('_commands').slice();
-    ArrayExt.removeAllWhere(commands, (w: any) => w.id === id);
-    this.set('_commands', commands);
     this.save_changes();
-    this._sendCommandList();
+    return null;
   }
 
   static serializers: ISerializers = {
-    ...WidgetModel.serializers
+    ...IpylabModel.serializers
   };
 
   static model_name = 'CommandRegistryModel';
-  static model_module = MODULE_NAME;
-  static model_module_version = MODULE_VERSION;
-  static view_name: string = null;
-  static view_module: string = null;
-  static view_module_version = MODULE_VERSION;
-
-  private _commands: CommandRegistry;
-
-  static commands: CommandRegistry;
 }
 
 /**

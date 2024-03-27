@@ -88,7 +88,7 @@ jupyter lab
 
 ```bash
 # create a new conda environment
-mamba create -n ipylab -c conda-forge jupyter-packaging nodejs python -y
+mamba create -n ipylab -c conda-forge jupyter-packaging nodejs python=3.10 -y
 
 # activate the environment
 conda activate ipylab
@@ -101,6 +101,17 @@ jupyter labextension develop . --overwrite
 
 # compile the extension
 jlpm && jlpm run build
+
+# pre-commit (optional)
+pip install pre-commit
+pre-commit install
+
+# Use jlpm script to lint the JS
+jlpm lint
+#or
+jlpm lint:check
+
+
 ```
 
 ## Related projects

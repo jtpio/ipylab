@@ -1,87 +1,106 @@
 # Copyright (c) ipylab contributors.
 # Distributed under the terms of the Modified BSD License.
+from __future__ import annotations
 
-from collections import defaultdict
+import asyncio
+import inspect
+from collections.abc import Callable
 
-from ipywidgets import CallbackDispatcher, Widget, register
-from traitlets import List, Unicode
+from traitlets import Dict, Tuple, Unicode
 
-from ._frontend import module_name, module_version
-
-
-def _noop():
-    pass
+from ipylab.asyncwidget import AsyncWidgetBase, TransformMode, pack, register
+from ipylab.hookspecs import pm
+from ipylab.widgets import Icon
 
 
 @register
-class CommandPalette(Widget):
+class CommandPalette(AsyncWidgetBase):
     _model_name = Unicode("CommandPaletteModel").tag(sync=True)
-    _model_module = Unicode(module_name).tag(sync=True)
-    _model_module_version = Unicode(module_version).tag(sync=True)
+    items = Tuple(read_only=True).tag(sync=True)
 
-    _items = List([], read_only=True).tag(sync=True)
-
-    def add_item(self, command_id, category, *, args=None, rank=None):
-        args = args or {}
-        self.send(
-            {
-                "func": "addItem",
-                "payload": {
-                    "id": command_id,
-                    "category": category,
-                    "args": args,
-                    "rank": rank,
-                },
-            }
+    def add_item(
+        self, command_id: str, category, *, rank=None, args: dict | None = None, **kwgs
+    ) -> asyncio.Task:
+        return self.schedule_operation(
+            operation="addItem",
+            id=command_id,
+            category=category,
+            rank=rank,
+            args=args,
+            **kwgs,
         )
+
+    def remove_item(self, command_id: str, category) -> asyncio.Task:
+        return self.schedule_operation(operation="removeItem", id=command_id, category=category)
 
 
 @register
-class CommandRegistry(Widget):
+class Launcher(CommandPalette):
+    _model_name = Unicode("LauncherModel").tag(sync=True)
+
+
+@register
+class CommandRegistry(AsyncWidgetBase):
     _model_name = Unicode("CommandRegistryModel").tag(sync=True)
-    _model_module = Unicode(module_name).tag(sync=True)
-    _model_module_version = Unicode(module_version).tag(sync=True)
+    SINGLETON = True
+    commands = Tuple(read_only=True).tag(sync=True)
+    _execute_callbacks: dict[str : Callable[[], None]] = Dict()
 
-    _command_list = List(Unicode, read_only=True).tag(sync=True)
-    _commands = List([], read_only=True).tag(sync=True)
-    _execute_callbacks = defaultdict(_noop)
+    async def _do_operation_for_frontend(self, operation: str, payload: dict, buffers: list) -> any:
+        match operation:
+            case "execute":
+                command_id = payload.get("id")
+                cmd = self._get_command(command_id)
+                kwgs = payload.get("kwgs") or {} | {"buffers": buffers}
+                for k in set(kwgs).difference(inspect.signature(cmd).parameters.keys()):
+                    kwgs.pop(k)
+                result = cmd(**kwgs)
+                if inspect.isawaitable(result):
+                    return await result
+                return result
+            case _:
+                pm.hook.unhandled_frontend_operation_message(obj=self, operation=operation)
 
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.on_msg(self._on_frontend_msg)
+    def _get_command(self, command_id: str) -> Callable:
+        "Get a registered Python command"
+        if command_id not in self._execute_callbacks:
+            msg = f"{command_id} is not a registered command!"
+            raise KeyError(msg)
+        return self._execute_callbacks[command_id]
 
-    def _on_frontend_msg(self, _, content, buffers):
-        if content.get("event", "") == "execute":
-            command_id = content.get("id")
-            self._execute_callbacks[command_id]()
-
-    def execute(self, command_id, args=None):
-        args = args or {}
-        self.send({"func": "execute", "payload": {"id": command_id, "args": args}})
-
-    def list_commands(self):
-        return self._command_list
-
-    def add_command(
-        self, command_id, execute, *, caption="", label="", icon_class="", icon=None
+    def addPythonCommand(
+        self,
+        command_id: str,
+        execute: Callable,
+        *,
+        caption="",
+        label="",
+        icon_class="",
+        icon: Icon = None,
+        command_result_transform: TransformMode = TransformMode.raw,
+        **kwgs,
     ):
-        if command_id in self._command_list:
-            raise Exception(f"Command {command_id} is already registered")
         # TODO: support other parameters (isEnabled, isVisible...)
-        self._execute_callbacks[command_id] = execute
-        self.send(
-            {
-                "func": "addCommand",
-                "payload": {
-                    "id": command_id,
-                    "caption": caption,
-                    "label": label,
-                    "iconClass": icon_class,
-                    "icon": f"IPY_MODEL_{icon.model_id}" if icon else None,
-                },
-            }
+        self._execute_callbacks = self._execute_callbacks | {command_id: execute}
+        return self.schedule_operation(
+            "addPythonCommand",
+            id=command_id,
+            caption=caption,
+            label=label,
+            iconClass=icon_class,
+            icon=pack(icon),
+            command_result_transform=command_result_transform,
+            **kwgs,
         )
 
-    def remove_command(self, command_id):
+    def removePythonCommand(self, command_id: str, **kwgs) -> asyncio.Task:
         # TODO: check whether to keep this method, or return disposables like in lab
-        self.send({"func": "removeCommand", "payload": {"id": command_id}})
+        if command_id not in self._execute_callbacks:
+            raise ValueError(f"{command_id=} is not a registered command!")
+
+        def callback(content: dict, payload: list):
+            self._execute_callbacks.pop(command_id, None)
+
+        return self.schedule_operation(
+            "removePythonCommand", command_id=command_id, callback=callback, **kwgs
+        )
