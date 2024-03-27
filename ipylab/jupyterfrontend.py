@@ -89,7 +89,7 @@ class JupyterFrontEnd(AsyncWidgetBase):
         from ipylab.hookspecs import pm
 
         try:
-            count = pm.load_setuptools_entrypoints("ipylab-python-backend")
+            count = pm.load_setuptools_entrypoints("ipylab_backend")
             self.log.info(f"Ipylab python backend found {count} plugin entry points.")
         except Exception as e:
             self.log.error("An exception occurred when loading plugins")
