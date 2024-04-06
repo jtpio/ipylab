@@ -5,7 +5,7 @@ from __future__ import annotations
 import sys
 
 
-def init_ipylab_backend() -> str:
+def init_ipylab_backend():
     """Initialize an ipylab backend.
 
     Intended to run inside a kenrnel launched by Jupyter.
@@ -13,7 +13,7 @@ def init_ipylab_backend() -> str:
     from ipylab.jupyterfrontend import JupyterFrontEnd
 
     app = JupyterFrontEnd()
-    return app._init_python_backend()
+    return app._init_python_backend()  # noqa: SLF001
 
 
 def launch_jupyterlab():

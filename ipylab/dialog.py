@@ -2,10 +2,13 @@
 # Distributed under the terms of the Modified BSD License.
 from __future__ import annotations
 
-import asyncio
+from typing import TYPE_CHECKING
 
 from ipylab.asyncwidget import Widget, pack
 from ipylab.hasapp import HasApp
+
+if TYPE_CHECKING:
+    import asyncio
 
 
 class Dialog(HasApp):
@@ -42,7 +45,11 @@ class Dialog(HasApp):
         return self.app.schedule_operation("getPassword", title=title)
 
     def show_dialog(
-        self, title: str = "", body: str | Widget = "", host: None | Widget = None, **kwgs
+        self,
+        title: str = "",
+        body: str | Widget = "",
+        host: None | Widget = None,
+        **kwgs,
     ):
         """Jupyter dialog to get user response with custom buttons and checkbox.
 
@@ -96,13 +103,9 @@ class Dialog(HasApp):
             source: https://jupyterlab.readthedocs.io/en/stable/extension/ui_helpers.html#generic-dialog
         """
 
-        return self.app.schedule_operation(
-            "showDialog", title=pack(title), body=pack(body), host=pack(host), **kwgs
-        )
+        return self.app.schedule_operation("showDialog", title=pack(title), body=pack(body), host=pack(host), **kwgs)
 
-    def show_error_message(
-        self, title: str, error: str, buttons: None | list[dict[str, str]] = None
-    ) -> asyncio.Task:
+    def show_error_message(self, title: str, error: str, buttons: None | list[dict[str, str]] = None) -> asyncio.Task:
         """Jupyter error message.
 
         buttons = [
@@ -121,9 +124,7 @@ class Dialog(HasApp):
 
         https://jupyterlab.readthedocs.io/en/stable/api/functions/apputils.showErrorMessage.html#showErrorMessage
         """
-        return self.app.schedule_operation(
-            "showErrorMessage", title=title, error=error, buttons=buttons
-        )
+        return self.app.schedule_operation("showErrorMessage", title=title, error=error, buttons=buttons)
 
 
 class FileDialog(HasApp):

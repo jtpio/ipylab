@@ -3,22 +3,20 @@
 
 from __future__ import annotations
 
-import asyncio
 import pathlib
-import sys
+from enum import StrEnum
+from typing import TYPE_CHECKING, ClassVar
 
 from ipywidgets import register
-from traitlets import Instance, Unicode, UseEnum, observe, validate
+from traitlets import Instance, TraitType, Unicode, UseEnum, observe, validate
 
 from ipylab.asyncwidget import AsyncWidgetBase, pack, widget_serialization
 from ipylab.hasapp import HasApp
 from ipylab.shell import Area, InsertMode
 from ipylab.widgets import Panel
 
-if sys.version_info >= (3, 11):
-    from enum import StrEnum
-else:
-    from backports.strenum import StrEnum
+if TYPE_CHECKING:
+    import asyncio
 
 
 class ViewStatus(StrEnum):
@@ -35,47 +33,48 @@ class MainArea(AsyncWidgetBase, HasApp):
     Also provides methods to open/close a console using the context of the loaded widget.
     """
 
-    _main_area_names: dict[str, MainArea] = {}
+    _main_area_names: ClassVar[dict[str, MainArea]] = {}
     _model_name = Unicode("MainAreaModel").tag(sync=True)
 
     path = Unicode(read_only=True).tag(sync=True)
     name = Unicode(read_only=True).tag(sync=True)
     content = Instance(Panel, (), read_only=True).tag(sync=True, **widget_serialization)
-    status: ViewStatus = UseEnum(ViewStatus, read_only=True).tag(sync=True)
-    console_status: ViewStatus = UseEnum(ViewStatus, read_only=True).tag(sync=True)
+    status: TraitType[ViewStatus, ViewStatus] = UseEnum(ViewStatus, read_only=True).tag(sync=True)
+    console_status: TraitType[ViewStatus, ViewStatus] = UseEnum(ViewStatus, read_only=True).tag(sync=True)
 
     @validate("name", "path")
     def _validate_name_path(self, proposal):
         trait = proposal["trait"].name
         if getattr(self, trait):
-            raise RuntimeError(f"Changing the value of {trait=} is not allowed!")
+            msg = f"Changing the value of {trait=} is not allowed!"
+            raise RuntimeError(msg)
         value = proposal["value"]
         if value != value.strip():
-            raise ValueError(f"Leading/trailing whitespace is not allowed for {trait}: '{value}'")
+            msg = f"Leading/trailing whitespace is not allowed for {trait}: '{value}'"
+            raise ValueError(msg)
         return value
 
     @observe("closed")
-    def _observe_closed(self, change):
+    def _observe_closed(self, _):
         if self.closed:
             self.set_trait("status", ViewStatus.unloaded)
             self.set_trait("console_status", ViewStatus.unloaded)
 
-    def __new__(cls, *, name: str, model_id=None, content: Panel = None, **kwgs):
+    def __new__(cls, *, name: str, model_id=None, content: Panel | None = None, **kwgs):  # noqa: ARG003
         if not name:
-            raise (ValueError("name not supplied"))
+            msg = "name not supplied"
+            raise (ValueError(msg))
         if name in cls._main_area_names:
             return cls._main_area_names[name]
-        inst = super().__new__(cls, name=name, **kwgs)
-        return inst
+        return super().__new__(cls, name=name, **kwgs)
 
-    def __init__(self, *, name: str, path="", model_id=None, content: Panel = None, **kwgs):
+    def __init__(self, *, name: str, path="", model_id=None, content: Panel | None = None, **kwgs):
         if self._model_id:
             return
         path_ = str(pathlib.PurePosixPath(path or name)).lower().strip("/")
         if path and path != path_:
-            raise ValueError(
-                f"`path` must be lowercase and not start/finish with '/' but got '{path}'"
-            )
+            msg = f"`path` must be lowercase and not start/finish with '/' but got '{path}'"
+            raise ValueError(msg)
         self.set_trait("name", name)
         self.set_trait("path", path_)
         if content:
@@ -89,8 +88,8 @@ class MainArea(AsyncWidgetBase, HasApp):
     def load(
         self,
         *,
-        content: Panel = None,
-        area: Area = "main",
+        content: Panel | None = None,
+        area: Area = Area.main,
         activate: bool = True,
         mode: InsertMode = InsertMode.split_right,
         rank: int | None = None,
@@ -123,12 +122,7 @@ class MainArea(AsyncWidgetBase, HasApp):
         return self.schedule_operation(
             "load",
             area=area,
-            options={
-                "mode": InsertMode(mode),
-                "rank": rank,
-                "activate": activate,
-                "ref": pack(ref),
-            },
+            options={"mode": InsertMode(mode), "rank": rank, "activate": activate, "ref": pack(ref)},
             className=class_name,
         )
 
@@ -149,9 +143,7 @@ class MainArea(AsyncWidgetBase, HasApp):
         Opening the console will close any existing consoles.
         """
         self.set_trait("console_status", ViewStatus.loading)
-        return self.schedule_operation(
-            "open_console", insertMode=InsertMode(mode), name=name, **kwgs
-        )
+        return self.schedule_operation("open_console", insertMode=InsertMode(mode), name=name, **kwgs)
 
     def unload_console(self) -> asyncio.Task:
         """Unload the console."""

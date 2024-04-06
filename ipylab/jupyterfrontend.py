@@ -4,23 +4,21 @@ from __future__ import annotations
 
 import asyncio
 import inspect
-import types
+from typing import TYPE_CHECKING, Any, NotRequired, Self
 
 from traitlets import Dict, Instance, Tuple, Unicode
-from typing_extensions import NotRequired, Self, TypedDict
+from typing_extensions import TypedDict
 
-from ipylab.asyncwidget import (
-    AsyncWidgetBase,
-    TransformMode,
-    pack_code,
-    register,
-    widget_serialization,
-)
+from ipylab.asyncwidget import AsyncWidgetBase, TransformMode, pack_code, register, widget_serialization
 from ipylab.commands import CommandPalette, CommandRegistry, Launcher
 from ipylab.dialog import Dialog, FileDialog
 from ipylab.hookspecs import pm
 from ipylab.sessions import SessionManager
 from ipylab.shell import Shell
+
+if TYPE_CHECKING:
+    import types
+    from collections.abc import Callable
 
 
 class LauncherOptions(TypedDict):
@@ -37,9 +35,7 @@ class JupyterFrontEnd(AsyncWidgetBase):
 
     version = Unicode(read_only=True).tag(sync=True)
     command = Instance(CommandRegistry, (), read_only=True).tag(sync=True, **widget_serialization)
-    command_pallet = Instance(CommandPalette, (), read_only=True).tag(
-        sync=True, **widget_serialization
-    )
+    command_pallet = Instance(CommandPalette, (), read_only=True).tag(sync=True, **widget_serialization)
     launcher = Instance(Launcher, (), read_only=True).tag(sync=True, **widget_serialization)
 
     current_widget_id = Unicode(read_only=True).tag(sync=True)
@@ -82,7 +78,7 @@ class JupyterFrontEnd(AsyncWidgetBase):
             await asyncio.wait_for(future, timeout)
         return self
 
-    def _init_python_backend(self) -> str:
+    def _init_python_backend(self):
         "Run by the Ipylab python backend."
         # This is called in a separate kernel started by the JavaScript frontend
         # the first time the ipylab plugin is activated.
@@ -90,30 +86,25 @@ class JupyterFrontEnd(AsyncWidgetBase):
 
         try:
             count = pm.load_setuptools_entrypoints("ipylab_backend")
-            self.log.info(f"Ipylab python backend found {count} plugin entry points.")
+            self.log.info("Ipylab python backend found {%} plugin entry points.", count)
         except Exception as e:
-            self.log.error("An exception occurred when loading plugins")
+            self.log.exception("An exception occurred when loading plugins")
             self.dialog.show_error_message("Plugin failure", str(e))
 
-    async def _do_operation_for_frontend(self, operation: str, payload: dict, buffers: list) -> any:
+    async def _do_operation_for_frontend(self, operation: str, payload: dict, buffers: list) -> Any:
         match operation:
             case "execEval":
                 return await self._execEval(payload, buffers)
             case _:
                 pm.hook.unhandled_frontend_operation_message(obj=self, operation=operation)
+                return None
 
     def shutdownKernel(self, kernelId: str | None = None) -> asyncio.Task:
         """Shutdown the kernel"""
         return self.schedule_operation("shutdownKernel", kernelId=kernelId)
 
     def newSession(
-        self,
-        path: str = "",
-        *,
-        name: str = "",
-        kernelId="",
-        kernelName="python3",
-        code: str | types.ModuleType = "",
+        self, path: str = "", *, name: str = "", kernelId="", kernelName="python3", code: str | types.ModuleType = ""
     ) -> asyncio.Task:
         """
         Create a new kernel and execute code in it or execute code in an existing kernel.
@@ -140,13 +131,7 @@ class JupyterFrontEnd(AsyncWidgetBase):
         )
 
     def newNotebook(
-        self,
-        path: str = "",
-        *,
-        name: str = "",
-        kernelId="",
-        kernelName="python3",
-        code: str | types.ModuleType = "",
+        self, path: str = "", *, name: str = "", kernelId="", kernelName="python3", code: str | types.ModuleType = ""
     ) -> asyncio.Task:
         """Create a new notebook."""
         return self.schedule_operation(
@@ -160,10 +145,7 @@ class JupyterFrontEnd(AsyncWidgetBase):
         )
 
     def injectCode(
-        self,
-        kernelId: str,
-        code: str | types.ModuleType,
-        user_expressions: dict[str, str | types.ModuleType] | None,
+        self, kernelId: str, code: str | types.ModuleType, user_expressions: dict[str, str | types.ModuleType] | None
     ) -> asyncio.Task:
         """
         Inject code into a running kernel using the Jupyter builtin `requestExecute`.
@@ -192,7 +174,7 @@ class JupyterFrontEnd(AsyncWidgetBase):
 
     def execEval(
         self,
-        code: str | types.ModuleType,
+        code: str | types.ModuleType | Callable,
         user_expressions: dict[str, str | types.ModuleType] | None,
         sessionId="",
         **kwgs,
@@ -226,7 +208,7 @@ class JupyterFrontEnd(AsyncWidgetBase):
             **kwgs,
         )
 
-    async def _execEval(self, payload: dict, buffers: list) -> any:
+    async def _execEval(self, payload: dict, buffers: list) -> Any:
         """exec/eval code corresponding to a call from execEval, likely from
         another kernel."""
         # TODO: consider if globals / locals / async scope should be supported.
@@ -234,11 +216,11 @@ class JupyterFrontEnd(AsyncWidgetBase):
         user_expressions = payload.get("user_expressions") or {}
         glbls = payload | {"buffers": buffers}
         if code:
-            exec(code, glbls)
+            exec(code, glbls)  # noqa: S102
         if user_expressions:
             results = {}
             for name, expression in user_expressions.items():
-                result = eval(expression, glbls)
+                result = eval(expression, glbls)  # noqa: S307
                 if callable(result):
                     result = result()
                 if inspect.isawaitable(result):

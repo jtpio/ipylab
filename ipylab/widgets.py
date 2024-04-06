@@ -3,17 +3,20 @@
 
 from __future__ import annotations
 
-import asyncio
+from typing import TYPE_CHECKING
 
 import ipywidgets as ipw
 from ipywidgets import Box, DOMWidget, register, widget_serialization
 from ipywidgets.widgets.trait_types import InstanceDict
-from traitlets import Bool, Dict, Unicode
+from traitlets import Bool, Dict, Instance, Unicode
 
 import ipylab._frontend as _fe
 from ipylab.asyncwidget import WidgetBase
 from ipylab.hasapp import HasApp
 from ipylab.shell import Area, InsertMode
+
+if TYPE_CHECKING:
+    import asyncio
 
 
 @register
@@ -37,7 +40,7 @@ class Title(WidgetBase):
     dataset = Dict().tag(sync=True)
     icon_label = Unicode().tag(sync=True)
     # Widgets
-    icon: Icon = InstanceDict(Icon, allow_none=True).tag(sync=True, **widget_serialization)
+    icon: Instance[Icon] = InstanceDict(Icon, allow_none=True).tag(sync=True, **widget_serialization)
 
 
 @register
@@ -49,7 +52,7 @@ class Panel(Box, HasApp):
 
     _model_name = Unicode("PanelModel").tag(sync=True)
     _view_name = Unicode("PanelView").tag(sync=True)
-    title: Title = InstanceDict(Title, ()).tag(sync=True, **widget_serialization)
+    title: Instance[Title] = InstanceDict(Title, ()).tag(sync=True, **widget_serialization)
     class_name = Unicode("ipylab-panel").tag(sync=True)
     _comm = None
     closed = Bool(read_only=True).tag(sync=True)
@@ -64,10 +67,12 @@ class Panel(Box, HasApp):
 
     def _check_closed(self):
         if self.closed:
-            raise RuntimeError(f"This object is closed {self}")
+            msg = f"This object is closed {self}"
+            raise RuntimeError(msg)
 
     def addToShell(
         self,
+        *,
         area: Area = Area.main,
         mode: InsertMode = InsertMode.split_right,
         activate: bool = True,
@@ -89,13 +94,7 @@ class Panel(Box, HasApp):
         """
         self._check_closed()
         return self.app.shell.addToShell(
-            self,
-            Area(area),
-            mode=InsertMode(mode),
-            activate=activate,
-            rank=rank,
-            ref=ref,
-            **options,
+            self, area=Area(area), mode=InsertMode(mode), activate=activate, rank=rank, ref=ref, **options
         )
 
 

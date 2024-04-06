@@ -21,4 +21,4 @@ class SessionManager(JupyterFrontEndSubsection):
         """
         https://jupyterlab.readthedocs.io/en/latest/api/interfaces/services.Session.IManager.html#stopIfNeeded
         """
-        return self.executeMethod("stopIfNeeded", path=path)
+        return self.executeMethod("stopIfNeeded", path)

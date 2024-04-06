@@ -16,9 +16,7 @@ if t.TYPE_CHECKING:
 
 class IpylabHookspec:
     @hookspec
-    def on_frontend_error(
-        self, obj: AsyncWidgetBase, error: Exception, content: dict, buffers
-    ) -> t.NoReturn | None:
+    def on_frontend_error(self, obj: AsyncWidgetBase, error: Exception, content: dict, buffers) -> t.NoReturn | None:
         """Intercept an error message for logging purposes.
 
         Fired when the task handling comms receives the error prior to raising it.
@@ -40,7 +38,8 @@ class IpylabHookspec:
 class IpylabDefaultsPlugin:
     @hookimpl
     def unhandled_frontend_operation_message(self, obj: AsyncWidgetBase, operation: str):
-        raise RuntimeError(f"Unhandled frontend_operation_message from {obj=} {operation=}")
+        msg = f"Unhandled frontend_operation_message from {obj=} {operation=}"
+        raise RuntimeError(msg)
 
 
 pm.add_hookspecs(IpylabHookspec)

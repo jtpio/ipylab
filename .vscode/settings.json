@@ -12,5 +12,6 @@
   },
   "editor.formatOnSave": true,
   "python.terminal.activateEnvInCurrentTerminal": true,
-  "python.createEnvironment.trigger": "prompt"
+  "python.createEnvironment.trigger": "prompt",
+  "python.analysis.typeCheckingMode": "basic"
 }

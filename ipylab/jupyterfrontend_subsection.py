@@ -2,11 +2,15 @@
 # Distributed under the terms of the Modified BSD License.
 from __future__ import annotations
 
-import asyncio
-from collections.abc import Callable, Coroutine
+from typing import TYPE_CHECKING
 
 from ipylab import TransformMode
 from ipylab.hasapp import HasApp
+
+if TYPE_CHECKING:
+    import asyncio
+
+    from ipylab.asyncwidget import CallbackType, TransformType
 
 
 class JupyterFrontEndSubsection(HasApp):
@@ -18,11 +22,7 @@ class JupyterFrontEndSubsection(HasApp):
     JFE_JS_SUB_PATH = ""
 
     def executeMethod(
-        self,
-        method: str,
-        *args,
-        callback: Callable[[any, any], None | Coroutine] = None,
-        transform: TransformMode | dict[str, str] = TransformMode.raw,
+        self, method: str, *args, callback: CallbackType | None = None, transform: TransformType = TransformMode.raw
     ) -> asyncio.Task:
         """Execute a nested method on this objects JFE_SUB_PATH relative to the instance of the
         JupyterFrontEndModel in the JS frontend.
@@ -32,14 +32,11 @@ class JupyterFrontEndSubsection(HasApp):
         return self.app.executeMethod(method, *args, callback=callback, transform=transform)
 
     def get_attribute(
-        self,
-        name: str,
-        *,
-        callback: Callable[[any, any], None | Coroutine] = None,
-        transform: TransformMode | dict[str, str] = TransformMode.raw,
+        self, name: str, *, callback: CallbackType | None = None, transform: TransformType = TransformMode.raw
     ) -> asyncio.Task:
         """A serialized version of the attribute relative to this object."""
-        raise NotImplementedError("TODO")
+        msg = "TODO"
+        raise NotImplementedError(msg)
         return self.app.get_attribute(
             f"{self.JFE_JS_SUB_PATH}.{name}",
             callback=callback,
@@ -50,11 +47,10 @@ class JupyterFrontEndSubsection(HasApp):
         self,
         base: str = "",
         *,
-        callback: Callable[[any, any], None | Coroutine] = None,
-        transform: TransformMode | dict[str, str] = TransformMode.raw,
+        callback: CallbackType | None = None,
+        transform: TransformType = TransformMode.raw,
     ) -> asyncio.Task:
         """Get a list of all attributes"""
-        raise NotImplementedError("TODO")
-        return self.app.list_attributes(
-            f"{self.JFE_JS_SUB_PATH}.{base}", callback=callback, transform=transform
-        )
+        msg = "TODO"
+        raise NotImplementedError(msg)
+        return self.app.list_attributes(f"{self.JFE_JS_SUB_PATH}.{base}", callback=callback, transform=transform)

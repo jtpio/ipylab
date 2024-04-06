@@ -2,15 +2,19 @@
 # Distributed under the terms of the Modified BSD License.
 from __future__ import annotations
 
-import asyncio
 import inspect
-from collections.abc import Callable
+from typing import TYPE_CHECKING, Any
 
 from traitlets import Dict, Tuple, Unicode
 
 from ipylab.asyncwidget import AsyncWidgetBase, TransformMode, pack, register
 from ipylab.hookspecs import pm
-from ipylab.widgets import Icon
+
+if TYPE_CHECKING:
+    import asyncio
+    from collections.abc import Callable
+
+    from ipylab.widgets import Icon
 
 
 @register
@@ -18,9 +22,7 @@ class CommandPalette(AsyncWidgetBase):
     _model_name = Unicode("CommandPaletteModel").tag(sync=True)
     items = Tuple(read_only=True).tag(sync=True)
 
-    def add_item(
-        self, command_id: str, category, *, rank=None, args: dict | None = None, **kwgs
-    ) -> asyncio.Task:
+    def add_item(self, command_id: str, category, *, rank=None, args: dict | None = None, **kwgs) -> asyncio.Task:
         return self.schedule_operation(
             operation="addItem",
             id=command_id,
@@ -44,12 +46,12 @@ class CommandRegistry(AsyncWidgetBase):
     _model_name = Unicode("CommandRegistryModel").tag(sync=True)
     SINGLETON = True
     commands = Tuple(read_only=True).tag(sync=True)
-    _execute_callbacks: dict[str : Callable[[], None]] = Dict()
+    _execute_callbacks: Dict[str, Callable[[], None]] = Dict()
 
-    async def _do_operation_for_frontend(self, operation: str, payload: dict, buffers: list) -> any:
+    async def _do_operation_for_frontend(self, operation: str, payload: dict, buffers: list) -> Any:
         match operation:
             case "execute":
-                command_id = payload.get("id")
+                command_id: str = payload.get("id")  # type:ignore
                 cmd = self._get_command(command_id)
                 kwgs = payload.get("kwgs") or {} | {"buffers": buffers}
                 for k in set(kwgs).difference(inspect.signature(cmd).parameters.keys()):
@@ -60,6 +62,7 @@ class CommandRegistry(AsyncWidgetBase):
                 return result
             case _:
                 pm.hook.unhandled_frontend_operation_message(obj=self, operation=operation)
+                return None
 
     def _get_command(self, command_id: str) -> Callable:
         "Get a registered Python command"
@@ -76,7 +79,7 @@ class CommandRegistry(AsyncWidgetBase):
         caption="",
         label="",
         icon_class="",
-        icon: Icon = None,
+        icon: Icon | None = None,
         command_result_transform: TransformMode = TransformMode.raw,
         **kwgs,
     ):
@@ -96,11 +99,10 @@ class CommandRegistry(AsyncWidgetBase):
     def removePythonCommand(self, command_id: str, **kwgs) -> asyncio.Task:
         # TODO: check whether to keep this method, or return disposables like in lab
         if command_id not in self._execute_callbacks:
-            raise ValueError(f"{command_id=} is not a registered command!")
+            msg = f"{command_id=} is not a registered command!"
+            raise ValueError(msg)
 
-        def callback(content: dict, payload: list):
+        def callback(content: dict, payload: list):  # noqa: ARG001
             self._execute_callbacks.pop(command_id, None)
 
-        return self.schedule_operation(
-            "removePythonCommand", command_id=command_id, callback=callback, **kwgs
-        )
+        return self.schedule_operation("removePythonCommand", command_id=command_id, callback=callback, **kwgs)

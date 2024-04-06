@@ -2,21 +2,16 @@
 # Distributed under the terms of the Modified BSD License.
 from __future__ import annotations
 
-import asyncio
-import sys
 import typing as t
-
-import ipywidgets as ipw
+from enum import StrEnum
 
 from ipylab import pack
 from ipylab.jupyterfrontend_subsection import JupyterFrontEndSubsection
 
-if sys.version_info >= (3, 11):
-    from enum import StrEnum
-else:
-    from backports.strenum import StrEnum
-
 if t.TYPE_CHECKING:
+    import asyncio
+
+    import ipywidgets as ipw
     from ipywidgets import Widget
 
 
@@ -30,8 +25,8 @@ class Area(StrEnum):
     right = "right"
     header = "header"
     top = "top"
-    bottom = ("bottom",)
-    down = ("down",)
+    bottom = "bottom"
+    down = "down"
     menu = "menu"
 
 
@@ -65,7 +60,8 @@ class Shell(JupyterFrontEndSubsection):
     def addToShell(
         self,
         widget: Widget,
-        area: Area,
+        *,
+        area: Area = Area.main,
         activate: bool = True,
         mode: InsertMode = InsertMode.split_right,
         rank: int | None = None,
