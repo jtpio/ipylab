@@ -94,7 +94,7 @@ mamba create -n ipylab -c conda-forge jupyter-packaging nodejs python=3.11 -y
 conda activate ipylab
 
 # install the Python package
-python -m pip install -e ".[dev]"
+pip install -e ".[dev]"
 
 # link the extension files
 jupyter labextension develop . --overwrite

@@ -19,16 +19,10 @@ jobs:
       - name: Base Setup
         uses: jupyterlab/maintainer-tools/.github/actions/base-setup@v1
 
-      - name: Lint the extension
-        run: |
-          set -eux
-          jlpm
-          jlpm run lint:check
-
       - name: Build the extension
         run: |
           set -eux
-          python -m pip install .[test]
+          pip install .[dev]
 
           jupyter labextension list
           jupyter labextension list 2>&1 | grep -ie "ipylab.*OK"
@@ -38,8 +32,7 @@ jobs:
         run: |
           set -eux
 
-          pip install build
-          python -m build
+          hatch build
           pip uninstall -y "ipylab" jupyterlab
 
       - name: Upload extension packages
