@@ -50,11 +50,11 @@ jobs:
       fail-fast: false
       matrix:
         os: [ubuntu, macos, windows]
-        python: ['3.10', '3.11']
+        python: ['3.11', '3.12']
         include:
-          - python: '3.10'
-            dist: 'ipylab*.tar.gz'
           - python: '3.11'
+            dist: 'ipylab*.tar.gz'
+          - python: '3.12'
             dist: 'ipylab*.whl'
           - os: windows
             py_cmd: python
@@ -78,7 +78,7 @@ jobs:
           path: ./dist
       - name: Install the prerequisites
         run: |
-          ${{ matrix.pip_cmd }} install --upgrade pip wheel jupyterlab~=4.0
+          ${{ matrix.pip_cmd }} install --upgrade pip wheel jupyterlab~=4.1
       - name: Install the package
         run: |
           cd dist

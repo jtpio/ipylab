@@ -25,10 +25,11 @@ classifiers = [
 ]
 dynamic = ["version", "description", "authors", "urls", "keywords"]
 
-dependencies = ["jupyterlab>=4.1.0", "ipywidgets>=8.1.2,<9", "pluggy>=1.1"]
+dependencies = ["jupyterlab~=4.1", "ipywidgets~=8.1", "pluggy~=1.1"]
 
 [project.optional-dependencies]
 dev = ["hatch", "ruff", "pre-commit"]
+test = ["pytest"]
 
 [project.scripts]
 ipylab = "ipylab:scripts.launch_jupyterlab"
