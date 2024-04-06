@@ -10,7 +10,7 @@ build:
       - python -m build --wheel
 python:
   install:
-  - method: pip
-    path: .
+    - method: pip
+      path: .
 conda:
   environment: docs/environment.yml

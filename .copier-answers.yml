@@ -11,4 +11,3 @@ project_short_description: Control JupyterLab from Python notebooks
 python_name: ipylab
 repository: https://github.com/jtpio/ipylab
 test: false
-

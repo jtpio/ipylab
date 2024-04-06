@@ -1,26 +1,26 @@
-name: "Steps 1 + 2: Full Release"
+name: 'Steps 1 + 2: Full Release'
 on:
   workflow_dispatch:
     inputs:
       version_spec:
-        description: "New Version Specifier"
-        default: "next"
+        description: 'New Version Specifier'
+        default: 'next'
         required: false
       branch:
-        description: "The branch to target"
+        description: 'The branch to target'
         required: false
       post_version_spec:
-        description: "Post Version Specifier"
+        description: 'Post Version Specifier'
         required: false
       since:
-        description: "Use PRs with activity since this date or git reference"
+        description: 'Use PRs with activity since this date or git reference'
         required: false
       since_last_stable:
-        description: "Use PRs with activity since the last stable git tag"
+        description: 'Use PRs with activity since the last stable git tag'
         required: false
         type: boolean
       steps_to_skip:
-        description: "Comma separated list of steps to skip during Populate Release"
+        description: 'Comma separated list of steps to skip during Populate Release'
         required: false
 jobs:
   prep_release:
@@ -63,7 +63,7 @@ jobs:
           target: ${{ github.event.inputs.target }}
           release_url: ${{ steps.populate-release.outputs.release_url }}
 
-      - name: "** Next Step **"
+      - name: '** Next Step **'
         if: ${{ success() }}
         run: |
           echo "Verify the final release"

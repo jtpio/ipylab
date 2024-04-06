@@ -15,7 +15,6 @@ repos:
       - id: check-added-large-files
       - id: check-case-conflict
       - id: check-merge-conflict
-      - id: check-json
       - id: check-toml
       - id: check-yaml
       - id: debug-statements
@@ -26,6 +25,10 @@ repos:
         exclude: galata/.*-snapshots
       - id: requirements-txt-fixer
       - id: check-builtin-literals
+  - repo: https://gitlab.com/bmares/check-json5
+    rev: 'v1.0.0'
+    hooks:
+      - id: check-json5
   - repo: https://github.com/python-jsonschema/check-jsonschema
     rev: 0.28.1
     hooks:
