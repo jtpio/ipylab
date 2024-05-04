@@ -101,9 +101,6 @@ export class MainAreaModel extends IpylabModel {
       kernelPreference: { id: this.kernelId, language: 'python3' }
     });
     await this.sessionContext.initialize();
-    this.once('comm:close', () => {
-      this._unload_mainarea_widget();
-    });
   }
 
   async operation(op: string, payload: any): Promise<JSONValue> {
@@ -130,6 +127,11 @@ export class MainAreaModel extends IpylabModel {
           `operation='${op}' has not been implemented in ${MainAreaModel.model_name}!`
         );
     }
+  }
+
+  close(comm_closed?: boolean): Promise<void> {
+    this._unload_mainarea_widget();
+    return super.close(comm_closed);
   }
 
   async _load_main_area_widget(payload: any) {

@@ -246,6 +246,13 @@ export class IpylabModel extends DOMWidgetModel {
     return getNestedObject(this, path);
   }
 
+  close(comm_closed?: boolean): Promise<void> {
+    comm_closed = comm_closed ?? !this.kernelLive;
+    if (!comm_closed) {
+      return super.close(comm_closed);
+    }
+  }
+
   save_changes(callbacks?: unknown): void {
     if (this.comm_live && this.kernelLive) {
       super.save_changes(callbacks);
