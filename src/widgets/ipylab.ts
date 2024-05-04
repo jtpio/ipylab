@@ -69,12 +69,6 @@ export class IpylabModel extends DOMWidgetModel {
     return !['dead'].includes((this.widget_manager as any).kernel.status);
   }
 
-  check_closed() {
-    if (this.get('closed')) {
-      throw Error('This object is closed');
-    }
-  }
-
   /**
    * Convert custom messages into operations for action.
    * There are two types:
@@ -223,7 +217,6 @@ export class IpylabModel extends DOMWidgetModel {
     payload: JSONValue,
     transform?: object | string
   ): Promise<JSONValue> {
-    this.check_closed();
     const ipylab_FE = `${UUID.uuid4()}`;
     const msg = {
       ipylab_FE: ipylab_FE,
@@ -251,15 +244,6 @@ export class IpylabModel extends DOMWidgetModel {
 
   getAttribute(path: string) {
     return getNestedObject(this, path);
-  }
-
-  close(comm_closed?: boolean): Promise<void> {
-    comm_closed = comm_closed ?? !this.kernelLive;
-    if (!comm_closed) {
-      this.set('closed', true);
-      this.save_changes();
-      return super.close(comm_closed);
-    }
   }
 
   save_changes(callbacks?: unknown): void {

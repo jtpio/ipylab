@@ -5,7 +5,6 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-import ipywidgets as ipw
 from ipywidgets import Box, DOMWidget, register, widget_serialization
 from ipywidgets.widgets.trait_types import InstanceDict
 from traitlets import Bool, Dict, Instance, Unicode
@@ -55,20 +54,6 @@ class Panel(Box, HasApp):
     title: Instance[Title] = InstanceDict(Title, ()).tag(sync=True, **widget_serialization)
     class_name = Unicode("ipylab-panel").tag(sync=True)
     _comm = None
-    closed = Bool(read_only=True).tag(sync=True)
-
-    def open(self) -> None:
-        self._check_closed()
-        super().open()
-
-    def close(self) -> None:
-        self.set_trait("closed", True)
-        super().close()
-
-    def _check_closed(self):
-        if self.closed:
-            msg = f"This object is closed {self}"
-            raise RuntimeError(msg)
 
     def addToShell(
         self,
@@ -77,7 +62,7 @@ class Panel(Box, HasApp):
         mode: InsertMode = InsertMode.split_right,
         activate: bool = True,
         rank: int | None = None,
-        ref: ipw.Widget | None = None,
+        ref: str = "",
         **options,
     ) -> asyncio.Task:
         """Add this panel to the shell.
@@ -92,7 +77,6 @@ class Panel(Box, HasApp):
         args:
             ref mode: str
         """
-        self._check_closed()
         return self.app.shell.addToShell(
             self, area=Area(area), mode=InsertMode(mode), activate=activate, rank=rank, ref=ref, **options
         )

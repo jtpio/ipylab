@@ -101,7 +101,9 @@ export class MainAreaModel extends IpylabModel {
       kernelPreference: { id: this.kernelId, language: 'python3' }
     });
     await this.sessionContext.initialize();
-    this.on('change:closed', this._on_change_closed, this);
+    this.once('comm:close', () => {
+      this._unload_mainarea_widget();
+    });
   }
 
   async operation(op: string, payload: any): Promise<JSONValue> {
@@ -193,12 +195,6 @@ export class MainAreaModel extends IpylabModel {
     this.set('console_status', 'loaded');
     this.save_changes();
     return { id: cp.id };
-  }
-
-  _on_change_closed() {
-    if (this.get('closed')) {
-      this._unload_mainarea_widget();
-    }
   }
 
   _close_console(): Promise<null> {

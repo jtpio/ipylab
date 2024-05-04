@@ -11,7 +11,7 @@ from enum import StrEnum
 from typing import TYPE_CHECKING, Any
 
 from ipywidgets import Widget, register, widget_serialization
-from traitlets import Bool, Container, Dict, Instance, Set, Unicode
+from traitlets import Container, Dict, Instance, Set, Unicode
 
 import ipylab._frontend as _fe
 from ipylab.hasapp import HasApp
@@ -137,7 +137,6 @@ class AsyncWidgetBase(WidgetBase):
     _pending_operations: Dict[str, Response] = Dict()
     _tasks: Container[set[asyncio.Task]] = Set()
     _comm = None
-    closed = Bool(read_only=True).tag(sync=True)
     add_traits = None  # type: ignore # Don't support the method HasTraits.add_traits as it creates a new type that isn't a subclass of its origin)
 
     def __repr__(self):
@@ -160,26 +159,21 @@ class AsyncWidgetBase(WidgetBase):
         self.on_msg(self._on_frontend_msg)
 
     async def __aenter__(self):
-        self._check_closed()
         if not self._ready_response.is_set():
             await self.wait_ready()
+        self._check_closed()
 
     async def __aexit__(self, exc_type, exc, tb):
         pass
-
-    def open(self) -> None:
-        self._check_closed()
-        super().open()
 
     def close(self):
         self._ipylab_model_register.pop(self._model_id, None)  # type: ignore
         for task in self._tasks:
             task.cancel()
-        self.set_trait("closed", True)
         super().close()
 
     def _check_closed(self):
-        if self.closed:
+        if not self._repr_mimebundle_:
             msg = f"This object is closed {self}"
             raise RuntimeError(msg)
 
@@ -303,8 +297,6 @@ class AsyncWidgetBase(WidgetBase):
         note: If there is a name clash with the operation, use kwgs={}
         **kwgs: Keyword arguments for the frontend operation.
         """
-        self._check_closed()
-
         # validation
         if not operation or not isinstance(operation, str):
             msg = f"Invalid {operation=}"

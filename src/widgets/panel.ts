@@ -41,15 +41,6 @@ export class PanelModel extends BoxModel {
     return !['dead'].includes((this.widget_manager as any).kernel.status);
   }
 
-  close(comm_closed?: boolean): Promise<void> {
-    comm_closed = comm_closed ?? !this.kernelLive;
-    this.set('closed', true);
-    if (!comm_closed) {
-      this.save_changes();
-    }
-    return super.close(comm_closed);
-  }
-
   class_name: string; // class_name is set in widgets.py
   title: TitleModel;
   static model_name = 'PanelModel';

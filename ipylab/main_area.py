@@ -54,9 +54,9 @@ class MainArea(AsyncWidgetBase, HasApp):
             raise ValueError(msg)
         return value
 
-    @observe("closed")
-    def _observe_closed(self, _):
-        if self.closed:
+    @observe("comm")
+    def _observe_comm(self, _):
+        if not self.comm:
             self.set_trait("status", ViewStatus.unloaded)
             self.set_trait("console_status", ViewStatus.unloaded)
 
@@ -115,7 +115,6 @@ class MainArea(AsyncWidgetBase, HasApp):
         class_name:
             The css class to add to the widget.
         """
-        self._check_closed()
         if content:
             self.set_trait("content", content)
         self.set_trait("status", ViewStatus.loading)
