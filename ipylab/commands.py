@@ -62,7 +62,7 @@ class CommandRegistry(AsyncWidgetBase):
                 return result
             case _:
                 pm.hook.unhandled_frontend_operation_message(obj=self, operation=operation)
-                return None
+        raise NotImplementedError
 
     def _get_command(self, command_id: str) -> Callable:
         "Get a registered Python command"

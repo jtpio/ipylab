@@ -2,11 +2,16 @@
 # Distributed under the terms of the Modified BSD License.
 from __future__ import annotations
 
+import sys
 import typing as t
-from enum import StrEnum
 
 from ipylab import pack
 from ipylab.jupyterfrontend_subsection import JupyterFrontEndSubsection
+
+if sys.version_info >= (3, 11):
+    from enum import StrEnum
+else:
+    from backports.strenum import StrEnum
 
 if t.TYPE_CHECKING:
     import asyncio

@@ -4,10 +4,10 @@ from __future__ import annotations
 
 import asyncio
 import inspect
+import sys
 import traceback
 import uuid
 from collections.abc import Callable
-from enum import StrEnum
 from typing import TYPE_CHECKING, Any
 
 from ipywidgets import Widget, register, widget_serialization
@@ -16,6 +16,11 @@ from traitlets import Container, Dict, Instance, Set, Unicode
 import ipylab._frontend as _fe
 from ipylab.hasapp import HasApp
 from ipylab.hookspecs import pm
+
+if sys.version_info >= (3, 11):
+    from enum import StrEnum
+else:
+    from backports.strenum import StrEnum
 
 if TYPE_CHECKING:
     import types
@@ -174,7 +179,7 @@ class AsyncWidgetBase(WidgetBase):
 
     def _check_closed(self):
         if not self._repr_mimebundle_:
-            msg = f"This object is closed {self}"
+            msg = f"This widget is closed {self!r}"
             raise RuntimeError(msg)
 
     def _check_get_error(self, content: dict | None = None) -> IpylabFrontendError | None:

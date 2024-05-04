@@ -4,10 +4,9 @@ from __future__ import annotations
 
 import asyncio
 import inspect
-from typing import TYPE_CHECKING, Any, NotRequired, Self
+from typing import TYPE_CHECKING, Any
 
 from traitlets import Dict, Instance, Tuple, Unicode
-from typing_extensions import TypedDict
 
 from ipylab.asyncwidget import AsyncWidgetBase, TransformMode, pack_code, register, widget_serialization
 from ipylab.commands import CommandPalette, CommandRegistry, Launcher
@@ -19,13 +18,6 @@ from ipylab.shell import Shell
 if TYPE_CHECKING:
     import types
     from collections.abc import Callable
-
-
-class LauncherOptions(TypedDict):
-    name: str
-    entry_point: str
-    tooltip: NotRequired[str]
-    icon: NotRequired[str]
 
 
 @register
@@ -66,7 +58,7 @@ class JupyterFrontEnd(AsyncWidgetBase):
             self._sessionManger = SessionManager()
         return self._sessionManger
 
-    async def wait_ready(self, timeout=5) -> Self:
+    async def wait_ready(self, timeout=5):
         """Wait until connected to app indicates it is ready."""
         if not self._ready_response.is_set():
             future = asyncio.gather(
@@ -97,7 +89,7 @@ class JupyterFrontEnd(AsyncWidgetBase):
                 return await self._execEval(payload, buffers)
             case _:
                 pm.hook.unhandled_frontend_operation_message(obj=self, operation=operation)
-                return None
+        raise NotImplementedError
 
     def shutdownKernel(self, kernelId: str | None = None) -> asyncio.Task:
         """Shutdown the kernel"""

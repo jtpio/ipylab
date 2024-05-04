@@ -4,7 +4,7 @@
 from __future__ import annotations
 
 import pathlib
-from enum import StrEnum
+import sys
 from typing import TYPE_CHECKING, ClassVar
 
 from ipywidgets import register
@@ -14,6 +14,11 @@ from ipylab.asyncwidget import AsyncWidgetBase, widget_serialization
 from ipylab.hasapp import HasApp
 from ipylab.shell import Area, InsertMode
 from ipylab.widgets import Panel
+
+if sys.version_info >= (3, 11):
+    from enum import StrEnum
+else:
+    from backports.strenum import StrEnum
 
 if TYPE_CHECKING:
     import asyncio

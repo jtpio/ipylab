@@ -16,7 +16,6 @@ __all__ = [
     "Area",
     "InsertMode",
     "hookimpl",
-    "LauncherOptions",
     "TransformMode",
     "pack",
 ]
@@ -24,7 +23,7 @@ __all__ = [
 from ipylab.asyncwidget import TransformMode, pack
 from ipylab.hasapp import HasApp
 from ipylab.hookspecs import hookimpl
-from ipylab.jupyterfrontend import JupyterFrontEnd, LauncherOptions
+from ipylab.jupyterfrontend import JupyterFrontEnd
 from ipylab.main_area import MainArea, ViewStatus
 from ipylab.shell import Area, InsertMode
 from ipylab.widgets import Icon, Panel, SplitPanel
