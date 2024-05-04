@@ -62,8 +62,8 @@ class Panel(Box, HasApp):
         super().open()
 
     def close(self) -> None:
-        super().close()
         self.set_trait("closed", True)
+        super().close()
 
     def _check_closed(self):
         if self.closed:

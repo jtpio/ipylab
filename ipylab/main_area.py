@@ -10,7 +10,7 @@ from typing import TYPE_CHECKING, ClassVar
 from ipywidgets import register
 from traitlets import Instance, TraitType, Unicode, UseEnum, observe, validate
 
-from ipylab.asyncwidget import AsyncWidgetBase, pack, widget_serialization
+from ipylab.asyncwidget import AsyncWidgetBase, widget_serialization
 from ipylab.hasapp import HasApp
 from ipylab.shell import Area, InsertMode
 from ipylab.widgets import Panel
@@ -93,7 +93,7 @@ class MainArea(AsyncWidgetBase, HasApp):
         activate: bool = True,
         mode: InsertMode = InsertMode.split_right,
         rank: int | None = None,
-        ref: MainArea | None = None,
+        ref: str = "",
         class_name="ipylab-main-area",
     ) -> asyncio.Task:
         """Load into the shell.
@@ -109,7 +109,7 @@ class MainArea(AsyncWidgetBase, HasApp):
         content: [Panel]
             The content
         ref:
-            The main area widget to use as a reference when inserting in the shell.
+            The id of the widget to insert relative to in the shell. (default is app.current_widget_id).
         name:
             The session name to use.
         class_name:
@@ -119,12 +119,13 @@ class MainArea(AsyncWidgetBase, HasApp):
         if content:
             self.set_trait("content", content)
         self.set_trait("status", ViewStatus.loading)
-        return self.schedule_operation(
-            "load",
-            area=area,
-            options={"mode": InsertMode(mode), "rank": rank, "activate": activate, "ref": pack(ref)},
-            className=class_name,
-        )
+        options = {
+            "mode": InsertMode(mode),
+            "rank": rank,
+            "activate": activate,
+            "ref": ref or self.app.current_widget_id,
+        }
+        return self.schedule_operation("load", area=area, options=options, className=class_name)
 
     def unload(self) -> asyncio.Task:
         "Remove from the shell"

@@ -175,8 +175,8 @@ class AsyncWidgetBase(WidgetBase):
         self._ipylab_model_register.pop(self._model_id, None)  # type: ignore
         for task in self._tasks:
             task.cancel()
-        super().close()
         self.set_trait("closed", True)
+        super().close()
 
     def _check_closed(self):
         if self.closed:
@@ -321,7 +321,7 @@ class AsyncWidgetBase(WidgetBase):
             "transform": transform,
         }
         if callback and not callable(callback):
-            msg = f"callback is not callable {type(callback)=}"
+            msg = f"callback is not callable {callback!r}"
             raise TypeError(msg)
         task = asyncio.create_task(self._send_receive(content, callback))
         self._tasks.add(task)

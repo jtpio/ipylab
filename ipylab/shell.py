@@ -11,7 +11,6 @@ from ipylab.jupyterfrontend_subsection import JupyterFrontEndSubsection
 if t.TYPE_CHECKING:
     import asyncio
 
-    import ipywidgets as ipw
     from ipywidgets import Widget
 
 
@@ -65,7 +64,7 @@ class Shell(JupyterFrontEndSubsection):
         activate: bool = True,
         mode: InsertMode = InsertMode.split_right,
         rank: int | None = None,
-        ref: ipw.Widget | None = None,
+        ref: str = "",
         **options,
     ) -> asyncio.Task:
         """
@@ -77,18 +76,14 @@ class Shell(JupyterFrontEndSubsection):
             mode: InsertMode
             https://jupyterlab.readthedocs.io/en/latest/api/interfaces/docregistry.DocumentRegistry.IOpenOptions.html
         """
-
+        options_ = {
+            "activate": activate,
+            "mode": mode,
+            "rank": int(rank) if rank else None,
+            "ref": ref or self.app.current_widget_id,
+        }
         return self.app.schedule_operation(
-            "addToShell",
-            serializedWidget=pack(widget),
-            area=area,
-            options={
-                "activate": activate,
-                "mode": mode,
-                "rank": int(rank) if rank else None,
-                "ref": pack(ref),
-            }
-            | options,
+            "addToShell", serializedWidget=pack(widget), area=area, options=options_ | options
         )
 
     def expandLeft(self) -> asyncio.Task:

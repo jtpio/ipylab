@@ -16,7 +16,7 @@ if t.TYPE_CHECKING:
 
 class IpylabHookspec:
     @hookspec
-    def on_frontend_error(self, obj: AsyncWidgetBase, error: Exception, content: dict, buffers) -> t.NoReturn | None:
+    def on_frontend_error(self, obj: AsyncWidgetBase, error: Exception, content: dict, buffers) -> None:
         """Intercept an error message for logging purposes.
 
         Fired when the task handling comms receives the error prior to raising it.
