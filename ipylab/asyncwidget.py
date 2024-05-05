@@ -303,6 +303,7 @@ class AsyncWidgetBase(WidgetBase):
         **kwgs: Keyword arguments for the frontend operation.
         """
         # validation
+        self._check_closed()
         if not operation or not isinstance(operation, str):
             msg = f"Invalid {operation=}"
             raise ValueError(msg)

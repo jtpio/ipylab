@@ -181,7 +181,7 @@ export class MainAreaModel extends IpylabModel {
         ...options
       }
     );
-    // The console toobar takes up space and currently only provides a debugger
+    // The console toolbar takes up space and currently only provides a debugger
     if (cp?.toolbar?.node) {
       cp.node.removeChild(cp.toolbar.node);
     }

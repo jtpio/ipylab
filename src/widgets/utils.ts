@@ -349,23 +349,24 @@ export function onKernelLost(
   thisArg?: any,
   onceOnly = true
 ) {
-  if (!Private.kernelLostSlot.has(kernel.id)) {
+  const id = kernel.id;
+  if (!Private.kernelLostSlot.has(id)) {
     kernel.statusChanged.connect(_onKernelStatusChanged);
-    Private.kernelLostSlot.set(kernel.id, new Signal<any, null>(kernel));
+    Private.kernelLostSlot.set(id, new Signal<any, null>(kernel));
     kernel.disposed.connect(() => {
-      Private.kernelLostSlot.get(kernel.id).emit(null);
-      Signal.clearData(Private.kernelLostSlot.get(kernel.id));
-      Private.kernelLostSlot.delete(kernel.id);
+      Private.kernelLostSlot.get(id).emit(null);
+      Signal.clearData(Private.kernelLostSlot.get(id));
+      Private.kernelLostSlot.delete(id);
       kernel.statusChanged.disconnect(_onKernelStatusChanged);
     });
   }
   const callback = () => {
     slot.bind(thisArg)();
     if (onceOnly) {
-      Private.kernelLostSlot.get(kernel.id)?.disconnect(callback);
+      Private.kernelLostSlot.get(id)?.disconnect(callback);
     }
   };
-  Private.kernelLostSlot.get(kernel.id).connect(callback);
+  Private.kernelLostSlot.get(id).connect(callback);
 }
 
 /**

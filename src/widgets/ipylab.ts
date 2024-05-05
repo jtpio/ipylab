@@ -66,7 +66,8 @@ export class IpylabModel extends DOMWidgetModel {
   }
 
   get kernelLive() {
-    return !['dead'].includes((this.widget_manager as any).kernel.status);
+    const status = (this.widget_manager as any)?.kernel?.status;
+    return status ? !['dead'].includes(status) : false;
   }
 
   /**
@@ -247,10 +248,8 @@ export class IpylabModel extends DOMWidgetModel {
   }
 
   close(comm_closed?: boolean): Promise<void> {
-    comm_closed = comm_closed ?? !this.kernelLive;
-    if (!comm_closed) {
-      return super.close(comm_closed);
-    }
+    comm_closed = comm_closed || !this.kernelLive;
+    return super.close(comm_closed);
   }
 
   save_changes(callbacks?: unknown): void {
