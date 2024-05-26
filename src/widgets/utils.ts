@@ -1,20 +1,12 @@
 // Copyright (c) ipylab contributors
 // Distributed under the terms of the Modified BSD License.
-
-import * as base from '@jupyter-widgets/base';
-import { JUPYTER_CONTROLS_VERSION } from '@jupyter-widgets/controls/lib/version';
-import { KernelWidgetManager } from '@jupyter-widgets/jupyterlab-manager';
-import {
-  OUTPUT_WIDGET_VERSION,
-  OutputModel,
-  OutputView
-} from '@jupyter-widgets/output';
+import { registerWidgetManager } from '@jupyter-widgets/jupyterlab-manager';
 import { SessionContext } from '@jupyterlab/apputils';
 import { ObservableMap } from '@jupyterlab/observables';
 import { Kernel, Session } from '@jupyterlab/services';
 import { UUID } from '@lumino/coreutils';
 import { Signal } from '@lumino/signaling';
-import { IpylabModel, JSONValue, JSONObject } from './ipylab';
+import { IpylabModel, JSONObject, JSONValue } from './ipylab';
 
 /**
  * Start a new session that support comms needed for iplab needs for comms.
@@ -23,12 +15,14 @@ import { IpylabModel, JSONValue, JSONObject } from './ipylab';
 export async function newSession({
   name,
   path,
+  rendermime,
   kernelId = '',
   language = 'python3',
   code = ''
 }: {
   name: string;
   path: string;
+  rendermime: any;
   kernelId?: string;
   language?: string;
   code?: string;
@@ -38,7 +32,7 @@ export async function newSession({
     specsManager: IpylabModel.app.serviceManager.kernelspecs,
     path: path,
     name: name ?? path,
-    type: 'ipylab',
+    type: 'notebook',
     kernelPreference: {
       id: kernelId || `${UUID.uuid4()}`,
       language: language
@@ -47,17 +41,13 @@ export async function newSession({
   await sessionContext.initialize();
   await sessionContext.ready;
 
+  // For the moment we'll use a dummy session.
+  // In future it might be better to support a document...
   const session = sessionContext.session;
-  const manager = new KernelWidgetManager(
-    session.kernel,
-    IpylabModel.rendermime
-  );
-  // TODO: register widgets from IpyWidgets widget registry.
-  // Currently it looks like IpyWidgets prefer to be attached to Document.
-  // Notebooks (.ipynb) are the only implementation provided IpyWidgets (Feb 2024).
-  // https://github.com/jupyter-widgets/ipywidgets/blob/b2531796d414b0970f18050d6819d932417b9953/python/jupyterlab_widgets/src/plugin.ts#L112
-
-  registerWidgets(manager);
+  const context = {};
+  (context as any)['sessionContext'] = sessionContext;
+  (context as any)['saveState'] = new Signal(null);
+  registerWidgetManager(context as any, rendermime, [] as any);
   if (code) {
     const future = session.kernel.requestExecute(
       {
@@ -133,56 +123,6 @@ export async function injectCode({
       `Execution status = ${result.status} not 'ok' traceback=${result.content.traceback}`
     );
   }
-}
-
-/**
- * Manually register known widgets.
- * TODO: use the JuperWidgetRegistry for models instead.
- *
- * @param manager The new manager
- */
-function registerWidgets(manager: KernelWidgetManager) {
-  manager.register(IpylabModel.exports);
-  manager.register({
-    name: '@jupyter-widgets/base',
-    version: base.JUPYTER_WIDGETS_VERSION,
-    exports: {
-      WidgetModel: base.WidgetModel,
-      WidgetView: base.WidgetView,
-      DOMWidgetView: base.DOMWidgetView,
-      DOMWidgetModel: base.DOMWidgetModel,
-      LayoutModel: base.LayoutModel,
-      LayoutView: base.LayoutView,
-      StyleModel: base.StyleModel,
-      StyleView: base.StyleView,
-      ErrorWidgetView: base.ErrorWidgetView
-    }
-  });
-  manager.register({
-    name: '@jupyter-widgets/controls',
-    version: JUPYTER_CONTROLS_VERSION,
-    exports: () => {
-      return new Promise((resolve, reject) => {
-        (require as any).ensure(
-          ['@jupyter-widgets/controls'],
-          (require: NodeRequire) => {
-            // eslint-disable-next-line @typescript-eslint/no-var-requires
-            resolve(require('@jupyter-widgets/controls'));
-          },
-          (err: any) => {
-            reject(err);
-          },
-          '@jupyter-widgets/controls'
-        );
-      });
-    }
-  });
-
-  manager.register({
-    name: '@jupyter-widgets/output',
-    version: OUTPUT_WIDGET_VERSION,
-    exports: { OutputModel, OutputView }
-  });
 }
 
 /**

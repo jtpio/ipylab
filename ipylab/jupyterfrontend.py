@@ -168,7 +168,7 @@ class JupyterFrontEnd(AsyncWidgetBase):
         self,
         code: str | types.ModuleType | Callable,
         user_expressions: dict[str, str | types.ModuleType] | None,
-        sessionId="",
+        kernelId="",
         **kwgs,
     ) -> asyncio.Task:
         """exec and eval code on the Python kernel.
@@ -187,8 +187,8 @@ class JupyterFrontEnd(AsyncWidgetBase):
             result is awaitable, the result will be awaited.
             The serialized result or result of the awaitable will be returned via the frontend.
             ref: https://docs.python.org/3/library/functions.html#eval
-        sessionId:
-            The the session.
+        kernelId:
+            The Id allocated to the kernel in the frontend.
         Addnl kwgs:
             path, name for a new session.
         """
@@ -196,7 +196,7 @@ class JupyterFrontEnd(AsyncWidgetBase):
             "execEval",
             code=pack_code(code),
             user_expressions=user_expressions,
-            sessionId=sessionId,
+            kernelId=kernelId,
             **kwgs,
         )
 

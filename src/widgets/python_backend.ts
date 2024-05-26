@@ -1,7 +1,7 @@
 import { Session } from '@jupyterlab/services';
-import { newSession } from './utils';
-import { IpylabModel } from './ipylab';
 import { IDisposable } from '@lumino/disposable';
+import { IpylabModel } from './ipylab';
+import { newSession } from './utils';
 /**
  *  The Python backend that auto loads python side plugins using `pluggy` module.
  *
@@ -12,6 +12,7 @@ export class PythonBackendModel {
       this._backendSession = await newSession({
         path: 'Ipylab backend',
         name: 'Ipylab backend',
+        rendermime: IpylabModel.rendermime.clone(),
         language: 'python3',
         code: 'import ipylab.scripts; ipylab.scripts.init_ipylab_backend()'
       });
@@ -26,7 +27,7 @@ export class PythonBackendModel {
             'Start the Ipylab Python backend that will run registered autostart plugins.\n ' +
             ' in "pyproject.toml"  added entry for: \n' +
             '[project.entry-points.ipylab-python-backend] \n' +
-            'my_plugins_name = "my_module.submodule:instance_of_plugin_class"',
+            '\tmyproject = "myproject.pluginmodule"',
 
           execute: () => IpylabModel.python_backend.checkStart()
         }

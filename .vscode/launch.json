@@ -49,40 +49,8 @@
       "webRoot": "${workspaceFolder}",
       "pathMappings": [
         {
-          "url": "webpack://packages/base/src/utils.ts",
-          "path": "${workspaceFolder}/../jupyterlab/packages/controls/src/utils.ts"
-        },
-        {
-          "url": "webpack://packages/base/src/utils.ts",
-          "path": "${workspaceFolder}/packages/controls/src/utils.ts"
-        },
-        {
           "url": "webpack://ipylab/src",
           "path": "${workspaceFolder}/src"
-        },
-        {
-          "url": "webpack://ipywidgets/packages",
-          "path": "${workspaceFolder}/../ipywidgets/packages"
-        },
-        {
-          "url": "webpack://ipywidgets/src",
-          "path": "${workspaceFolder}/../ipywidgets/src"
-        },
-        {
-          "url": "webpack://jupyterlab/application-top/node_modules/minimist",
-          "path": "${workspaceFolder}/../jupyterlab/staging"
-        },
-        {
-          "url": "webpack://jupyterlab/application-top/node_modules/minimist",
-          "path": "${workspaceFolder}/../jupyterlab/dev_mode"
-        },
-        {
-          "url": "webpack://jupyter-widgets/packages",
-          "path": "${workspaceFolder}/../jupyter-widgets/packages"
-        },
-        {
-          "url": "webpack:///",
-          "path": "${webRoot}/"
         }
       ],
       "presentation": {

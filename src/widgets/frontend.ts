@@ -1,7 +1,7 @@
 // Copyright (c) ipylab contributors
 // Distributed under the terms of the Modified BSD License.
 
-import { unpack_models } from '@jupyter-widgets/base';
+import { unpack_models, uuid } from '@jupyter-widgets/base';
 import { LabShell } from '@jupyterlab/application';
 import {
   DOMUtils,
@@ -10,7 +10,7 @@ import {
   showErrorMessage
 } from '@jupyterlab/apputils';
 import { FileDialog } from '@jupyterlab/filebrowser';
-import { Session } from '@jupyterlab/services';
+import { Kernel, Session } from '@jupyterlab/services';
 import {
   ISerializers,
   IpylabModel,
@@ -128,7 +128,10 @@ export class JupyterFrontEndModel extends IpylabModel {
         payload.manager = IpylabModel.defaultBrowser.model.manager;
         return await FileDialog.getExistingDirectory(payload).then(_get_result);
       case 'newSession':
-        result = await newSession(payload);
+        result = await newSession({
+          rendermime: IpylabModel.rendermime.clone(),
+          ...payload
+        });
         return result.model as any;
       case 'newNotebook':
         result = await newNotebook(payload);
@@ -188,39 +191,47 @@ export class JupyterFrontEndModel extends IpylabModel {
 
   /**
    * Obtain the instance of the JupyterFrontEndModel for the sessions kernel.
-   * If sessionId is not provided, a new session is created.
+   * If kernelId is not provided, a new kernel is created.
    * @param payload
    * @returns
    */
   async getJupyterFrontEndModel(payload: any): Promise<JupyterFrontEndModel> {
-    let session: Session.ISessionConnection;
-    if (payload.sessionId) {
-      session = this.app.serviceManager.sessions.findById(
-        payload.sessionId
-      ) as any;
+    const kernelId = payload.kernelId || uuid();
+    if (Private.jupyterFrontEndModels.has(kernelId)) {
+      return Private.jupyterFrontEndModels.get(kernelId);
+    }
+    let kernel: Kernel.IKernelConnection;
+    const model = await this.app.serviceManager.kernels.findById(kernelId);
+    if (model) {
+      kernel = this.app.serviceManager.kernels.connectTo({ model: model });
     } else {
-      session = await newSession(payload);
-    }
-    if (!Private.jupyterFrontEndModels.has(session.kernel.id)) {
-      const future = session.kernel.requestExecute({
-        code: 'import ipylab;app=ipylab.JupyterFrontEnd()',
-        store_history: false,
-        stop_on_error: true,
-        silent: true,
-        allow_stdin: false,
-        user_expressions: { frontendId: 'app.model_id' }
+      payload.kernelId = kernelId;
+      const session = await newSession({
+        rendermime: IpylabModel.rendermime.clone(),
+        ...payload
       });
-      const result = (await future.done) as any;
-      if (
-        result.content.status !== 'ok' ||
-        !result.content.user_expressions.frontendId
-      ) {
-        throw new Error(
-          `Failed to setup the JupyterFrontEnd in the new kernel with traceback=${result.content.traceback}`
-        );
-      }
+      kernel = session.kernel;
     }
-    return Private.jupyterFrontEndModels.get(session.kernel.id);
+    // Currently we need the kernel to create the JupyterFrontEnd widget.
+    const future = kernel.requestExecute({
+      code: 'import ipylab;_jfem=ipylab.JupyterFrontEnd()',
+      store_history: false,
+      stop_on_error: true,
+      silent: true,
+      allow_stdin: false,
+      user_expressions: { frontendId: '_jfem.model_id' }
+    });
+    const result = (await future.done) as any;
+    if (
+      result.content.status !== 'ok' ||
+      !result.content.user_expressions.frontendId ||
+      !Private.jupyterFrontEndModels.has(kernelId)
+    ) {
+      throw new Error(
+        `Failed to setup the JupyterFrontEnd in the new kernel with traceback=${result.content.traceback}`
+      );
+    }
+    return Private.jupyterFrontEndModels.get(kernelId);
   }
 
   static serializers: ISerializers = {
