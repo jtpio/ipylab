@@ -96,7 +96,7 @@ class MainArea(AsyncWidgetBase, HasApp):
         content: Panel | None = None,
         area: Area = Area.main,
         activate: bool = True,
-        mode: InsertMode = InsertMode.split_right,
+        mode: InsertMode = InsertMode.tab_after,
         rank: int | None = None,
         ref: str = "",
         class_name="ipylab-main-area",

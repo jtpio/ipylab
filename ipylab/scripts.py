@@ -8,7 +8,7 @@ import sys
 def init_ipylab_backend():
     """Initialize an ipylab backend.
 
-    Intended to run inside a kenrnel launched by Jupyter.
+    Intended to run inside a kernel launched by Jupyter.
     """
     from ipylab.jupyterfrontend import JupyterFrontEnd
 

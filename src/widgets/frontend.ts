@@ -1,7 +1,7 @@
 // Copyright (c) ipylab contributors
 // Distributed under the terms of the Modified BSD License.
 
-import { unpack_models, uuid } from '@jupyter-widgets/base';
+import { unpack_models } from '@jupyter-widgets/base';
 import { LabShell } from '@jupyterlab/application';
 import {
   DOMUtils,
@@ -172,15 +172,15 @@ export class JupyterFrontEndModel extends IpylabModel {
     let luminoWidget = view.luminoWidget;
     if (area === 'main') {
       luminoWidget = new IpylabMainAreaWidget({
-        content: view.luminoWidget,
+        content: view.luminoWidget as any,
         kernelId: this.kernelId,
         name: 'Ipylab'
-      });
+      }) as any;
     }
     if (!luminoWidget.id) {
       luminoWidget.id = DOMUtils.createDomID();
     }
-    this.shell.add(luminoWidget, area, options);
+    this.shell.add(luminoWidget as any, area, options);
     onKernelLost(
       (this.widget_manager as any).kernel,
       luminoWidget.dispose,
@@ -196,42 +196,41 @@ export class JupyterFrontEndModel extends IpylabModel {
    * @returns
    */
   async getJupyterFrontEndModel(payload: any): Promise<JupyterFrontEndModel> {
-    const kernelId = payload.kernelId || uuid();
-    if (Private.jupyterFrontEndModels.has(kernelId)) {
-      return Private.jupyterFrontEndModels.get(kernelId);
+    if (payload.kernelId) {
+      if (Private.jupyterFrontEndModels.has(payload.kernelId)) {
+        return Private.jupyterFrontEndModels.get(payload.kernelId);
+      }
     }
     let kernel: Kernel.IKernelConnection;
-    const model = await this.app.serviceManager.kernels.findById(kernelId);
+    const model = await this.app.serviceManager.kernels.findById(
+      payload.kernelId
+    );
     if (model) {
       kernel = this.app.serviceManager.kernels.connectTo({ model: model });
     } else {
-      payload.kernelId = kernelId;
-      const session = await newSession({
-        rendermime: IpylabModel.rendermime.clone(),
-        ...payload
-      });
+      if (payload.kernelId) {
+        throw new Error(`Kernel does not exist:  ${payload.kernelId}`);
+      }
+      const session = await newSession(payload);
       kernel = session.kernel;
     }
-    // Currently we need the kernel to create the JupyterFrontEnd widget.
+    // Currently we use the python kernel to create the JupyterFrontEnd widget.
     const future = kernel.requestExecute({
-      code: 'import ipylab;_jfem=ipylab.JupyterFrontEnd()',
+      code: 'import ipylab;ipylab.JupyterFrontEnd()',
       store_history: false,
       stop_on_error: true,
       silent: true,
-      allow_stdin: false,
-      user_expressions: { frontendId: '_jfem.model_id' }
+      allow_stdin: false
     });
     const result = (await future.done) as any;
-    if (
-      result.content.status !== 'ok' ||
-      !result.content.user_expressions.frontendId ||
-      !Private.jupyterFrontEndModels.has(kernelId)
-    ) {
+    const jfem = Private.jupyterFrontEndModels.get(kernel.id);
+    if (!jfem) {
       throw new Error(
-        `Failed to setup the JupyterFrontEnd in the new kernel with traceback=${result.content.traceback}`
+        `Failed to setup the JupyterFrontEnd in the kernel ${kernel.id}!
+         traceback=${result.content.traceback}`
       );
     }
-    return Private.jupyterFrontEndModels.get(kernelId);
+    return jfem;
   }
 
   static serializers: ISerializers = {

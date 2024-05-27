@@ -32,7 +32,7 @@ export async function newSession({
     specsManager: IpylabModel.app.serviceManager.kernelspecs,
     path: path,
     name: name ?? path,
-    type: 'notebook',
+    type: 'ipylab',
     kernelPreference: {
       id: kernelId || `${UUID.uuid4()}`,
       language: language
@@ -46,7 +46,10 @@ export async function newSession({
   const session = sessionContext.session;
   const context = {};
   (context as any)['sessionContext'] = sessionContext;
-  (context as any)['saveState'] = new Signal(null);
+  (context as any)['saveState'] = new Signal({});
+  (context as any).saveState.connect(() => {
+    null;
+  });
   registerWidgetManager(context as any, rendermime, [] as any);
   if (code) {
     const future = session.kernel.requestExecute(
@@ -140,7 +143,7 @@ export async function injectCode({
  */
 export function getNestedObject(base: object, path: string): any {
   let obj: object = base;
-  let path_: string = '';
+  let path_ = '';
   const parts = path.split('.');
   let attr = '';
   for (let i = 0; i < parts.length; i++) {
