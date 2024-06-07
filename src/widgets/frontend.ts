@@ -128,10 +128,7 @@ export class JupyterFrontEndModel extends IpylabModel {
         payload.manager = IpylabModel.defaultBrowser.model.manager;
         return await FileDialog.getExistingDirectory(payload).then(_get_result);
       case 'newSession':
-        result = await newSession({
-          rendermime: IpylabModel.rendermime.clone(),
-          ...payload
-        });
+        result = await newSession(payload);
         return result.model as any;
       case 'newNotebook':
         result = await newNotebook(payload);
@@ -143,7 +140,7 @@ export class JupyterFrontEndModel extends IpylabModel {
         jfem = await this.getJupyterFrontEndModel(payload);
         return await jfem.scheduleOperation('execEval', payload);
       case 'startIyplabPythonBackend':
-        return (await IpylabModel.python_backend.checkStart()) as any;
+        return (await IpylabModel.pythonBackend.checkStart()) as any;
       case 'shutdownKernel':
         if (payload.kernelId) {
           await IpylabModel.app.commands.execute('kernelmenu:shutdown', {
@@ -209,7 +206,9 @@ export class JupyterFrontEndModel extends IpylabModel {
       kernel = this.app.serviceManager.kernels.connectTo({ model: model });
     } else {
       if (payload.kernelId) {
-        throw new Error(`Kernel does not exist:  ${payload.kernelId}`);
+        throw new Error(
+          `A kernel does not exist for the kernelId= '${payload.kernelId}'`
+        );
       }
       const session = await newSession(payload);
       kernel = session.kernel;

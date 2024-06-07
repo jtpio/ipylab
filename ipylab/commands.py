@@ -22,14 +22,9 @@ class CommandPalette(AsyncWidgetBase):
     _model_name = Unicode("CommandPaletteModel").tag(sync=True)
     items = Tuple(read_only=True).tag(sync=True)
 
-    def add_item(self, command_id: str, category, *, rank=None, args: dict | None = None, **kwgs) -> asyncio.Task:
+    def add_item(self, command_id: str, category: str, *, rank=None, args: dict | None = None, **kwgs) -> asyncio.Task:
         return self.schedule_operation(
-            operation="addItem",
-            id=command_id,
-            category=category,
-            rank=rank,
-            args=args,
-            **kwgs,
+            operation="addItem", id=command_id, category=category, rank=rank, args=args, **kwgs
         )
 
     def remove_item(self, command_id: str, category) -> asyncio.Task:

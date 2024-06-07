@@ -1,13 +1,13 @@
 // Copyright (c) ipylab contributors
 // Distributed under the terms of the Modified BSD License.
-import { registerWidgetManager } from '@jupyter-widgets/jupyterlab-manager';
+import { KernelWidgetManager } from '@jupyter-widgets/jupyterlab-manager';
 import { SessionContext } from '@jupyterlab/apputils';
 import { ObservableMap } from '@jupyterlab/observables';
+import { IRenderMimeRegistry } from '@jupyterlab/rendermime';
 import { Kernel, Session } from '@jupyterlab/services';
 import { UUID } from '@lumino/coreutils';
 import { Signal } from '@lumino/signaling';
 import { IpylabModel, JSONObject, JSONValue } from './ipylab';
-
 /**
  * Start a new session that support comms needed for iplab needs for comms.
  * @returns
@@ -22,7 +22,7 @@ export async function newSession({
 }: {
   name: string;
   path: string;
-  rendermime: any;
+  rendermime?: IRenderMimeRegistry;
   kernelId?: string;
   language?: string;
   code?: string;
@@ -41,18 +41,11 @@ export async function newSession({
   await sessionContext.initialize();
   await sessionContext.ready;
 
-  // For the moment we'll use a dummy session.
-  // In future it might be better to support a document...
-  const session = sessionContext.session;
-  const context = {};
-  (context as any)['sessionContext'] = sessionContext;
-  (context as any)['saveState'] = new Signal({});
-  (context as any).saveState.connect(() => {
-    null;
-  });
-  registerWidgetManager(context as any, rendermime, [] as any);
+  // Create a manager for the kernel. It will stay alive for the life of the kernel.
+  // Requires https://github.com/jupyter-widgets/ipywidgets/pull/3922 to be adopted.
+  new KernelWidgetManager(sessionContext.session.kernel, rendermime as any);
   if (code) {
-    const future = session.kernel.requestExecute(
+    const future = sessionContext.session.kernel.requestExecute(
       {
         code: code,
         store_history: false
@@ -62,7 +55,7 @@ export async function newSession({
     await future.done;
     future.dispose();
   }
-  return session;
+  return sessionContext.session;
 }
 
 export async function newNotebook({

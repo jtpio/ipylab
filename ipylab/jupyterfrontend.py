@@ -206,19 +206,19 @@ class JupyterFrontEnd(AsyncWidgetBase):
         # TODO: consider if globals / locals / async scope should be supported.
         code = payload.get("code")
         user_expressions = payload.get("user_expressions") or {}
-        glbls = payload | {"buffers": buffers}
+        locals_ = payload | {"buffers": buffers}
         if code:
-            exec(code, glbls)  # noqa: S102
+            exec(code, None, locals_)  # noqa: S102
         if user_expressions:
             results = {}
             for name, expression in user_expressions.items():
-                result = eval(expression, glbls)  # noqa: S307
+                result = eval(expression, None, locals_)  # noqa: S307
                 if callable(result):
                     result = result()
                 if inspect.isawaitable(result):
                     result = await result
                 results[name] = result
-            return
+            return results
         return None
 
     def startIyplabPythonBackend(self) -> asyncio.Task:

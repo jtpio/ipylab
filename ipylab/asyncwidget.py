@@ -134,11 +134,11 @@ class AsyncWidgetBase(WidgetBase):
     """The base for all widgets that need async comms with the frontend model."""
 
     kernelId = Unicode(read_only=True).tag(sync=True)  # noqa: N815
+    _async_widget_base_init_complete = False
     _ipylab_model_register: ClassVar[dict[str, Any]] = {}
     _singleton_register: ClassVar[dict[str, str]] = {}
     SINGLETON = False
     _ready_response = Instance(Response, ())
-    _model_id = None
     _pending_operations: Dict[str, Response] = Dict()
     _tasks: Container[set[asyncio.Task]] = Set()
     _comm = None
@@ -155,13 +155,15 @@ class AsyncWidgetBase(WidgetBase):
         return super().__new__(cls, model_id=model_id, **kwgs)
 
     def __init__(self, *, model_id=None, **kwgs):
-        if self._model_id:
+        if self._async_widget_base_init_complete:
             return
         super().__init__(model_id=model_id, **kwgs)
+        assert self.model_id  # noqa: S101
         self._ipylab_model_register[self.model_id] = self
         if self.SINGLETON:
             self._singleton_register[self.__class__.__name__] = self.model_id
         self.on_msg(self._on_frontend_msg)
+        self._async_widget_base_init_complete = True
 
     async def __aenter__(self):
         if not self._ready_response.is_set():
@@ -172,7 +174,7 @@ class AsyncWidgetBase(WidgetBase):
         pass
 
     def close(self):
-        self._ipylab_model_register.pop(self._model_id, None)  # type: ignore
+        self._ipylab_model_register.pop(self.model_id, None)  # type: ignore
         for task in self._tasks:
             task.cancel()
         super().close()
@@ -228,20 +230,19 @@ class AsyncWidgetBase(WidgetBase):
 
     def _on_frontend_msg(self, _, content: dict, buffers: list):
         error = self._check_get_error(content)
+        if error:
+            pm.hook.on_frontend_error(obj=self, error=error, content=content, buffers=buffers)
         if operation := content.get("operation"):
             ipylab_backend = content.get("ipylab_BE", "")
             payload = content.get("payload", {})
             if ipylab_backend:
                 self._pending_operations.pop(ipylab_backend).set(payload, error)
-            ipylab_frontend = content.get("ipylab_FE", "")
-            if ipylab_frontend:
+            if "ipylab_FE" in content:
                 task = asyncio.create_task(
-                    self._handle_frontend_operation(ipylab_frontend, operation, payload, buffers)
+                    self._handle_frontend_operation(content["ipylab_FE"], operation, payload, buffers)
                 )
                 self._tasks.add(task)
                 task.add_done_callback(self._tasks.discard)
-            if error:
-                pm.hook.on_frontend_error(obj=self, error=error, content=content, buffers=buffers)
         elif "init" in content:
             self._ready_response.set(content)
 

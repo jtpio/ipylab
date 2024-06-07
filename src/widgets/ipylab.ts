@@ -22,6 +22,7 @@ import { JSONObject, JSONValue, UUID } from '@lumino/coreutils';
 import { ObjectHash } from 'backbone';
 import { MODULE_NAME, MODULE_VERSION } from '../version';
 import { PythonBackendModel } from './python_backend';
+import { PromiseDelegate } from '@lumino/coreutils';
 import {
   getNestedObject,
   listAttributes,
@@ -49,7 +50,6 @@ export class IpylabModel extends DOMWidgetModel {
     super.initialize(attributes, options);
     this._kernelId = (this.widget_manager as any).kernel.id;
     this.set('kernelId', this._kernelId);
-    this._pending_backend_operation_callbacks = new Map();
     this.on('msg:custom', this._onCustomMessage.bind(this));
     this.save_changes();
     const msg = `ipylab ${this.get('_model_name')} ready for operations`;
@@ -73,25 +73,23 @@ export class IpylabModel extends DOMWidgetModel {
   /**
    * Convert custom messages into operations for action.
    * There are two types:
-   * 1. Response to requested operation sent to Python backend.
+   * 1. Response to requested operation sent to Python backend (ipylab_FE).
    * 2. Operation requests received from the Python backend (ipylab_BE).
    * @param msg
    */
-  private async _onCustomMessage(msg: any): Promise<void> {
-    const ipylab_FE: string = msg.ipylab_FE;
-    if (ipylab_FE) {
+  private _onCustomMessage(msg: any) {
+    if (msg.ipylab_FE) {
       // Frontend operation result
-      delete (msg as any).ipylab_FE;
-      const [resolve, reject] =
-        this._pending_backend_operation_callbacks.get(ipylab_FE);
-      this._pending_backend_operation_callbacks.delete(ipylab_FE);
-      if (msg.error) {
-        reject(msg.error);
-      } else {
-        resolve(msg.payload);
+      const opDone = this._pendingBackendOperations.get(msg.ipylab_FE);
+      this._pendingBackendOperations.delete(msg.ipylab_FE);
+      if (opDone) {
+        if (msg.error) {
+          opDone.reject(msg.error);
+        } else {
+          opDone.resolve(msg.payload);
+        }
       }
-    } else {
-      // Backend operation (don't await it)
+    } else if (msg.ipylab_BE) {
       this._do_operation_for_backend(msg);
     }
   }
@@ -226,12 +224,10 @@ export class IpylabModel extends DOMWidgetModel {
     };
     // Create callbacks to be resolved when a custom message is received
     // with the key `ipylab_FE`.
-    const callbacks = this._pending_backend_operation_callbacks;
-    const promise = new Promise<JSONValue>((resolve, reject) => {
-      callbacks.set(ipylab_FE, [resolve, reject]);
-    });
+    const opDone = new PromiseDelegate();
+    this._pendingBackendOperations.set(ipylab_FE, opDone);
     this.send(msg);
-    const result: any = await promise;
+    const result: any = await opDone.promise;
     return await transformObject(result, transform ?? 'raw', this);
   }
 
@@ -248,6 +244,8 @@ export class IpylabModel extends DOMWidgetModel {
   }
 
   close(comm_closed?: boolean): Promise<void> {
+    this._pendingBackendOperations.forEach(opDone => opDone.reject('Closed'));
+    this._pendingBackendOperations.clear();
     comm_closed = comm_closed || !this.kernelLive;
     return super.close(comm_closed);
   }
@@ -262,9 +260,9 @@ export class IpylabModel extends DOMWidgetModel {
     ...WidgetModel.serializers
   };
 
-  private _pending_backend_operation_callbacks: Map<string, [any, any]>;
+  private _pendingBackendOperations = new Map<string, PromiseDelegate<any>>();
   private _kernelId: string;
-  static python_backend = new PythonBackendModel();
+  static pythonBackend = new PythonBackendModel();
   static model_name: string;
   static model_module = MODULE_NAME;
   static model_module_version = MODULE_VERSION;

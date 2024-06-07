@@ -74,7 +74,7 @@ class MainArea(AsyncWidgetBase, HasApp):
         return super().__new__(cls, name=name, **kwgs)
 
     def __init__(self, *, name: str, path="", model_id=None, content: Panel | None = None, **kwgs):
-        if self._model_id:
+        if self._async_widget_base_init_complete:
             return
         path_ = str(pathlib.PurePosixPath(path or name)).lower().strip("/")
         if path and path != path_:
@@ -136,19 +136,14 @@ class MainArea(AsyncWidgetBase, HasApp):
         self.set_trait("status", ViewStatus.unloading)
         return self.schedule_operation("unload")
 
-    def load_console(
-        self,
-        *,
-        name="Console",
-        mode: InsertMode = InsertMode.split_bottom,
-        **kwgs,
-    ) -> asyncio.Task:
+    def load_console(self, *, mode: InsertMode = InsertMode.split_bottom, **kwgs) -> asyncio.Task:
         """Load a console using for the same kernel.
 
         Opening the console will close any existing consoles.
         """
         self.set_trait("console_status", ViewStatus.loading)
-        return self.schedule_operation("open_console", insertMode=InsertMode(mode), name=name, **kwgs)
+        kwgs = {"name": self.name, "path": self.path} | kwgs
+        return self.schedule_operation("open_console", insertMode=InsertMode(mode), **kwgs)  # type: ignore
 
     def unload_console(self) -> asyncio.Task:
         """Unload the console."""

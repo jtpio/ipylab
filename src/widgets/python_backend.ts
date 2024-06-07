@@ -12,7 +12,6 @@ export class PythonBackendModel {
       this._backendSession = await newSession({
         path: 'Ipylab backend',
         name: 'Ipylab backend',
-        rendermime: IpylabModel.rendermime.clone(),
         language: 'python3',
         code: 'import ipylab.scripts; ipylab.scripts.init_ipylab_backend()'
       });
@@ -29,7 +28,7 @@ export class PythonBackendModel {
             '[project.entry-points.ipylab-python-backend] \n' +
             '\tmyproject = "myproject.pluginmodule"',
 
-          execute: () => IpylabModel.python_backend.checkStart()
+          execute: () => IpylabModel.pythonBackend.checkStart()
         }
       );
       if (this._palletItem) {

@@ -72,7 +72,7 @@ async function activate(
 
     registry.registerWidget(widgetExports.IpylabModel.exports);
   }
-  widgetExports.IpylabModel.python_backend.checkStart();
+  widgetExports.IpylabModel.pythonBackend.checkStart();
 }
 
 export default extension;
