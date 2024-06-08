@@ -25,7 +25,7 @@ export class PythonBackendModel {
           caption:
             'Start the Ipylab Python backend that will run registered autostart plugins.\n ' +
             ' in "pyproject.toml"  added entry for: \n' +
-            '[project.entry-points.ipylab-python-backend] \n' +
+            '[project.entry-points.ipylab_backend] \n' +
             '\tmyproject = "myproject.pluginmodule"',
 
           execute: () => IpylabModel.pythonBackend.checkStart()
