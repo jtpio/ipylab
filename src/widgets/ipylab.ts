@@ -168,13 +168,17 @@ export class IpylabModel extends DOMWidgetModel {
         let obj;
         (obj as any) = this;
         if (kwgs.widget) {
-          obj = await unpack_models(kwgs.widget, this.widget_manager);
+          if (typeof kwgs.widget === 'string') {
+            obj = this._getLuminoWidgetFromShell(kwgs.widget);
+          } else {
+            obj = await unpack_models(kwgs.widget, this.widget_manager);
+          }
         }
         const owner = getNestedObject(
           obj,
           kwgs.method.split('.').slice(0, -1).join('.')
         );
-        let func = getNestedObject(this, kwgs.method);
+        let func = getNestedObject(obj, kwgs.method);
         func = func.bind(owner, ...(payload as any).args);
         return await func();
       }
@@ -253,6 +257,34 @@ export class IpylabModel extends DOMWidgetModel {
   save_changes(callbacks?: unknown): void {
     if (this.comm_live && this.kernelLive) {
       super.save_changes(callbacks);
+    }
+  }
+
+  /**
+   * Get the lumino widget from the shell using its id.
+   *
+   * @param id
+   * @returns
+   */
+  _getLuminoWidgetFromShell(id: string) {
+    for (const area of [
+      'main',
+      'header',
+      'top',
+      'menu',
+      'left',
+      'right',
+      'bottom',
+      'down'
+    ]) {
+      for (const widget of IpylabModel.labShell.widgets(
+        area as ILabShell.Area
+      )) {
+        if (widget.id === id) {
+          return widget;
+        }
+      }
+      throw new Error(`Lumino widget with id='${id}' not found in the shell.`);
     }
   }
 

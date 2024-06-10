@@ -204,9 +204,9 @@ class AsyncWidgetBase(WidgetBase):
 
     async def wait_ready(self) -> None:
         if not self._ready_response.is_set():
-            self.log.info("Connecting to frontend model '%s'", self._model_name)
+            self.log.debug("Connecting to frontend model '%s'", self._model_name)
             await self._ready_response.wait()
-            self.log.info("Connected to frontend model '%s'", self._model_name)
+            self.log.debug("Connected to frontend model '%s'", self._model_name)
 
     def send(self, content, buffers=None):
         try:
@@ -333,15 +333,22 @@ class AsyncWidgetBase(WidgetBase):
         *args,
         callback: CallbackType | None = None,
         transform: TransformType = TransformMode.raw,
-        widget: Widget | None = None,
+        widget: Widget | None | str = None,
     ) -> asyncio.Task:
         """Call a method on the corresponding frontend object.
 
         method: 'dotted.access.to.the.method' relative to the Frontend instance.
 
+        widget: An ipywidget, or the id of a `lumino widget` accessible from the shell (such as app.current_widget_id.)
+
         *args
         `args` are passed in order so must correspond with the order in the JS method.
         Specifying arguments by name is not currently support.
+
+        example:
+        ```
+        app.executeMethod(widget=app.current_widget_id, method="close")
+        ```
         """
 
         # This operation is sent to the frontend function _fe_execute in 'ipylab/src/widgets/ipylab.ts'

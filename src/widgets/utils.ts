@@ -43,6 +43,10 @@ export async function newSession({
   await sessionContext.initialize();
   await sessionContext.ready;
 
+  // TODO: support documents, not exactly here, but in ipylab somewhere.
+  // https://github.com/jupyterlab/extension-examples/tree/main/documents
+  // https://jupyter-ydoc.readthedocs.io/en/latest/custom.html
+
   // Create a manager for the kernel. It will stay alive for the life of the kernel.
   // Requires https://github.com/jupyter-widgets/ipywidgets/pull/3922 to be adopted.
   new KernelWidgetManager(sessionContext.session.kernel, rendermime as any);
