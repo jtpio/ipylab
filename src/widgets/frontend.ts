@@ -57,7 +57,6 @@ export class JupyterFrontEndModel extends IpylabModel {
       this._updateSessionDetails();
     }
     this._updateAllSessionDetails();
-    this.save_changes();
   }
 
   close(comm_closed?: boolean): Promise<void> {
@@ -85,9 +84,11 @@ export class JupyterFrontEndModel extends IpylabModel {
   private _updateSessionDetails(): void {
     const currentWidget = this.shell.currentWidget as any;
     const current_session = currentWidget?.sessionContext?.session?.model ?? {};
-    this.set('current_widget_id', currentWidget?.id ?? '');
-    this.set('current_session', current_session);
-    this.save_changes();
+    if (this.get('current_widget_id') !== currentWidget?.id) {
+      this.set('current_widget_id', currentWidget?.id ?? '');
+      this.set('current_session', current_session);
+      this.save_changes();
+    }
   }
   private _updateAllSessionDetails(): void {
     this.set('all_sessions', Array.from(this.sessionManager.running()));
