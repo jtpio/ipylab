@@ -96,7 +96,14 @@ class JupyterFrontEnd(AsyncWidgetBase):
         return self.schedule_operation("shutdownKernel", kernelId=kernelId)
 
     def newSession(
-        self, path: str = "", *, name: str = "", kernelId="", kernelName="python3", code: str | types.ModuleType = ""
+        self,
+        path: str = "",
+        *,
+        name: str = "",
+        kernelId="",
+        kernelName="python3",
+        code: str | types.ModuleType = "",
+        type="Ipylab",  # noqa: A002
     ) -> asyncio.Task:
         """
         Create a new kernel and execute code in it or execute code in an existing kernel.
@@ -106,6 +113,7 @@ class JupyterFrontEnd(AsyncWidgetBase):
         name: The name of the session.
         kernelName: The name of the kernel (only Python kernel implemented).
         code: A string, module or function.
+        type: The type of document.
 
         If passing a function, the function will be executed. It is important
         that objects that must stay alive outside the function must be kept alive.
@@ -118,6 +126,7 @@ class JupyterFrontEnd(AsyncWidgetBase):
             name=name or path,
             kernelId=kernelId,
             kernelName=kernelName,
+            type=type,
             code=pack_code(code),
             transform=TransformMode.raw,
         )
@@ -171,9 +180,14 @@ class JupyterFrontEnd(AsyncWidgetBase):
         kernelId="",
         **kwgs,
     ) -> asyncio.Task:
-        """exec and eval code on the Python kernel.
+        """Execute and evaluate code in the Python kernel corresponding to kerenelId, or create a new kernel
+        if `kernelId` isn't provided.
 
-        Similar to injectCode in functionality but avoids blocking kernel comms. Will only work in a Python kernel.
+        When kernelId is not passed (default) a new session is created the same way a new session is
+        created (Addnl kwgs).
+
+        This function is similar to `injectCode` in functionality but avoids blocking kernel comms. It
+        will only work in a python kernel where the widgets have been enabled.
 
         Handling of execution is performed by `_execEval` of the `JupyterFrontEnd` instance running in
         the kernel with kernelId.
@@ -190,7 +204,7 @@ class JupyterFrontEnd(AsyncWidgetBase):
         kernelId:
             The Id allocated to the kernel in the frontend.
         Addnl kwgs:
-            path, name for a new session.
+            path, name, type='Ipylab' | 'Notebook' for a new session.
         """
         return self.app.schedule_operation(
             "execEval",

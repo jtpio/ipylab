@@ -18,7 +18,8 @@ export async function newSession({
   rendermime,
   kernelId = '',
   language = 'python3',
-  code = ''
+  code = '',
+  type = 'Ipylab'
 }: {
   name: string;
   path: string;
@@ -26,13 +27,14 @@ export async function newSession({
   kernelId?: string;
   language?: string;
   code?: string;
+  type?: string;
 }): Promise<Session.ISessionConnection> {
   const sessionContext = new SessionContext({
     sessionManager: IpylabModel.app.serviceManager.sessions,
     specsManager: IpylabModel.app.serviceManager.kernelspecs,
     path: path,
     name: name ?? path,
-    type: 'ipylab',
+    type: type,
     kernelPreference: {
       id: kernelId || `${UUID.uuid4()}`,
       language: language
