@@ -103,17 +103,16 @@ class JupyterFrontEnd(AsyncWidgetBase):
         kernelId="",
         kernelName="python3",
         code: str | types.ModuleType = "",
-        type="Ipylab",  # noqa: A002
+        type="ipylab",  # noqa: A002
     ) -> asyncio.Task:
         """
         Create a new kernel and execute code in it or execute code in an existing kernel.
 
         path: The session path.
-        type: The type of session.
         name: The name of the session.
         kernelName: The name of the kernel (only Python kernel implemented).
         code: A string, module or function.
-        type: The type of document.
+        type: The type of session.
 
         If passing a function, the function will be executed. It is important
         that objects that must stay alive outside the function must be kept alive.
@@ -204,7 +203,7 @@ class JupyterFrontEnd(AsyncWidgetBase):
         kernelId:
             The Id allocated to the kernel in the frontend.
         Addnl kwgs:
-            path, name, type='Ipylab' | 'Notebook' for a new session.
+            path, name, type='ipylab' | 'notebook' | 'console' for a new session.
         """
         return self.app.schedule_operation(
             "execEval",
