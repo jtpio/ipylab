@@ -4,12 +4,13 @@
 import { IBackboneModelOptions, unpack_models } from '@jupyter-widgets/base';
 import {
   ISessionContext,
+  IWidgetTracker,
   MainAreaWidget,
-  SessionContext
+  SessionContext,
+  WidgetTracker
 } from '@jupyterlab/apputils';
 import { ConsolePanel } from '@jupyterlab/console';
-import { PathExt } from '@jupyterlab/coreutils';
-import { UUID } from '@lumino/coreutils';
+import { Token } from '@lumino/coreutils';
 import { Message } from '@lumino/messaging';
 import { SplitPanel, Widget } from '@lumino/widgets';
 import { ObjectHash } from 'backbone';
@@ -25,18 +26,14 @@ export class IpylabMainAreaWidget extends MainAreaWidget {
   constructor(options: IpylabMainAreaWidget.IOptions) {
     //TODO: support more parts of the MainAreaWidget
 
-    const { content, kernelId, name, basePath, type, className } = options;
-    let path = options.path;
+    const { content, kernelId, name, type, className, path } = options;
     super({ content: content });
-    if (!path) {
-      path = PathExt.join(basePath || '', `${name}-${UUID.uuid4()}`);
-    }
     this._sessionContext = new SessionContext({
       sessionManager: IpylabModel.app.serviceManager.sessions,
       specsManager: IpylabModel.app.serviceManager.kernelspecs,
       path: path,
       name: name,
-      type: type || 'ipylab',
+      type: type,
       kernelPreference: {
         id: kernelId,
         language: 'python3'
@@ -46,6 +43,7 @@ export class IpylabMainAreaWidget extends MainAreaWidget {
     this.addClass(className ?? 'ipylab-main-area');
     SplitPanel.setStretch(this.content, 1);
     this.node.removeChild(this.toolbar.node); // Temp until toolbar is supported
+    MainAreaModel.tracker.add(this);
   }
 
   /**
@@ -232,6 +230,9 @@ export class MainAreaModel extends IpylabModel {
   private _consolePanel: ConsolePanel;
   private _sessionContext: ISessionContext;
 
+  static tracker = new WidgetTracker<IpylabMainAreaWidget>({
+    namespace: 'ipylab'
+  });
   static model_name = 'MainAreaModel';
   static view_name = 'MainAreaView';
   class_name = 'ipylab-main_area';
@@ -285,3 +286,19 @@ export namespace IpylabMainAreaWidget {
     type?: string;
   }
 }
+
+/**
+ * The MainAreaWidget tracker token.
+ */
+export const IMainAreaWidgetTracker = new Token<IMainAreaWidgetTracker>(
+  'ipylab:mainAreaTracker',
+  `A widget tracker for MainAreaWidget instances.
+  Use this if you want to be able to iterate over and interact with MainAreaWidgets
+  created by the application.`
+);
+
+/**
+ * A class that tracks MainAreaWidget widgets.
+ */
+export interface IMainAreaWidgetTracker
+  extends IWidgetTracker<MainAreaWidget> {}

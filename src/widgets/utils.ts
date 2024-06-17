@@ -19,7 +19,7 @@ export async function newSession({
   kernelId = '',
   language = 'python3',
   code = '',
-  type = 'Ipylab'
+  type = 'ipylab'
 }: {
   name: string;
   path: string;

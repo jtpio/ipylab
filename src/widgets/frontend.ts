@@ -172,7 +172,7 @@ export class JupyterFrontEndModel extends IpylabModel {
       luminoWidget = new IpylabMainAreaWidget({
         content: view.luminoWidget as any,
         kernelId: this.kernelId,
-        name: 'Ipylab'
+        name: model.model_id
       }) as any;
     }
     if (!luminoWidget.id) {
