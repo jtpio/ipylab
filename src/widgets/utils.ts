@@ -174,7 +174,6 @@ export function toFunction(code: string) {
 
 /**
  * Transform the object for sending.
- * TODO: Add in 'function'
  * @param obj
  * @param options The mode as a string or an object with mode and any other parameters.
  * @param thisArg 'function' mode only - the binding of `this`.
@@ -196,8 +195,6 @@ export async function transformObject(
       return obj as any;
     case 'null':
       return null;
-    case 'string':
-      return String(obj);
     case 'attribute':
       // expects simple: {parts:['dotted.attribute']}
       // or advanced: {parts:[{path:'dotted.attribute', transform:'...' }]

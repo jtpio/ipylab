@@ -83,7 +83,6 @@ class TransformMode(StrEnum):
 
     raw = "raw"
     done = "done"
-    string = "string"
     attribute = "attribute"
     function = "function"
 
