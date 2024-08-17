@@ -84,7 +84,7 @@ export class IpylabModel extends DOMWidgetModel {
       this._pendingBackendOperations.delete(msg.ipylab_FE);
       if (opDone) {
         if (msg.error) {
-          opDone.reject(msg.error);
+          opDone.reject(new Error(msg.error?.repr ?? msg.error));
         } else {
           opDone.resolve(msg.payload);
         }
@@ -144,7 +144,7 @@ export class IpylabModel extends DOMWidgetModel {
       const content = {
         operation: operation,
         ipylab_BE: msg.ipylab_BE,
-        error: String(e)
+        error: `${(e as Error).message}`
       };
       this.send(content);
       console.error(e);

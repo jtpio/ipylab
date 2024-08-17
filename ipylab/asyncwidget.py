@@ -191,7 +191,7 @@ class AsyncWidgetBase(WidgetBase):
         if error:
             operation = content.get("operation")
             if operation:
-                msg = f"{self.__class__.__name__} operation '{operation}' failed with message \"{error}\""
+                msg = f'{self.__class__.__name__} operation "{operation}" failed with message "{error}"'
                 if "cyclic" in error:
                     msg += (
                         "\nNote: A cyclic error may be due a return value that cannot be converted to JSON. "
@@ -260,7 +260,7 @@ class AsyncWidgetBase(WidgetBase):
             content["error"] = "Cancelled"
         except Exception as e:
             content["error"] = {
-                "repr": repr(e),
+                "repr": repr(e).replace("'", '"'),
                 "traceback": traceback.format_tb(e.__traceback__),
             }
             pm.hook.on_frontend_error(obj=self, error=e, content=content, buffers=buffers)
@@ -270,7 +270,7 @@ class AsyncWidgetBase(WidgetBase):
             except ValueError as e:
                 content.pop("payload", None)
                 content["error"] = {
-                    "repr": repr(e),
+                    "repr": repr(e).replace("'", '"'),
                     "traceback": traceback.format_tb(e.__traceback__),
                 }
                 self.send(content, buffers)
