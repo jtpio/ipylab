@@ -8,7 +8,7 @@ import { Kernel, Session } from '@jupyterlab/services';
 import { UUID } from '@lumino/coreutils';
 import { Signal } from '@lumino/signaling';
 import { IpylabModel, JSONObject, JSONValue } from './ipylab';
-import { Widget } from '@lumino/widgets';
+
 /**
  * Start a new session that support comms needed for iplab needs for comms.
  * @returns
@@ -208,12 +208,8 @@ export async function transformObject(
     case 'null':
       return null;
     case 'connection':
-      if (obj instanceof Widget) {
-        IpylabModel.trackLuminoWidget(obj);
-        return obj.id;
-      }
-      throw new Error(`obj is not a lumino widget ${obj}`);
-
+      IpylabModel.trackDisposable(obj);
+      return obj.id;
     case 'attribute':
       // expects simple: {parts:['dotted.attribute']}
       // or advanced: {parts:[{path:'dotted.attribute', transform:'...' }]

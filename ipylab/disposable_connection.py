@@ -3,28 +3,32 @@
 
 from __future__ import annotations
 
+import asyncio
+import contextlib
 from typing import ClassVar
 
 from ipywidgets import register
 from traitlets import Unicode
 
 from ipylab.asyncwidget import AsyncWidgetBase
-from ipylab.hasapp import HasApp
+from ipylab.jupyterfrontend_subsection import FrontEndSubsection
 
 
 @register
-class LuminoWidgetConnection(AsyncWidgetBase, HasApp):
-    """A connection to a single Lumino widget in the Jupyterlab shell.
+class DisposableConnection(FrontEndSubsection, AsyncWidgetBase):
+    """A connection to a disposable object in the Frontend.
+
+    The dispose method is directly accesssable, but
 
     The comm trait can be observed for when the lumino widget in Jupyterlab is closed.
 
-    There is no direct connection to the widget on the frontend, rather, it
-    can be accessed using the prefix 'widget.' in the method calls:
-    * execute_method
+    see: https://lumino.readthedocs.io/en/latest/api/modules/disposable.html
+
     """
 
-    _connections: ClassVar[dict[str, LuminoWidgetConnection]] = {}
-    _model_name = Unicode("LuminoWidgetConnectionModel").tag(sync=True)
+    SUB_PATH_BASE = "obj"
+    _connections: ClassVar[dict[str, DisposableConnection]] = {}
+    _model_name = Unicode("DisposableConnectionModel").tag(sync=True)
     id = Unicode(read_only=True).tag(sync=True)
 
     def __new__(cls, *, id: str, **kwgs):  # noqa: A002
@@ -42,8 +46,12 @@ class LuminoWidgetConnection(AsyncWidgetBase, HasApp):
         self._connections.pop(self.id, None)
         super().close()
 
-    def dispose(self):
-        """Close the Lumino widget at the frontend.
+    def dispose(self, *, start=True) -> asyncio._AwaitableLike[None]:
+        "Close the disposable on the frontend."
 
-        Note: The task is cancelled when the connection is closed."""
-        return self.execute_method("widget.dispose")
+        async def dispose_():
+            if self.comm:
+                with contextlib.suppress(asyncio.CancelledError):
+                    await self.execute_method("dispose", start=start)
+
+        return self.start_maybe(dispose_(), start=start)

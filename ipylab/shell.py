@@ -7,8 +7,8 @@ import typing as t
 
 from ipylab import pack
 from ipylab.asyncwidget import TransformMode
-from ipylab.jupyterfrontend_subsection import JupyterFrontEndSubsection
-from ipylab.luminowidget_connection import LuminoWidgetConnection
+from ipylab.disposable_connection import DisposableConnection
+from ipylab.jupyterfrontend_subsection import FrontEndSubsection
 
 if sys.version_info >= (3, 11):
     from enum import StrEnum
@@ -48,7 +48,7 @@ class InsertMode(StrEnum):
     tab_after = "tab-after"
 
 
-class Shell(JupyterFrontEndSubsection):
+class Shell(FrontEndSubsection):
     """
     Provides access to the shell.
     The minimal interface is:
@@ -59,7 +59,7 @@ class Shell(JupyterFrontEndSubsection):
     ref: https://jupyterlab.readthedocs.io/en/latest/api/interfaces/application.JupyterFrontEnd.IShell.html#add
     """
 
-    JFE_JS_SUB_PATH = "shell"
+    SUB_PATH_BASE = "app.shell"
 
     def addToShell(
         self,
@@ -69,7 +69,7 @@ class Shell(JupyterFrontEndSubsection):
         activate: bool = True,
         mode: InsertMode = InsertMode.split_right,
         rank: int | None = None,
-        ref: LuminoWidgetConnection | str = "",
+        ref: DisposableConnection | str = "",
         start=True,
         **options,
     ):
@@ -86,7 +86,7 @@ class Shell(JupyterFrontEndSubsection):
             "activate": activate,
             "mode": InsertMode(mode),
             "rank": int(rank) if rank else None,
-            "ref": ref.id if isinstance(ref, LuminoWidgetConnection) else ref or None,
+            "ref": ref.id if isinstance(ref, DisposableConnection) else ref or None,
         }
         return self.app.schedule_operation(
             "addToShell",

@@ -5,7 +5,7 @@ import { CommandRegistryModel } from './widgets/commands';
 import { JupyterFrontEndModel } from './widgets/frontend';
 import { IconModel, IconView } from './widgets/icon';
 import { IpylabModel } from './widgets/ipylab';
-import { LuminoWidgetConnectionModel } from './widgets/luminowidget_connection';
+import { DisposableConnectionModel } from './widgets/disposable_connection';
 import { MainAreaModel } from './widgets/main_area';
 import { CommandPaletteModel, LauncherModel } from './widgets/palette';
 import { PanelModel, PanelView } from './widgets/panel';
@@ -20,7 +20,7 @@ export {
   IpylabModel,
   JupyterFrontEndModel,
   LauncherModel,
-  LuminoWidgetConnectionModel,
+  DisposableConnectionModel,
   MainAreaModel,
   PanelModel,
   PanelView,

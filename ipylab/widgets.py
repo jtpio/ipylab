@@ -17,7 +17,7 @@ from ipylab.shell import Area, InsertMode
 if TYPE_CHECKING:
     import asyncio
 
-    from ipylab.luminowidget_connection import LuminoWidgetConnection
+    from ipylab.disposable_connection import DisposableConnection
 
 
 @register
@@ -64,10 +64,10 @@ class Panel(Box, HasApp):
         activate: bool = True,
         mode: InsertMode = InsertMode.split_right,
         rank: int | None = None,
-        ref: LuminoWidgetConnection | str = "",
+        ref: DisposableConnection | str = "",
         start=True,
         **options,
-    ) -> asyncio._AwaitableLike[LuminoWidgetConnection]:
+    ) -> asyncio._AwaitableLike[DisposableConnection]:
         """Add this panel to the shell."""
         return self.app.shell.addToShell(
             self,

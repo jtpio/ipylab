@@ -24,6 +24,7 @@ import {
   PromiseDelegate,
   UUID
 } from '@lumino/coreutils';
+import { IDisposable } from '@lumino/disposable';
 import { Widget } from '@lumino/widgets';
 import { ObjectHash } from 'backbone';
 import { MODULE_NAME, MODULE_VERSION } from '../version';
@@ -35,10 +36,10 @@ import {
   setNestedAttribute,
   transformObject
 } from './utils';
-
 export {
   CommandRegistry,
   IBackboneModelOptions,
+  IDisposable,
   ILabShell,
   ILauncher,
   ISerializers,
@@ -181,13 +182,19 @@ export class IpylabModel extends WidgetModel {
   async toLuminoWidget(value: string): Promise<Widget> {
     if (value.slice(0, 10) === 'IPY_MODEL_') {
       const model = await unpack_models(value, this.widget_manager);
+      if (model.model_name === IpylabModel.disposable_model_name) {
+        const widget = this.getDisposable(model.id);
+        if (!(widget instanceof Widget)) {
+          throw new Error(`Failed to get a lumio widget for: ${value}`);
+        }
+      }
       const view = await this.widget_manager.create_view(model, {});
       const lw = view.luminoWidget;
-      IpylabModel.trackLuminoWidget(lw);
+      IpylabModel.trackDisposable(lw);
       onKernelLost((this.widget_manager as any).kernel, lw.dispose, lw);
       return lw;
     }
-    return this.getLuminoWidget(value);
+    return this.getDisposable(value);
   }
 
   /**
@@ -224,7 +231,7 @@ export class IpylabModel extends WidgetModel {
    * @param payload Options relevant to the operation.
    * @returns Raw result of the operation.
    */
-  async operation(op: string, payload: any): Promise<JSONValue | Widget> {
+  async operation(op: string, payload: any): Promise<JSONValue | IDisposable> {
     switch (op) {
       case 'myFunction':
         // do something
@@ -300,27 +307,30 @@ export class IpylabModel extends WidgetModel {
    * @param id Get a lumino widget using its id.
    * @returns
    */
-  getLuminoWidget(id: string) {
-    if (Private.luminoWidgets.has(id)) {
-      return Private.luminoWidgets.get(id);
+  getDisposable(id: string) {
+    if (Private.disposables.has(id)) {
+      return Private.disposables.get(id);
     }
-    const luminoWidget = this._getLuminoWidgetFromShell(id);
-    IpylabModel.trackLuminoWidget(luminoWidget);
-    return luminoWidget;
+    const disposable = this._getLuminoWidgetFromShell(id);
+    IpylabModel.trackDisposable(disposable);
+    return disposable;
   }
 
   /**
    *
    * @param widget Keep a reference to a Lumino widget so it can be found from the backend.
    */
-  static trackLuminoWidget(luminoWidget: Widget) {
-    if (!luminoWidget.id) {
-      luminoWidget.id = DOMUtils.createDomID();
+  static trackDisposable(disposable: any) {
+    if (typeof disposable.dispose !== 'function') {
+      throw new Error(`Not disposable: ${disposable}`);
     }
-    const key = luminoWidget.id;
-    if (!Private.luminoWidgets.has(key)) {
-      Private.luminoWidgets.set(key, luminoWidget);
-      luminoWidget.disposed.connect(() => Private.luminoWidgets.delete(key));
+    if (!disposable.id) {
+      disposable.id = DOMUtils.createDomID();
+    }
+    const key = disposable.id;
+    if (!Private.disposables.has(key)) {
+      Private.disposables.set(key, disposable);
+      disposable.disposed.connect(() => Private.disposables.delete(key));
     }
   }
 
@@ -375,11 +385,12 @@ export class IpylabModel extends WidgetModel {
   static launcher: ILauncher;
   static exports: IWidgetRegistryData;
   static OPERATION_DONE = '--DONE--';
+  static disposable_model_name = 'DisposableConnectionModel';
 }
 
 /**
  * A namespace for private data
  */
 namespace Private {
-  export const luminoWidgets = new ObservableMap<Widget>();
+  export const disposables = new ObservableMap<Widget>();
 }

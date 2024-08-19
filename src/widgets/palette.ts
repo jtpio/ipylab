@@ -3,8 +3,7 @@
 
 import { IPaletteItem } from '@jupyterlab/apputils';
 import { ObservableMap } from '@jupyterlab/observables';
-import { IDisposable } from '@lumino/disposable';
-import { IpylabModel, JSONValue, Widget } from './ipylab';
+import { IpylabModel, JSONValue, IDisposable } from './ipylab';
 
 /**
  * The model for a command palette.
@@ -35,7 +34,7 @@ export class CommandPaletteModel extends IpylabModel {
     this._customItems.changed.connect(this._sendItems, this);
   }
 
-  async operation(op: string, payload: any): Promise<JSONValue | Widget> {
+  async operation(op: string, payload: any): Promise<JSONValue | IDisposable> {
     switch (op) {
       case 'addItem': {
         return this._addItem(payload);

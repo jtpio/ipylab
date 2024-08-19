@@ -10,18 +10,18 @@ import { IpylabModel } from './ipylab';
  * The widget must exist in the shell or have already been added to the tracker.
  *
  */
-export class LuminoWidgetConnectionModel extends IpylabModel {
+export class DisposableConnectionModel extends IpylabModel {
   async initialize(
     attributes: ObjectHash,
     options: IBackboneModelOptions
   ): Promise<void> {
     super.initialize(attributes, options);
-    this.widget.disposed.connect(() => this.close());
+    this.obj.disposed.connect(() => this.close());
   }
 
-  get widget() {
+  get obj() {
     try {
-      return this.getLuminoWidget(this.get('id'));
+      return this.getDisposable(this.get('id'));
     } catch {
       this.close();
     }
@@ -33,7 +33,7 @@ export class LuminoWidgetConnectionModel extends IpylabModel {
   defaults(): any {
     return {
       ...super.defaults(),
-      _model_name: LuminoWidgetConnectionModel.model_name,
+      _model_name: IpylabModel.disposable_model_name,
       _model_module: IpylabModel.model_module,
       _model_module_version: IpylabModel.model_module_version,
       _view_name: null,
@@ -42,7 +42,6 @@ export class LuminoWidgetConnectionModel extends IpylabModel {
     };
   }
 
-  static model_name = 'LuminoWidgetConnectionModel';
   static serializers = {
     ...IpylabModel.serializers,
     content: { deserialize: unpack_models }

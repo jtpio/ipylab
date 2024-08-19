@@ -89,7 +89,7 @@ class CommandRegistry(AsyncWidgetBase):
             **kwgs,
         )
 
-    def removePythonCommand(self, command_id: str):
+    def removePythonCommand(self, command_id: str, *, start=True):
         # TODO: check whether to keep this method, or return disposables like in lab
         if command_id not in self._execute_callbacks:
             msg = f"{command_id=} is not a registered command!"
@@ -106,4 +106,4 @@ class CommandRegistry(AsyncWidgetBase):
             await coro_
             self._execute_callbacks.pop(command_id, None)
 
-        return self.new_task(removePythonCommand_())
+        return self.start_maybe(removePythonCommand_(), start=start)

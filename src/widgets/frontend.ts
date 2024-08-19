@@ -13,6 +13,7 @@ import {
 import { FileDialog } from '@jupyterlab/filebrowser';
 import { Kernel, Session } from '@jupyterlab/services';
 import {
+  IDisposable,
   ISerializers,
   IpylabModel,
   JSONValue,
@@ -96,7 +97,7 @@ export class JupyterFrontEndModel extends IpylabModel {
     this.save_changes();
   }
 
-  async operation(op: string, payload: any): Promise<JSONValue | Widget> {
+  async operation(op: string, payload: any): Promise<JSONValue | IDisposable> {
     function _get_result(result: any): any {
       if (result.value === null) {
         throw new Error('Cancelled');

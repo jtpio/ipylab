@@ -14,7 +14,7 @@ import { Token } from '@lumino/coreutils';
 import { Message } from '@lumino/messaging';
 import { SplitPanel, Widget } from '@lumino/widgets';
 import { ObjectHash } from 'backbone';
-import { IpylabModel, JSONValue } from './ipylab';
+import { IDisposable, IpylabModel, JSONValue } from './ipylab';
 /**
  * A main area widget with a sessionContext and the ability to add other children.
  */
@@ -101,7 +101,7 @@ export class MainAreaModel extends IpylabModel {
     await this.sessionContext.initialize();
   }
 
-  async operation(op: string, payload: any): Promise<JSONValue | Widget> {
+  async operation(op: string, payload: any): Promise<JSONValue | IDisposable> {
     switch (op) {
       case 'load':
         // Using lock for mutex

@@ -5,7 +5,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from ipylab import TransformMode
-from ipylab.hasapp import HasApp
+from ipylab.asyncwidget import AsyncWidgetBase
 
 if TYPE_CHECKING:
     from collections.abc import Iterable
@@ -13,13 +13,13 @@ if TYPE_CHECKING:
     from ipylab.asyncwidget import TransformType
 
 
-class JupyterFrontEndSubsection(HasApp):
-    """Use as a sub section in the JupyterFrontEnd class"""
+class FrontEndSubsection(AsyncWidgetBase):
+    """Direct access to methods on an object relative to the frontend Model."""
 
-    # Point to the attribute on the JupyterFrontEndModel for which this class represents.
+    # Point to the attribute on the model to which this model corresponds.
     # Nested attributes are support such as "app.sessionManager"
-    # see ipylab/src/widgets/frontend.ts -> JupyterFrontEndModel
-    JFE_JS_SUB_PATH = ""
+    # see ipylab/src/widgets/ipylab.ts -> IpylabModel
+    SUB_PATH_BASE = "app"
 
     def execute_method(
         self,
@@ -32,8 +32,9 @@ class JupyterFrontEndSubsection(HasApp):
         """Execute a nested method on this objects JFE_SUB_PATH relative to the instance of the
         JupyterFrontEndModel in the JS frontend.
         """
-        return self.app.execute_method(
-            f"{self.JFE_JS_SUB_PATH}.{method}",
+
+        return super().execute_method(
+            f"{self.SUB_PATH_BASE}.{method}",
             *args,
             transform=transform,
             toLuminoWidget=toLuminoWidget,
@@ -42,12 +43,12 @@ class JupyterFrontEndSubsection(HasApp):
 
     def get_attribute(self, path: str, *, transform: TransformType = TransformMode.raw, start=True):
         """Get an attribute by name from the front end."""
-        return self.app.get_attribute(f"{self.JFE_JS_SUB_PATH}.{path}", transform=transform, start=start)
+        return super().get_attribute(f"{self.SUB_PATH_BASE}.{path}", transform=transform, start=start)
 
     def list_attributes(self, path: str = "", *, transform: TransformType = TransformMode.raw, start=True):
         """Get a list of all attributes."""
-        return self.app.list_attributes(
-            f"{self.JFE_JS_SUB_PATH}.{path}",
+        return super().list_attributes(
+            f"{self.SUB_PATH_BASE}.{path}",
             transform=transform,
             start=start,
         )

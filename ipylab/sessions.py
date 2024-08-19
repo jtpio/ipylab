@@ -3,15 +3,15 @@
 
 import asyncio
 
-from ipylab.jupyterfrontend_subsection import JupyterFrontEndSubsection
+from ipylab.jupyterfrontend_subsection import FrontEndSubsection
 
 
-class SessionManager(JupyterFrontEndSubsection):
+class SessionManager(FrontEndSubsection):
     """
     https://jupyterlab.readthedocs.io/en/latest/api/interfaces/services.Session.IManager.html
     """
 
-    JFE_JS_SUB_PATH = "sessionManager"
+    SUB_PATH_BASE = "app.sessionManager"
 
     def refreshRunning(self) -> asyncio.Task:
         """Force a call to refresh running sessions."""

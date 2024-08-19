@@ -1,6 +1,5 @@
 import { Session } from '@jupyterlab/services';
-import { IDisposable } from '@lumino/disposable';
-import { IpylabModel } from './ipylab';
+import { IpylabModel, IDisposable } from './ipylab';
 import { newSession } from './utils';
 /**
  *  The Python backend that auto loads python side plugins using `pluggy` module.

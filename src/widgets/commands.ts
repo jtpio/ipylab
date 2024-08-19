@@ -4,8 +4,7 @@
 import { unpack_models } from '@jupyter-widgets/base';
 import { ObservableMap } from '@jupyterlab/observables';
 import { LabIcon } from '@jupyterlab/ui-components';
-import { IDisposable } from '@lumino/disposable';
-import { ISerializers, IpylabModel, JSONValue, Widget } from './ipylab';
+import { ISerializers, IpylabModel, JSONValue, IDisposable } from './ipylab';
 
 /**
  * The model for a command registry.
@@ -53,7 +52,7 @@ export class CommandRegistryModel extends IpylabModel {
     return super.close(comm_closed);
   }
 
-  async operation(op: string, payload: any): Promise<JSONValue | Widget> {
+  async operation(op: string, payload: any): Promise<JSONValue | IDisposable> {
     let id, args, result, commands;
     switch (op) {
       case 'execute':
@@ -101,7 +100,7 @@ export class CommandRegistryModel extends IpylabModel {
    * @param options.iconClass
    * @param options.icon
    */
-  private async _addCommand(options: any): Promise<JSONValue> {
+  private async _addCommand(options: any): Promise<IDisposable> {
     const { id, caption, label, iconClass, icon, command_result_transform } =
       options;
     if (this.commands.hasCommand(id)) {
@@ -141,7 +140,8 @@ export class CommandRegistryModel extends IpylabModel {
       isVisible: () => commandEnabled(command)
     });
     Private.customCommands.set(id, command);
-    command.id = id;
+    (command as any).id = id;
+    IpylabModel.trackDisposable(command);
     return command;
   }
 

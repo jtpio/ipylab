@@ -26,18 +26,15 @@ if TYPE_CHECKING:
     from collections.abc import Callable, Iterable
     from typing import ClassVar
 
-    from ipylab.luminowidget_connection import LuminoWidgetConnection
+    from ipylab.disposable_connection import DisposableConnection
 
 
 __all__ = ["AsyncWidgetBase", "WidgetBase", "register", "pack", "Widget"]
 
 
-def pack(obj: Widget | LuminoWidgetConnection | Any):
+def pack(obj: Widget | Any):
     """Return serialized obj if it is a Widget otherwise return it unchanged."""
-    from ipylab.luminowidget_connection import LuminoWidgetConnection
 
-    if isinstance(obj, LuminoWidgetConnection):
-        return obj.id
     if isinstance(obj, Widget):
         return widget_serialization["to_json"](obj, None)
     return obj
@@ -55,9 +52,9 @@ class TransformMode(StrEnum):
 
     - done: [default] A string '--DONE--'
     - raw: No conversion. Note: data is serialized when sending, some objects shouldn't be serialized.
-    - string: Result is converted to a string.
     - attribute: A dotted attribute of the returned object is returned. ['path']='dotted.path.name'
     - function: Use a function to calculate the return value. ['code'] = 'function...'
+    - connection: Hopefully return a connection to a disposeable.
 
     `attribute`
     ---------
@@ -185,8 +182,11 @@ class AsyncWidgetBase(WidgetBase):
             msg = f"This widget is closed {self!r}"
             raise RuntimeError(msg)
 
-    def new_task(self, coro: asyncio._CoroutineLike):
-        """Start a task"""
+    def start_maybe(self, coro: asyncio._CoroutineLike, *, start: bool):
+        "Run the coro in a task only if start is True returning the coro or task."
+        self._check_closed()
+        if not start:
+            return coro
         task = asyncio.create_task(coro)
         self._tasks.add(task)
         task.add_done_callback(self._tasks.discard)
@@ -236,9 +236,9 @@ class AsyncWidgetBase(WidgetBase):
     async def _wait_response_check_error(self, response: Response, content: dict) -> Any:
         payload = await response.wait()
         if content["transform"] is TransformMode.connection:
-            from ipylab.luminowidget_connection import LuminoWidgetConnection
+            from ipylab.disposable_connection import DisposableConnection
 
-            return LuminoWidgetConnection(id=payload)
+            return DisposableConnection(id=payload)
         return payload
 
     def _on_frontend_msg(self, _, content: dict, buffers: list):
@@ -251,7 +251,9 @@ class AsyncWidgetBase(WidgetBase):
             if ipylab_backend:
                 self._pending_operations.pop(ipylab_backend).set(payload, error)
             if "ipylab_FE" in content:
-                self.new_task(self._handle_frontend_operation(content["ipylab_FE"], operation, payload, buffers))
+                self.start_maybe(
+                    self._handle_frontend_operation(content["ipylab_FE"], operation, payload, buffers), start=True
+                )
         elif "init" in content:
             self._ready_response.set(content)
         elif "closed" in content:
@@ -302,7 +304,7 @@ class AsyncWidgetBase(WidgetBase):
         toLuminoWidget: Iterable[str] | None = None,
         start=True,
         **kwgs,
-    ) -> asyncio._AwaitableLike[Dict | str | list | float | int | None | LuminoWidgetConnection]:
+    ) -> asyncio._AwaitableLike[Dict | str | list | float | int | None | DisposableConnection]:
         """
 
         operation: str
@@ -334,8 +336,7 @@ class AsyncWidgetBase(WidgetBase):
         content = {"ipylab_BE": ipylab_BE, "operation": operation, "kwgs": kwgs, "transform": TransformMode(transform)}
         if toLuminoWidget:
             content["toLuminoWidget"] = list(map(str, toLuminoWidget))
-        coro = self._send_receive(content)
-        return self.new_task(coro) if start else coro
+        return self.start_maybe(self._send_receive(content), start=start)
 
     def execute_method(
         self,
@@ -388,8 +389,7 @@ class AsyncWidgetBase(WidgetBase):
                 return [n for n in payload if not n.startswith("_")]
             return payload
 
-        coro = _list_methods()
-        return self.new_task(coro) if start else coro
+        return self.start_maybe(_list_methods(), start=start)
 
     def list_attributes(
         self,
@@ -421,15 +421,17 @@ class AsyncWidgetBase(WidgetBase):
                 return groups
             return payload
 
-        coro = list_attributes_()
-        return self.new_task(coro) if start else coro
+        return self.start_maybe(list_attributes_(), start=start)
 
-    def execute_command(self, command_id: str, *, execute_settings: dict | None = None, **kwgs):
-        """Execute command_id.
+    def execute_command(self, command_id: str, *, execute_kwgs: dict | None = None, **kwgs):
+        """Execute the command_id registered with Jupyterlab.
 
         `kwgs` correspond to `args` in JupyterLab.
 
-        Finding what the `args` are remains an outstanding issue in JupyterLab.
+        execute_kwgs: dict | None
+            Passed to execute_method (we use a dict to avoid any potential of argument clash).
+
+        Finding what `args` can be used remains an outstanding issue in JupyterLab.
 
         see: https://github.com/jtpio/ipylab/issues/128#issuecomment-1683097383 for hints
         about how args can be found.
@@ -438,5 +440,5 @@ class AsyncWidgetBase(WidgetBase):
             "app.commands.execute",
             command_id,
             kwgs,  # -> used as 'args' in Jupyter
-            **execute_settings or {},
+            **execute_kwgs or {},
         )
