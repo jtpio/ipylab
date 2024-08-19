@@ -6,7 +6,9 @@ import sys
 import typing as t
 
 from ipylab import pack
+from ipylab.asyncwidget import TransformMode
 from ipylab.jupyterfrontend_subsection import JupyterFrontEndSubsection
+from ipylab.luminowidget_connection import LuminoWidgetConnection
 
 if sys.version_info >= (3, 11):
     from enum import StrEnum
@@ -69,9 +71,9 @@ class Shell(JupyterFrontEndSubsection):
         activate: bool = True,
         mode: InsertMode = InsertMode.split_right,
         rank: int | None = None,
-        ref: str = "",
+        ref: LuminoWidgetConnection | str = "",
         **options,
-    ) -> asyncio.Task:
+    ) -> asyncio.Task[LuminoWidgetConnection]:
         """
         Add the widget to the shell.
 
@@ -83,22 +85,27 @@ class Shell(JupyterFrontEndSubsection):
         """
         options_ = {
             "activate": activate,
-            "mode": mode,
+            "mode": InsertMode(mode),
             "rank": int(rank) if rank else None,
-            "ref": ref or self.app.current_widget_id,
+            "ref": ref.id if isinstance(ref, LuminoWidgetConnection) else ref or None,
         }
         return self.app.schedule_operation(
-            "addToShell", serializedWidget=pack(widget), area=area, options=options_ | options
+            "addToShell",
+            widget=pack(widget),
+            area=Area(area),
+            transform=TransformMode.connection,
+            options=options_ | options,
+            toLuminoWidget=["widget", "options.ref"],
         )
 
     def expandLeft(self) -> asyncio.Task:
-        return self.executeMethod("expandLeft")
+        return self.execute_method("expandLeft")
 
     def expandRight(self) -> asyncio.Task:
-        return self.executeMethod("expandRight")
+        return self.execute_method("expandRight")
 
     def collapseLeft(self) -> asyncio.Task:
-        return self.executeMethod("collapseLeft")
+        return self.execute_method("collapseLeft")
 
     def collapseRight(self) -> asyncio.Task:
-        return self.executeMethod("collapseRight")
+        return self.execute_method("collapseRight")

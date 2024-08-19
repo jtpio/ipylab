@@ -105,12 +105,6 @@ ignore-words-list = 'statics'
 write = true
 
 [tool.ruff.lint]
-extend-select = [
-  "PTH",  # flake8-use-pathlib
-  "NPY",  # NumPy specific rules
-  "PD",   # pandas-vet
-  "FURB", # refurb
-]
-ignore = ["BLE001", "N802", "N803"]
+ignore = ["BLE001", "N802", "N803", "N803"]
 [tool.ruff.format]
 docstring-code-format = true

@@ -4,7 +4,6 @@
 // SessionManager exposes `JupyterLab.serviceManager.sessions` to user python kernel
 
 import {
-  DOMWidgetModel,
   IBackboneModelOptions,
   ISerializers,
   IWidgetRegistryData,
@@ -12,21 +11,28 @@ import {
   unpack_models
 } from '@jupyter-widgets/base';
 import { ILabShell, JupyterFrontEnd, LabShell } from '@jupyterlab/application';
-import { ICommandPalette } from '@jupyterlab/apputils';
+import { DOMUtils, ICommandPalette } from '@jupyterlab/apputils';
 import { IDefaultFileBrowser } from '@jupyterlab/filebrowser';
 import { ILauncher } from '@jupyterlab/launcher';
+import { ObservableMap } from '@jupyterlab/observables';
 import { IRenderMimeRegistry } from '@jupyterlab/rendermime';
 import { ITranslator } from '@jupyterlab/translation';
 import { CommandRegistry } from '@lumino/commands';
-import { JSONObject, JSONValue, UUID } from '@lumino/coreutils';
+import {
+  JSONObject,
+  JSONValue,
+  PromiseDelegate,
+  UUID
+} from '@lumino/coreutils';
+import { Widget } from '@lumino/widgets';
 import { ObjectHash } from 'backbone';
 import { MODULE_NAME, MODULE_VERSION } from '../version';
 import { PythonBackendModel } from './python_backend';
-import { PromiseDelegate } from '@lumino/coreutils';
 import {
   getNestedObject,
   listAttributes,
   onKernelLost,
+  setNestedAttribute,
   transformObject
 } from './utils';
 
@@ -39,13 +45,14 @@ export {
   ITranslator,
   JSONObject,
   JSONValue,
-  JupyterFrontEnd
+  JupyterFrontEnd,
+  Widget
 };
 
 /**
  * Base model for common features
  */
-export class IpylabModel extends DOMWidgetModel {
+export class IpylabModel extends WidgetModel {
   initialize(attributes: ObjectHash, options: IBackboneModelOptions): void {
     super.initialize(attributes, options);
     this._kernelId = (this.widget_manager as any).kernel.id;
@@ -121,6 +128,16 @@ export class IpylabModel extends DOMWidgetModel {
         );
       }
       let result;
+      if (msg.toLuminoWidget instanceof Array) {
+        // Replace values with widgets
+        for (const path of msg.toLuminoWidget) {
+          const value = getNestedObject(msg.kwgs, path);
+          if (value && typeof value === 'string') {
+            const luminoWidget = await this.toLuminoWidget(value);
+            setNestedAttribute(msg.kwgs, path, luminoWidget);
+          }
+        }
+      }
       if (operation === 'FE_execute') {
         result = await this._fe_execute(msg.kwgs);
       } else {
@@ -150,11 +167,33 @@ export class IpylabModel extends DOMWidgetModel {
       console.error(e);
     }
   }
+  /**
+   * Get a Lumino Widget.
+   * 1. If value starts with IPY_MODEL_ it will create a new view and return the widget for that view.
+   * 2. If a widget exists that has and id=value the widget will be returned.
+   * 3. An errow will be thrown if the widget isn't found.
+   *
+   * @param value
+   * @param as
+   * @param string
+   * @returns
+   */
+  async toLuminoWidget(value: string): Promise<Widget> {
+    if (value.slice(0, 10) === 'IPY_MODEL_') {
+      const model = await unpack_models(value, this.widget_manager);
+      const view = await this.widget_manager.create_view(model, {});
+      const lw = view.luminoWidget;
+      IpylabModel.trackLuminoWidget(lw);
+      onKernelLost((this.widget_manager as any).kernel, lw.dispose, lw);
+      return lw;
+    }
+    return this.getLuminoWidget(value);
+  }
 
   /**
    * Perform execute request from backend.
    * Options:
-   *  - executeMethod: Execute the method using dotted access.
+   *  - execute_method: Execute the method using dotted access.
    *      eg. 'shell.expandLeft' will execute the method this.shell.expandLeft
    *      args must be passed in an array in the as defined in the method.
    * @param payload
@@ -164,16 +203,9 @@ export class IpylabModel extends DOMWidgetModel {
     const { mode, kwgs } = (payload as any).FE_execute;
     delete (payload as any).FE_execute;
     switch (mode) {
-      case 'executeMethod': {
+      case 'execute_method': {
         let obj;
         (obj as any) = this;
-        if (kwgs.widget) {
-          if (typeof kwgs.widget === 'string') {
-            obj = this._getLuminoWidgetFromShell(kwgs.widget);
-          } else {
-            obj = await unpack_models(kwgs.widget, this.widget_manager);
-          }
-        }
         const owner = getNestedObject(
           obj,
           kwgs.method.split('.').slice(0, -1).join('.')
@@ -192,7 +224,7 @@ export class IpylabModel extends DOMWidgetModel {
    * @param payload Options relevant to the operation.
    * @returns Raw result of the operation.
    */
-  async operation(op: string, payload: any): Promise<JSONValue> {
+  async operation(op: string, payload: any): Promise<JSONValue | Widget> {
     switch (op) {
       case 'myFunction':
         // do something
@@ -251,12 +283,44 @@ export class IpylabModel extends DOMWidgetModel {
     this._pendingBackendOperations.forEach(opDone => opDone.reject('Closed'));
     this._pendingBackendOperations.clear();
     comm_closed = comm_closed || !this.kernelLive;
+    if (!comm_closed) {
+      this.send({ closed: true });
+    }
     return super.close(comm_closed);
   }
 
   save_changes(callbacks?: unknown): void {
     if (this.comm_live && this.kernelLive) {
       super.save_changes(callbacks);
+    }
+  }
+
+  /**
+   *
+   * @param id Get a lumino widget using its id.
+   * @returns
+   */
+  getLuminoWidget(id: string) {
+    if (Private.luminoWidgets.has(id)) {
+      return Private.luminoWidgets.get(id);
+    }
+    const luminoWidget = this._getLuminoWidgetFromShell(id);
+    IpylabModel.trackLuminoWidget(luminoWidget);
+    return luminoWidget;
+  }
+
+  /**
+   *
+   * @param widget Keep a reference to a Lumino widget so it can be found from the backend.
+   */
+  static trackLuminoWidget(luminoWidget: Widget) {
+    if (!luminoWidget.id) {
+      luminoWidget.id = DOMUtils.createDomID();
+    }
+    const key = luminoWidget.id;
+    if (!Private.luminoWidgets.has(key)) {
+      Private.luminoWidgets.set(key, luminoWidget);
+      luminoWidget.disposed.connect(() => Private.luminoWidgets.delete(key));
     }
   }
 
@@ -311,4 +375,11 @@ export class IpylabModel extends DOMWidgetModel {
   static launcher: ILauncher;
   static exports: IWidgetRegistryData;
   static OPERATION_DONE = '--DONE--';
+}
+
+/**
+ * A namespace for private data
+ */
+namespace Private {
+  export const luminoWidgets = new ObservableMap<Widget>();
 }

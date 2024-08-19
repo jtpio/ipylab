@@ -17,6 +17,8 @@ from ipylab.shell import Area, InsertMode
 if TYPE_CHECKING:
     import asyncio
 
+    from ipylab.luminowidget_connection import LuminoWidgetConnection
+
 
 @register
 class Icon(DOMWidget, WidgetBase):
@@ -59,27 +61,14 @@ class Panel(Box, HasApp):
         self,
         *,
         area: Area = Area.main,
-        mode: InsertMode = InsertMode.split_right,
         activate: bool = True,
+        mode: InsertMode = InsertMode.split_right,
         rank: int | None = None,
-        ref: str = "",
+        ref: LuminoWidgetConnection | str = "",
         **options,
-    ) -> asyncio.Task:
-        """Add this panel to the shell.
-
-        Parameters
-        ----------
-
-        area str
-        ----
-            The location
-
-        args:
-            ref mode: str
-        """
-        return self.app.shell.addToShell(
-            self, area=Area(area), mode=InsertMode(mode), activate=activate, rank=rank, ref=ref, **options
-        )
+    ) -> asyncio.Task[LuminoWidgetConnection]:
+        """Add this panel to the shell."""
+        return self.app.shell.addToShell(self, area=area, mode=mode, activate=activate, rank=rank, ref=ref, **options)
 
 
 @register

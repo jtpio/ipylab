@@ -1,11 +1,12 @@
 // Copyright (c) ipylab contributors
 // Distributed under the terms of the Modified BSD License.
 
-import { unpack_models } from '@jupyter-widgets/base';
+// import { unpack_models } from '@jupyter-widgets/base';
 import { LabShell } from '@jupyterlab/application';
 import {
   DOMUtils,
   InputDialog,
+  MainAreaWidget,
   showDialog,
   showErrorMessage
 } from '@jupyterlab/apputils';
@@ -15,10 +16,10 @@ import {
   ISerializers,
   IpylabModel,
   JSONValue,
-  JupyterFrontEnd
+  JupyterFrontEnd,
+  Widget
 } from './ipylab';
-import { IpylabMainAreaWidget } from './main_area';
-import { injectCode, newNotebook, newSession, onKernelLost } from './utils';
+import { injectCode, newNotebook, newSession } from './utils';
 
 /**
  * The model for a JupyterFrontEnd.
@@ -95,7 +96,7 @@ export class JupyterFrontEndModel extends IpylabModel {
     this.save_changes();
   }
 
-  async operation(op: string, payload: any): Promise<JSONValue> {
+  async operation(op: string, payload: any): Promise<JSONValue | Widget> {
     function _get_result(result: any): any {
       if (result.value === null) {
         throw new Error('Cancelled');
@@ -163,28 +164,23 @@ export class JupyterFrontEndModel extends IpylabModel {
    *
    * @param payload The payload to add
    */
-  private async _addToShell(payload: any): Promise<JSONValue> {
-    const { serializedWidget, area, options } = payload;
-    const model = await unpack_models(serializedWidget, this.widget_manager);
-    const view = await this.widget_manager.create_view(model, {});
-    let luminoWidget = view.luminoWidget;
-    if (area === 'main') {
-      luminoWidget = new IpylabMainAreaWidget({
-        content: view.luminoWidget as any,
-        kernelId: this.kernelId,
-        name: model.model_id
+  private async _addToShell(payload: any): Promise<Widget> {
+    const { widget, area, options } = payload;
+    let luminoWidget = widget;
+    if (
+      !(luminoWidget instanceof MainAreaWidget) ||
+      typeof luminoWidget.title === 'undefined'
+    ) {
+      luminoWidget = new MainAreaWidget({
+        content: luminoWidget as any
       }) as any;
+      luminoWidget.node.removeChild(luminoWidget.toolbar.node);
     }
     if (!luminoWidget.id) {
       luminoWidget.id = DOMUtils.createDomID();
     }
     this.shell.add(luminoWidget as any, area, options);
-    onKernelLost(
-      (this.widget_manager as any).kernel,
-      luminoWidget.dispose,
-      luminoWidget
-    );
-    return { id: luminoWidget.id };
+    return luminoWidget;
   }
 
   /**

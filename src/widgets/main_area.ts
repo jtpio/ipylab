@@ -101,7 +101,7 @@ export class MainAreaModel extends IpylabModel {
     await this.sessionContext.initialize();
   }
 
-  async operation(op: string, payload: any): Promise<JSONValue> {
+  async operation(op: string, payload: any): Promise<JSONValue | Widget> {
     switch (op) {
       case 'load':
         // Using lock for mutex

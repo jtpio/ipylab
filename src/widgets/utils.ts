@@ -8,6 +8,7 @@ import { Kernel, Session } from '@jupyterlab/services';
 import { UUID } from '@lumino/coreutils';
 import { Signal } from '@lumino/signaling';
 import { IpylabModel, JSONObject, JSONValue } from './ipylab';
+import { Widget } from '@lumino/widgets';
 /**
  * Start a new session that support comms needed for iplab needs for comms.
  * @returns
@@ -164,6 +165,17 @@ export function getNestedObject(base: object, path: string): any {
 }
 
 /**
+ * Set a nested attribute relative to the base
+ * @param base
+ * @param path
+ * @param value
+ */
+export function setNestedAttribute(base: object, path: string, value: any) {
+  const obj = getNestedObject(base, path.split('.').slice(0, -1).join('.'));
+  obj[path.split('.').slice(-1)[0]] = value;
+}
+
+/**
  * Convert a string definition of a function to a function object.
  * @param code The function as a string: eg. 'function (a, b) { return a + b; }'
  * @returns
@@ -195,6 +207,13 @@ export async function transformObject(
       return obj as any;
     case 'null':
       return null;
+    case 'connection':
+      if (obj instanceof Widget) {
+        IpylabModel.trackLuminoWidget(obj);
+        return obj.id;
+      }
+      throw new Error(`obj is not a lumino widget ${obj}`);
+
     case 'attribute':
       // expects simple: {parts:['dotted.attribute']}
       // or advanced: {parts:[{path:'dotted.attribute', transform:'...' }]
@@ -218,7 +237,7 @@ export async function transformObject(
       }
       return func(obj);
     default:
-      throw new Error(`Invalid return mode: '${options.mode}'`);
+      throw new Error(`Invalid return mode: '${mode}'`);
   }
 }
 

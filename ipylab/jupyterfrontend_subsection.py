@@ -9,6 +9,7 @@ from ipylab.hasapp import HasApp
 
 if TYPE_CHECKING:
     import asyncio
+    from collections.abc import Iterable
 
     from ipylab.asyncwidget import CallbackType, TransformType
 
@@ -21,36 +22,37 @@ class JupyterFrontEndSubsection(HasApp):
     # see ipylab/src/widgets/frontend.ts -> JupyterFrontEndModel
     JFE_JS_SUB_PATH = ""
 
-    def executeMethod(
-        self, method: str, *args, callback: CallbackType | None = None, transform: TransformType = TransformMode.raw
+    def execute_method(
+        self,
+        method: str,
+        *args,
+        callback: CallbackType | None = None,
+        transform: TransformType = TransformMode.raw,
+        toLuminoWidget: Iterable[str] | None = None,
     ) -> asyncio.Task:
         """Execute a nested method on this objects JFE_SUB_PATH relative to the instance of the
         JupyterFrontEndModel in the JS frontend.
         """
-        # validation
-        method = f"{self.JFE_JS_SUB_PATH}.{method}"
-        return self.app.executeMethod(method, *args, callback=callback, transform=transform)
-
-    def get_attribute(
-        self, name: str, *, callback: CallbackType | None = None, transform: TransformType = TransformMode.raw
-    ) -> asyncio.Task:
-        """A serialized version of the attribute relative to this object."""
-        msg = "TODO"
-        raise NotImplementedError(msg)
-        return self.app.get_attribute(
-            f"{self.JFE_JS_SUB_PATH}.{name}",
+        return self.app.execute_method(
+            f"{self.JFE_JS_SUB_PATH}.{method}",
+            *args,
             callback=callback,
             transform=transform,
+            toLuminoWidget=toLuminoWidget,
         )
+
+    def get_attribute(
+        self, path: str, *, callback: CallbackType | None = None, transform: TransformType = TransformMode.raw
+    ) -> asyncio.Task:
+        """Get an attribute by name from the front end."""
+        return self.app.get_attribute(f"{self.JFE_JS_SUB_PATH}.{path}", callback=callback, transform=transform)
 
     def list_attributes(
         self,
-        base: str = "",
+        path: str = "",
         *,
         callback: CallbackType | None = None,
         transform: TransformType = TransformMode.raw,
     ) -> asyncio.Task:
-        """Get a list of all attributes"""
-        msg = "TODO"
-        raise NotImplementedError(msg)
-        return self.app.list_attributes(f"{self.JFE_JS_SUB_PATH}.{base}", callback=callback, transform=transform)
+        """Get a list of all attributes."""
+        return self.app.list_attributes(f"{self.JFE_JS_SUB_PATH}.{path}", callback=callback, transform=transform)

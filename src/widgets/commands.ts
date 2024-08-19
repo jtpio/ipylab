@@ -5,7 +5,7 @@ import { unpack_models } from '@jupyter-widgets/base';
 import { ObservableMap } from '@jupyterlab/observables';
 import { LabIcon } from '@jupyterlab/ui-components';
 import { IDisposable } from '@lumino/disposable';
-import { ISerializers, IpylabModel, JSONValue } from './ipylab';
+import { ISerializers, IpylabModel, JSONValue, Widget } from './ipylab';
 
 /**
  * The model for a command registry.
@@ -53,7 +53,7 @@ export class CommandRegistryModel extends IpylabModel {
     return super.close(comm_closed);
   }
 
-  async operation(op: string, payload: any): Promise<JSONValue> {
+  async operation(op: string, payload: any): Promise<JSONValue | Widget> {
     let id, args, result, commands;
     switch (op) {
       case 'execute':
