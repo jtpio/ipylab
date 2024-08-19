@@ -58,7 +58,7 @@ class JupyterFrontEnd(AsyncWidgetBase):
             self._sessionManger = SessionManager()
         return self._sessionManger
 
-    async def wait_ready(self, timeout=5):
+    async def wait_ready(self, timeout=5):  # noqa: ASYNC109
         """Wait until connected to app indicates it is ready."""
         if not self._ready_response.is_set():
             future = asyncio.gather(
@@ -91,7 +91,7 @@ class JupyterFrontEnd(AsyncWidgetBase):
                 pm.hook.unhandled_frontend_operation_message(obj=self, operation=operation)
         raise NotImplementedError
 
-    def shutdownKernel(self, kernelId: str | None = None) -> asyncio.Task:
+    def shutdownKernel(self, kernelId: str | None = None):
         """Shutdown the kernel"""
         return self.schedule_operation("shutdownKernel", kernelId=kernelId)
 
@@ -104,7 +104,7 @@ class JupyterFrontEnd(AsyncWidgetBase):
         kernelName="python3",
         code: str | types.ModuleType = "",
         type="ipylab",  # noqa: A002
-    ) -> asyncio.Task:
+    ):
         """
         Create a new kernel and execute code in it or execute code in an existing kernel.
 
@@ -132,7 +132,7 @@ class JupyterFrontEnd(AsyncWidgetBase):
 
     def newNotebook(
         self, path: str = "", *, name: str = "", kernelId="", kernelName="python3", code: str | types.ModuleType = ""
-    ) -> asyncio.Task:
+    ):
         """Create a new notebook."""
         return self.schedule_operation(
             "newNotebook",
@@ -146,7 +146,7 @@ class JupyterFrontEnd(AsyncWidgetBase):
 
     def injectCode(
         self, kernelId: str, code: str | types.ModuleType, user_expressions: dict[str, str | types.ModuleType] | None
-    ) -> asyncio.Task:
+    ):
         """
         Inject code into a running kernel using the Jupyter builtin `requestExecute`.
 
@@ -178,7 +178,7 @@ class JupyterFrontEnd(AsyncWidgetBase):
         user_expressions: dict[str, str | types.ModuleType] | None,
         kernelId="",
         **kwgs,
-    ) -> asyncio.Task:
+    ):
         """Execute and evaluate code in the Python kernel corresponding to kerenelId, or create a new kernel
         if `kernelId` isn't provided.
 
@@ -195,7 +195,7 @@ class JupyterFrontEnd(AsyncWidgetBase):
             The code as a script or function to pass to the builtin `exec`, returns `None`.
             ref: https://docs.python.org/3/library/functions.html#exec
         eval:
-            An expression to evalate using the builtin `eval`.
+            An expression to evaluate using the builtin `eval`.
             If the evaluation returns an executable, it will be executed. I the
             result is awaitable, the result will be awaited.
             The serialized result or result of the awaitable will be returned via the frontend.
@@ -234,6 +234,6 @@ class JupyterFrontEnd(AsyncWidgetBase):
             return results
         return None
 
-    def startIyplabPythonBackend(self) -> asyncio.Task:
+    def startIyplabPythonBackend(self):
         """Checks backend is running and starts it if it isn't, returning the session model."""
         return self.schedule_operation("startIyplabPythonBackend")

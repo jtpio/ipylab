@@ -12,45 +12,39 @@ if TYPE_CHECKING:
 
 
 class Dialog(HasApp):
-    def get_boolean(self, title: str) -> asyncio.Task:
+    def get_boolean(self, title: str, *, start=True) -> asyncio._AwaitableLike[bool]:
         """Jupyter dialog to get a boolean value.
         see: https://jupyterlab.readthedocs.io/en/stable/extension/ui_helpers.html#input-dialogs
         """
-        return self.app.schedule_operation("getBoolean", title=title)
+        return self.app.schedule_operation("getBoolean", title=title, start=start)  # type: ignore
 
-    def get_item(self, title: str, items: tuple | list) -> asyncio.Task:
+    def get_item(self, title: str, items: tuple | list, *, start=True):
         """Jupyter dialog to get an item from a list value.
 
         note: will always return a string representation of the selected item.
         see: https://jupyterlab.readthedocs.io/en/stable/extension/ui_helpers.html#input-dialogs
         """
-        return self.app.schedule_operation("getItem", title=title, items=tuple(items))
+        return self.app.schedule_operation("getItem", title=title, items=tuple(items), start=start)
 
-    def get_number(self, title: str) -> asyncio.Task:
+    def get_number(self, title: str, *, start=True) -> asyncio._AwaitableLike[float]:
         """Jupyter dialog to get a number.
         see: https://jupyterlab.readthedocs.io/en/stable/extension/ui_helpers.html#input-dialogs
         """
-        return self.app.schedule_operation("getNumber", title=title)
+        return self.app.schedule_operation("getNumber", title=title, start=start)  # type: ignore
 
-    def get_text(self, title: str) -> asyncio.Task:
+    def get_text(self, title: str, *, start=True) -> asyncio._AwaitableLike[str]:
         """Jupyter dialog to get a string.
         see: https://jupyterlab.readthedocs.io/en/stable/extension/ui_helpers.html#input-dialogs
         """
-        return self.app.schedule_operation("getText", title=title)
+        return self.app.schedule_operation("getText", title=title, start=start)  # type: ignore
 
-    def get_password(self, title: str) -> asyncio.Task:
+    def get_password(self, title: str, *, start=True) -> asyncio._AwaitableLike[str]:
         """Jupyter dialog to get a number.
         see: https://jupyterlab.readthedocs.io/en/stable/extension/ui_helpers.html#input-dialogs
         """
-        return self.app.schedule_operation("getPassword", title=title)
+        return self.app.schedule_operation("getPassword", title=title, start=start)  # type: ignore
 
-    def show_dialog(
-        self,
-        title: str = "",
-        body: str | Widget = "",
-        host: None | Widget = None,
-        **kwgs,
-    ):
+    def show_dialog(self, title: str = "", body: str | Widget = "", host: None | Widget = None, **kwgs):
         """Jupyter dialog to get user response with custom buttons and checkbox.
 
             returns {'value':any, 'isChecked':bool|None}
@@ -103,9 +97,16 @@ class Dialog(HasApp):
             source: https://jupyterlab.readthedocs.io/en/stable/extension/ui_helpers.html#generic-dialog
         """
 
-        return self.app.schedule_operation("showDialog", title=pack(title), body=pack(body), host=pack(host), **kwgs)
+        return self.app.schedule_operation(
+            "showDialog",
+            title=pack(title),
+            body=pack(body),
+            host=pack(host),
+            toLuminoWidget=["title", "body", "host"],
+            **kwgs,
+        )
 
-    def show_error_message(self, title: str, error: str, buttons: None | list[dict[str, str]] = None) -> asyncio.Task:
+    def show_error_message(self, title: str, error: str, buttons: None | list[dict[str, str]] = None):
         """Jupyter error message.
 
         buttons = [
@@ -132,15 +133,15 @@ class FileDialog(HasApp):
     https://jupyterlab.readthedocs.io/en/stable/extension/ui_helpers.html#file-dialogs
     """
 
-    def get_open_files(self, **kwgs) -> asyncio.Task:
+    def get_open_files(self, **kwgs) -> asyncio._AwaitableLike[list[str]]:
         """Get a list of files
 
         https://jupyterlab.readthedocs.io/en/latest/api/functions/filebrowser.FileDialog.getOpenFiles.html#getOpenFiles
         """
-        return self.app.schedule_operation("getOpenFiles", **kwgs)
+        return self.app.schedule_operation("getOpenFiles", **kwgs)  # type: ignore
 
-    def get_existing_directory(self, **kwgs) -> asyncio.Task:
+    def get_existing_directory(self, **kwgs) -> asyncio._AwaitableLike[str]:
         """
         https://jupyterlab.readthedocs.io/en/latest/api/functions/filebrowser.FileDialog.getExistingDirectory.html#getExistingDirectory
         """
-        return self.app.schedule_operation("getExistingDirectory", **kwgs)
+        return self.app.schedule_operation("getExistingDirectory", **kwgs)  # type: ignore

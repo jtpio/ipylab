@@ -16,8 +16,6 @@ else:
     from backports.strenum import StrEnum
 
 if t.TYPE_CHECKING:
-    import asyncio
-
     from ipywidgets import Widget
 
 
@@ -72,8 +70,9 @@ class Shell(JupyterFrontEndSubsection):
         mode: InsertMode = InsertMode.split_right,
         rank: int | None = None,
         ref: LuminoWidgetConnection | str = "",
+        start=True,
         **options,
-    ) -> asyncio.Task[LuminoWidgetConnection]:
+    ):
         """
         Add the widget to the shell.
 
@@ -96,16 +95,17 @@ class Shell(JupyterFrontEndSubsection):
             transform=TransformMode.connection,
             options=options_ | options,
             toLuminoWidget=["widget", "options.ref"],
+            start=start,
         )
 
-    def expandLeft(self) -> asyncio.Task:
-        return self.execute_method("expandLeft")
+    def expandLeft(self, *, start=True):
+        return self.execute_method("expandLeft", start=start)
 
-    def expandRight(self) -> asyncio.Task:
-        return self.execute_method("expandRight")
+    def expandRight(self, *, start=True):
+        return self.execute_method("expandRight", start=start)
 
-    def collapseLeft(self) -> asyncio.Task:
-        return self.execute_method("collapseLeft")
+    def collapseLeft(self, *, start=True):
+        return self.execute_method("collapseLeft", start=start)
 
-    def collapseRight(self) -> asyncio.Task:
-        return self.execute_method("collapseRight")
+    def collapseRight(self, *, start=True):
+        return self.execute_method("collapseRight", start=start)

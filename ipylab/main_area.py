@@ -5,7 +5,7 @@ from __future__ import annotations
 
 import pathlib
 import sys
-from typing import TYPE_CHECKING, ClassVar
+from typing import ClassVar
 
 from ipywidgets import register
 from traitlets import Instance, TraitType, Unicode, UseEnum, observe, validate
@@ -19,9 +19,6 @@ if sys.version_info >= (3, 11):
     from enum import StrEnum
 else:
     from backports.strenum import StrEnum
-
-if TYPE_CHECKING:
-    import asyncio
 
 
 class ViewStatus(StrEnum):
@@ -100,7 +97,7 @@ class MainArea(AsyncWidgetBase, HasApp):
         rank: int | None = None,
         ref: str = "",
         class_name="ipylab-main-area",
-    ) -> asyncio.Task:
+    ):
         """Load into the shell.
 
         Only one main_area_widget (view) can exist at a time, any existing widget will be disposed
@@ -131,12 +128,12 @@ class MainArea(AsyncWidgetBase, HasApp):
         }
         return self.schedule_operation("load", area=area, options=options, className=class_name)
 
-    def unload(self) -> asyncio.Task:
+    def unload(self):
         "Remove from the shell"
         self.set_trait("status", ViewStatus.unloading)
         return self.schedule_operation("unload")
 
-    def load_console(self, *, mode: InsertMode = InsertMode.split_bottom, **kwgs) -> asyncio.Task:
+    def load_console(self, *, mode: InsertMode = InsertMode.split_bottom, **kwgs):
         """Load a console using for the same kernel.
 
         Opening the console will close any existing consoles.
@@ -145,7 +142,7 @@ class MainArea(AsyncWidgetBase, HasApp):
         kwgs = {"name": self.name, "path": self.path} | kwgs
         return self.schedule_operation("open_console", insertMode=InsertMode(mode), **kwgs)  # type: ignore
 
-    def unload_console(self) -> asyncio.Task:
+    def unload_console(self):
         """Unload the console."""
         self.set_trait("console_status", ViewStatus.unloading)
         return self.schedule_operation("close_console")

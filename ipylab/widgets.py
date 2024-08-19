@@ -65,10 +65,20 @@ class Panel(Box, HasApp):
         mode: InsertMode = InsertMode.split_right,
         rank: int | None = None,
         ref: LuminoWidgetConnection | str = "",
+        start=True,
         **options,
-    ) -> asyncio.Task[LuminoWidgetConnection]:
+    ) -> asyncio._AwaitableLike[LuminoWidgetConnection]:
         """Add this panel to the shell."""
-        return self.app.shell.addToShell(self, area=area, mode=mode, activate=activate, rank=rank, ref=ref, **options)
+        return self.app.shell.addToShell(
+            self,
+            area=area,
+            mode=mode,
+            activate=activate,
+            rank=rank,
+            ref=ref,
+            start=start,
+            **options,
+        )
 
 
 @register

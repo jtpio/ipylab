@@ -11,7 +11,6 @@ from ipylab.asyncwidget import AsyncWidgetBase, TransformMode, pack, register
 from ipylab.hookspecs import pm
 
 if TYPE_CHECKING:
-    import asyncio
     from collections.abc import Callable
 
     from ipylab.widgets import Icon
@@ -22,12 +21,12 @@ class CommandPalette(AsyncWidgetBase):
     _model_name = Unicode("CommandPaletteModel").tag(sync=True)
     items = Tuple(read_only=True).tag(sync=True)
 
-    def add_item(self, command_id: str, category: str, *, rank=None, args: dict | None = None, **kwgs) -> asyncio.Task:
+    def add_item(self, command_id: str, category: str, *, rank=None, args: dict | None = None, **kwgs):
         return self.schedule_operation(
             operation="addItem", id=command_id, category=category, rank=rank, args=args, **kwgs
         )
 
-    def remove_item(self, command_id: str, category) -> asyncio.Task:
+    def remove_item(self, command_id: str, category):
         return self.schedule_operation(operation="removeItem", id=command_id, category=category)
 
 
@@ -75,7 +74,6 @@ class CommandRegistry(AsyncWidgetBase):
         label="",
         icon_class="",
         icon: Icon | None = None,
-        command_result_transform: TransformMode = TransformMode.raw,
         **kwgs,
     ):
         # TODO: support other parameters (isEnabled, isVisible...)
@@ -87,17 +85,25 @@ class CommandRegistry(AsyncWidgetBase):
             label=label,
             iconClass=icon_class,
             icon=pack(icon),
-            command_result_transform=command_result_transform,
+            command_result_transform=TransformMode.done,
             **kwgs,
         )
 
-    def removePythonCommand(self, command_id: str, **kwgs) -> asyncio.Task:
+    def removePythonCommand(self, command_id: str):
         # TODO: check whether to keep this method, or return disposables like in lab
         if command_id not in self._execute_callbacks:
             msg = f"{command_id=} is not a registered command!"
             raise ValueError(msg)
 
-        def callback(content: dict, payload: list):  # noqa: ARG001
+        coro_ = self.schedule_operation(
+            "removePythonCommand",
+            command_id=command_id,
+            start=False,
+            transform=TransformMode.done,
+        )
+
+        async def removePythonCommand_():
+            await coro_
             self._execute_callbacks.pop(command_id, None)
 
-        return self.schedule_operation("removePythonCommand", command_id=command_id, callback=callback, **kwgs)
+        return self.new_task(removePythonCommand_())

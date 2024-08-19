@@ -8,10 +8,9 @@ from ipylab import TransformMode
 from ipylab.hasapp import HasApp
 
 if TYPE_CHECKING:
-    import asyncio
     from collections.abc import Iterable
 
-    from ipylab.asyncwidget import CallbackType, TransformType
+    from ipylab.asyncwidget import TransformType
 
 
 class JupyterFrontEndSubsection(HasApp):
@@ -26,33 +25,29 @@ class JupyterFrontEndSubsection(HasApp):
         self,
         method: str,
         *args,
-        callback: CallbackType | None = None,
         transform: TransformType = TransformMode.raw,
         toLuminoWidget: Iterable[str] | None = None,
-    ) -> asyncio.Task:
+        start=True,
+    ):
         """Execute a nested method on this objects JFE_SUB_PATH relative to the instance of the
         JupyterFrontEndModel in the JS frontend.
         """
         return self.app.execute_method(
             f"{self.JFE_JS_SUB_PATH}.{method}",
             *args,
-            callback=callback,
             transform=transform,
             toLuminoWidget=toLuminoWidget,
+            start=start,
         )
 
-    def get_attribute(
-        self, path: str, *, callback: CallbackType | None = None, transform: TransformType = TransformMode.raw
-    ) -> asyncio.Task:
+    def get_attribute(self, path: str, *, transform: TransformType = TransformMode.raw, start=True):
         """Get an attribute by name from the front end."""
-        return self.app.get_attribute(f"{self.JFE_JS_SUB_PATH}.{path}", callback=callback, transform=transform)
+        return self.app.get_attribute(f"{self.JFE_JS_SUB_PATH}.{path}", transform=transform, start=start)
 
-    def list_attributes(
-        self,
-        path: str = "",
-        *,
-        callback: CallbackType | None = None,
-        transform: TransformType = TransformMode.raw,
-    ) -> asyncio.Task:
+    def list_attributes(self, path: str = "", *, transform: TransformType = TransformMode.raw, start=True):
         """Get a list of all attributes."""
-        return self.app.list_attributes(f"{self.JFE_JS_SUB_PATH}.{path}", callback=callback, transform=transform)
+        return self.app.list_attributes(
+            f"{self.JFE_JS_SUB_PATH}.{path}",
+            transform=transform,
+            start=start,
+        )

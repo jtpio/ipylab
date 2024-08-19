@@ -141,7 +141,8 @@ export class CommandRegistryModel extends IpylabModel {
       isVisible: () => commandEnabled(command)
     });
     Private.customCommands.set(id, command);
-    return { id: id };
+    command.id = id;
+    return command;
   }
 
   /**

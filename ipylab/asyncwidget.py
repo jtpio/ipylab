@@ -7,7 +7,6 @@ import inspect
 import sys
 import traceback
 import uuid
-from collections.abc import Callable
 from typing import TYPE_CHECKING, Any
 
 from ipywidgets import Widget, register, widget_serialization
@@ -24,7 +23,7 @@ else:
 
 if TYPE_CHECKING:
     import types
-    from collections.abc import Iterable
+    from collections.abc import Callable, Iterable
     from typing import ClassVar
 
     from ipylab.luminowidget_connection import LuminoWidgetConnection
@@ -103,7 +102,6 @@ class JavascriptType(StrEnum):
     function = "function"
 
 
-CallbackType = Callable[[dict[str, Any], Any], Any]
 TransformType = TransformMode | dict[str, str]
 
 
@@ -187,6 +185,13 @@ class AsyncWidgetBase(WidgetBase):
             msg = f"This widget is closed {self!r}"
             raise RuntimeError(msg)
 
+    def new_task(self, coro: asyncio._CoroutineLike):
+        """Start a task"""
+        task = asyncio.create_task(coro)
+        self._tasks.add(task)
+        task.add_done_callback(self._tasks.discard)
+        return task
+
     def _check_get_error(self, content: dict | None = None) -> IpylabFrontendError | None:
         if content is None:
             content = {}
@@ -216,24 +221,20 @@ class AsyncWidgetBase(WidgetBase):
         except Exception as error:
             pm.hook.on_frontend_error(obj=self, error=error, content=content, buffers=buffers)
 
-    async def _send_receive(self, content: dict, callback: CallbackType | None):
+    async def _send_receive(self, content: dict):
         async with self:
             self._pending_operations[content["ipylab_BE"]] = response = Response()
             self.send(content)
             try:
-                return await self._wait_response_check_error(response, content, callback)
+                return await self._wait_response_check_error(response, content)
             except asyncio.CancelledError:
                 if not self.comm:
                     msg = f"This widget is closed {self!r}"
                     raise asyncio.CancelledError(msg) from None
                 raise
 
-    async def _wait_response_check_error(self, response: Response, content: dict, callback: CallbackType | None) -> Any:
+    async def _wait_response_check_error(self, response: Response, content: dict) -> Any:
         payload = await response.wait()
-        if callback:
-            payload = callback(content, payload)
-            if asyncio.iscoroutine(payload):
-                payload = await payload
         if content["transform"] is TransformMode.connection:
             from ipylab.luminowidget_connection import LuminoWidgetConnection
 
@@ -250,11 +251,7 @@ class AsyncWidgetBase(WidgetBase):
             if ipylab_backend:
                 self._pending_operations.pop(ipylab_backend).set(payload, error)
             if "ipylab_FE" in content:
-                task = asyncio.create_task(
-                    self._handle_frontend_operation(content["ipylab_FE"], operation, payload, buffers)
-                )
-                self._tasks.add(task)
-                task.add_done_callback(self._tasks.discard)
+                self.new_task(self._handle_frontend_operation(content["ipylab_FE"], operation, payload, buffers))
         elif "init" in content:
             self._ready_response.set(content)
         elif "closed" in content:
@@ -301,19 +298,16 @@ class AsyncWidgetBase(WidgetBase):
         self,
         operation: str,
         *,
-        callback: CallbackType | None = None,
         transform: TransformType = TransformMode.raw,
         toLuminoWidget: Iterable[str] | None = None,
+        start=True,
         **kwgs,
-    ) -> asyncio.Task:
+    ) -> asyncio._AwaitableLike[Dict | str | list | float | int | None | LuminoWidgetConnection]:
         """
 
         operation: str
             Name corresponding to operation in JS frontend.
 
-        callback: callable | coroutine function.
-            A callback to do additional processing on the response prior to returning a result.
-            The callback is passed (response, content).
         transform : TransformMode | dict
             see ipylab.TransformMode
         note: If there is a name clash with the operation, use kwgs={}
@@ -340,22 +334,17 @@ class AsyncWidgetBase(WidgetBase):
         content = {"ipylab_BE": ipylab_BE, "operation": operation, "kwgs": kwgs, "transform": TransformMode(transform)}
         if toLuminoWidget:
             content["toLuminoWidget"] = list(map(str, toLuminoWidget))
-        if callback and not callable(callback):
-            msg = f"callback is not callable {callback!r}"
-            raise TypeError(msg)
-        task = asyncio.create_task(self._send_receive(content, callback))
-        self._tasks.add(task)
-        task.add_done_callback(self._tasks.discard)
-        return task
+        coro = self._send_receive(content)
+        return self.new_task(coro) if start else coro
 
     def execute_method(
         self,
         method: str,
         *args,
-        callback: CallbackType | None = None,
         transform: TransformType = TransformMode.raw,
         toLuminoWidget: Iterable[str] | None = None,
-    ) -> asyncio.Task:
+        start=True,
+    ):
         """Call a method on the corresponding frontend object.
 
         method: 'dotted.access.to.the.method' relative to the Frontend instance.
@@ -371,11 +360,6 @@ class AsyncWidgetBase(WidgetBase):
         """
 
         # This operation is sent to the frontend function _fe_execute in 'ipylab/src/widgets/ipylab.ts'
-
-        # validation
-        if callback is not None and not callable(callback):
-            msg = "callback must be a callable or None"
-            raise TypeError(msg)
         return self.schedule_operation(
             operation="FE_execute",
             FE_execute={
@@ -383,28 +367,29 @@ class AsyncWidgetBase(WidgetBase):
                 "kwgs": {"method": method},
             },
             transform=transform,
-            callback=callback,
             args=args,
             toLuminoWidget=toLuminoWidget,
+            start=start,
         )
 
-    def get_attribute(
-        self, path: str, *, callback: CallbackType | None = None, transform: TransformType = TransformMode.raw
-    ):
+    def get_attribute(self, path: str, *, transform: TransformType = TransformMode.raw, start=True):
         """A serialized version of the attribute relative to this object."""
-        return self.execute_method("getAttribute", path, callback=callback, transform=transform)
+        return self.execute_method("getAttribute", path, transform=transform, start=start)
 
-    def list_methods(self, path: str = "", depth=2, skip_hidden=True) -> asyncio.Task[list[str]]:  # noqa: FBT002
+    def list_methods(self, path: str = "", *, depth=2, skip_hidden=True, start=True):
         """Get a list of methods belonging to the object 'path' of the Frontend instance.
         depth: The depth in the object inheritance to search for methods.
         """
+        coro_ = self.list_attributes(path, JavascriptType.function, depth, how="names", start=False)
 
-        def callback(content: dict, payload: list):  # noqa: ARG001
+        async def _list_methods():
+            payload: list = await coro_  # type: ignore
             if skip_hidden:
                 return [n for n in payload if not n.startswith("_")]
             return payload
 
-        return self.list_attributes(path, "function", depth, how="names", callback=callback)  # type: ignore
+        coro = _list_methods()
+        return self.new_task(coro) if start else coro
 
     def list_attributes(
         self,
@@ -413,16 +398,18 @@ class AsyncWidgetBase(WidgetBase):
         depth=2,
         *,
         how="group",
-        callback: CallbackType | None = None,
         transform: TransformType = TransformMode.raw,
-    ) -> asyncio.Task[dict | list]:
+        start=True,
+    ) -> asyncio._AwaitableLike[list | dict]:
         """Get a mapping of attributes of the object at 'path' of the Frontend instance.
 
         depth: The depth in the object inheritance to search for attributes.
         how: ['names', 'group', 'raw'] (ignored if callback provided)
         """
+        coro_ = self.execute_method("listAttributes", path, type, depth, start=False, transform=transform)
 
-        def callback_(content: dict, payload: Any):
+        async def list_attributes_():
+            payload: list = await coro_  # type: ignore
             if how == "names":
                 payload = [row["name"] for row in payload]
             elif how == "group":
@@ -431,21 +418,25 @@ class AsyncWidgetBase(WidgetBase):
                     st = groups.get(item["type"], [])
                     st.append(item["name"])
                     groups[item["type"]] = st
-                payload = groups
-            if callback:
-                payload = callback(content, payload)
+                return groups
             return payload
 
-        return self.execute_method("listAttributes", path, type, depth, callback=callback_, transform=transform)
+        coro = list_attributes_()
+        return self.new_task(coro) if start else coro
 
-    def execute_command(self, command_id: str, transform: TransformType = TransformMode.done, **args) -> asyncio.Task:
+    def execute_command(self, command_id: str, *, execute_settings: dict | None = None, **kwgs):
         """Execute command_id.
 
-        `args` correspond to `args` in JupyterLab.
+        `kwgs` correspond to `args` in JupyterLab.
 
         Finding what the `args` are remains an outstanding issue in JupyterLab.
 
         see: https://github.com/jtpio/ipylab/issues/128#issuecomment-1683097383 for hints
         about how args can be found.
         """
-        return self.execute_method("app.commands.execute", command_id, args, transform=transform)
+        return self.execute_method(
+            "app.commands.execute",
+            command_id,
+            kwgs,  # -> used as 'args' in Jupyter
+            **execute_settings or {},
+        )
