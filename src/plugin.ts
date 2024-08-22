@@ -13,17 +13,15 @@ import { ILauncher } from '@jupyterlab/launcher';
 import { IRenderMimeRegistry } from '@jupyterlab/rendermime';
 import { ITranslator } from '@jupyterlab/translation';
 import { MODULE_NAME, MODULE_VERSION } from './version';
-import { IMainAreaWidgetTracker } from './widgets/main_area';
 
 const EXTENSION_ID = 'ipylab:plugin';
 
 /**
  * The default plugin.
  */
-const extension: JupyterFrontEndPlugin<IMainAreaWidgetTracker> = {
+const extension: JupyterFrontEndPlugin<void> = {
   id: EXTENSION_ID,
   autoStart: true,
-  provides: IMainAreaWidgetTracker,
   requires: [IJupyterWidgetRegistry, IRenderMimeRegistry],
   optional: [
     ICommandPalette,
@@ -55,7 +53,7 @@ async function activate(
   defaultBrowser: IDefaultFileBrowser | null,
   launcher: ILauncher | null,
   translator: ITranslator | null
-): Promise<IMainAreaWidgetTracker> {
+): Promise<void> {
   const widgetExports = await import('./widget');
   if (!widgetExports.JupyterFrontEndModel.app) {
     // add globals
@@ -75,7 +73,6 @@ async function activate(
     registry.registerWidget(widgetExports.IpylabModel.exports);
   }
   widgetExports.IpylabModel.pythonBackend.checkStart();
-  return widgetExports.MainAreaModel.tracker;
 }
 
 export default extension;

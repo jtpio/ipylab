@@ -11,8 +11,6 @@ __all__ = [
     "DisposableConnection",
     "Panel",
     "SplitPanel",
-    "MainArea",
-    "ViewStatus",
     "Icon",
     "Area",
     "InsertMode",
@@ -27,7 +25,6 @@ from ipylab.disposable_connection import DisposableConnection
 from ipylab.hasapp import HasApp
 from ipylab.hookspecs import hookimpl
 from ipylab.jupyterfrontend import JupyterFrontEnd
-from ipylab.main_area import MainArea, ViewStatus
 from ipylab.shell import Area, InsertMode
 from ipylab.widgets import Icon, Panel, SplitPanel
 
