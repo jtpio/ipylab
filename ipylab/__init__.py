@@ -8,6 +8,7 @@ __all__ = [
     "__version__",
     "HasApp",
     "JupyterFrontEnd",
+    "DisposableConnection",
     "Panel",
     "SplitPanel",
     "MainArea",
@@ -18,9 +19,11 @@ __all__ = [
     "hookimpl",
     "TransformMode",
     "pack",
+    "pack_code",
 ]
 
-from ipylab.asyncwidget import TransformMode, pack
+from ipylab.asyncwidget import TransformMode, pack, pack_code
+from ipylab.disposable_connection import DisposableConnection
 from ipylab.hasapp import HasApp
 from ipylab.hookspecs import hookimpl
 from ipylab.jupyterfrontend import JupyterFrontEnd

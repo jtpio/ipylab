@@ -11,7 +11,6 @@ from ipywidgets import register
 from traitlets import Instance, TraitType, Unicode, UseEnum, observe, validate
 
 from ipylab.asyncwidget import AsyncWidgetBase, widget_serialization
-from ipylab.hasapp import HasApp
 from ipylab.shell import Area, InsertMode
 from ipylab.widgets import Panel
 
@@ -29,14 +28,14 @@ class ViewStatus(StrEnum):
 
 
 @register
-class MainArea(AsyncWidgetBase, HasApp):
+class MainArea(AsyncWidgetBase):
     """A MainAreaWidget that can be loaded / unloaded with a single 'view'.
 
     Also provides methods to open/close a console using the context of the loaded widget.
     """
 
-    _main_area_names: ClassVar[dict[str, MainArea]] = {}
     _model_name = Unicode("MainAreaModel").tag(sync=True)
+    _main_area_names: ClassVar[dict[str, MainArea]] = {}
 
     path = Unicode(read_only=True).tag(sync=True)
     name = Unicode(read_only=True).tag(sync=True)

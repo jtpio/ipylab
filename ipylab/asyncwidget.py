@@ -22,11 +22,8 @@ else:
     from backports.strenum import StrEnum
 
 if TYPE_CHECKING:
-    import types
-    from collections.abc import Callable, Iterable
+    from collections.abc import Coroutine, Iterable
     from typing import ClassVar
-
-    from ipylab.disposable_connection import DisposableConnection
 
 
 __all__ = ["AsyncWidgetBase", "WidgetBase", "register", "pack", "Widget"]
@@ -40,7 +37,7 @@ def pack(obj: Widget | Any):
     return obj
 
 
-def pack_code(code: str | types.ModuleType | Callable) -> str:
+def pack_code(code: str | inspect._SourceObjectType) -> str:
     """Convert code to a string suitable to run in a kernel."""
     if not isinstance(code, str):
         code = inspect.getsource(code)
@@ -124,6 +121,7 @@ class IpylabFrontendError(IOError):
 
 
 class WidgetBase(Widget, HasApp):
+    _model_name = None  # Ensure this gets overloaded
     _model_module = Unicode(_fe.module_name, read_only=True).tag(sync=True)
     _model_module_version = Unicode(_fe.module_version, read_only=True).tag(sync=True)
     _view_module = Unicode(_fe.module_name, read_only=True).tag(sync=True)
@@ -135,6 +133,7 @@ class WidgetBase(Widget, HasApp):
 class AsyncWidgetBase(WidgetBase):
     """The base for all widgets that need async comms with the frontend model."""
 
+    _model_name = Unicode("IpylabModel", help="Name of the model.", read_only=True).tag(sync=True)
     kernelId = Unicode(read_only=True).tag(sync=True)  # noqa: N815
     _async_widget_base_init_complete = False
     _ipylab_model_register: ClassVar[dict[str, Any]] = {}
@@ -182,11 +181,14 @@ class AsyncWidgetBase(WidgetBase):
             msg = f"This widget is closed {self!r}"
             raise RuntimeError(msg)
 
-    def start_maybe(self, coro: asyncio._CoroutineLike, *, start: bool):
-        "Run the coro in a task only if start is True returning the coro or task."
+    # TODO: Add better type hints once python >=3.11
+    def to_task(self, coro: Coroutine, *, just_coro=False) -> asyncio.Task:
+        """Create a task for coro and return the task. If just_coro is True the
+        coro is returned without starting it in a task so it shall be awaited separately."""
+
         self._check_closed()
-        if not start:
-            return coro
+        if just_coro:
+            return coro  # type: ignore
         task = asyncio.create_task(coro)
         self._tasks.add(task)
         task.add_done_callback(self._tasks.discard)
@@ -206,7 +208,7 @@ class AsyncWidgetBase(WidgetBase):
                         "Try changing the transform (eg: transform=ipylab.TransformMode.done)."
                     )
                 else:
-                    msg += "\nNote: Additional information may be available in the browser console (`F12` in Firefox or  `Shift + CTRL + J` in Chrome)"
+                    msg += "\nNote: Additional information may be available in the browser console (press `F12`)"
                 return IpylabFrontendError(msg)
 
             return IpylabFrontendError(f'{self.__class__.__name__} failed with message "{error}"')
@@ -238,7 +240,7 @@ class AsyncWidgetBase(WidgetBase):
         if content["transform"] is TransformMode.connection:
             from ipylab.disposable_connection import DisposableConnection
 
-            return DisposableConnection(id=payload)
+            return DisposableConnection(**payload)
         return payload
 
     def _on_frontend_msg(self, _, content: dict, buffers: list):
@@ -251,9 +253,7 @@ class AsyncWidgetBase(WidgetBase):
             if ipylab_backend:
                 self._pending_operations.pop(ipylab_backend).set(payload, error)
             if "ipylab_FE" in content:
-                self.start_maybe(
-                    self._handle_frontend_operation(content["ipylab_FE"], operation, payload, buffers), start=True
-                )
+                self.to_task(self._handle_frontend_operation(content["ipylab_FE"], operation, payload, buffers))
         elif "init" in content:
             self._ready_response.set(content)
         elif "closed" in content:
@@ -302,9 +302,9 @@ class AsyncWidgetBase(WidgetBase):
         *,
         transform: TransformType = TransformMode.raw,
         toLuminoWidget: Iterable[str] | None = None,
-        start=True,
+        just_coro=False,
         **kwgs,
-    ) -> asyncio._AwaitableLike[Dict | str | list | float | int | None | DisposableConnection]:
+    ):
         """
 
         operation: str
@@ -336,7 +336,7 @@ class AsyncWidgetBase(WidgetBase):
         content = {"ipylab_BE": ipylab_BE, "operation": operation, "kwgs": kwgs, "transform": TransformMode(transform)}
         if toLuminoWidget:
             content["toLuminoWidget"] = list(map(str, toLuminoWidget))
-        return self.start_maybe(self._send_receive(content), start=start)
+        return self.to_task(self._send_receive(content), just_coro=just_coro)
 
     def execute_method(
         self,
@@ -344,7 +344,7 @@ class AsyncWidgetBase(WidgetBase):
         *args,
         transform: TransformType = TransformMode.raw,
         toLuminoWidget: Iterable[str] | None = None,
-        start=True,
+        just_coro=False,
     ):
         """Call a method on the corresponding frontend object.
 
@@ -370,18 +370,18 @@ class AsyncWidgetBase(WidgetBase):
             transform=transform,
             args=args,
             toLuminoWidget=toLuminoWidget,
-            start=start,
+            just_coro=just_coro,
         )
 
-    def get_attribute(self, path: str, *, transform: TransformType = TransformMode.raw, start=True):
+    def get_attribute(self, path: str, *, transform: TransformType = TransformMode.raw, just_coro=True):
         """A serialized version of the attribute relative to this object."""
-        return self.execute_method("getAttribute", path, transform=transform, start=start)
+        return self.execute_method("getAttribute", path, transform=transform, just_coro=just_coro)
 
-    def list_methods(self, path: str = "", *, depth=2, skip_hidden=True, start=True):
+    def list_methods(self, path: str = "", *, depth=2, skip_hidden=True, just_coro=True):
         """Get a list of methods belonging to the object 'path' of the Frontend instance.
         depth: The depth in the object inheritance to search for methods.
         """
-        coro_ = self.list_attributes(path, JavascriptType.function, depth, how="names", start=False)
+        coro_ = self.list_attributes(path, JavascriptType.function, depth, how="names", just_coro=True)
 
         async def _list_methods():
             payload: list = await coro_  # type: ignore
@@ -389,7 +389,7 @@ class AsyncWidgetBase(WidgetBase):
                 return [n for n in payload if not n.startswith("_")]
             return payload
 
-        return self.start_maybe(_list_methods(), start=start)
+        return self.to_task(_list_methods(), just_coro=just_coro)
 
     def list_attributes(
         self,
@@ -399,14 +399,14 @@ class AsyncWidgetBase(WidgetBase):
         *,
         how="group",
         transform: TransformType = TransformMode.raw,
-        start=True,
-    ) -> asyncio._AwaitableLike[list | dict]:
+        just_coro=False,
+    ):
         """Get a mapping of attributes of the object at 'path' of the Frontend instance.
 
         depth: The depth in the object inheritance to search for attributes.
         how: ['names', 'group', 'raw'] (ignored if callback provided)
         """
-        coro_ = self.execute_method("listAttributes", path, type, depth, start=False, transform=transform)
+        coro_ = self.execute_method("listAttributes", path, type, depth, just_coro=True, transform=transform)
 
         async def list_attributes_():
             payload: list = await coro_  # type: ignore
@@ -421,9 +421,9 @@ class AsyncWidgetBase(WidgetBase):
                 return groups
             return payload
 
-        return self.start_maybe(list_attributes_(), start=start)
+        return self.to_task(list_attributes_(), just_coro=just_coro)
 
-    def execute_command(self, command_id: str, *, execute_kwgs: dict | None = None, **kwgs):
+    def execute_command(self, command_id: str, *, execute_kwgs: dict | None = None, just_coro=False, **kwgs):
         """Execute the command_id registered with Jupyterlab.
 
         `kwgs` correspond to `args` in JupyterLab.
@@ -440,5 +440,6 @@ class AsyncWidgetBase(WidgetBase):
             "app.commands.execute",
             command_id,
             kwgs,  # -> used as 'args' in Jupyter
+            just_coro=just_coro,
             **execute_kwgs or {},
         )

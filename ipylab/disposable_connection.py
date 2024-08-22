@@ -18,7 +18,9 @@ from ipylab.jupyterfrontend_subsection import FrontEndSubsection
 class DisposableConnection(FrontEndSubsection, AsyncWidgetBase):
     """A connection to a disposable object in the Frontend.
 
-    The dispose method is directly accesssable, but
+    The dispose method is directly accesssable.
+
+    Other attributes and methods are available using the corresponding built in methods.
 
     The comm trait can be observed for when the lumino widget in Jupyterlab is closed.
 
@@ -46,12 +48,12 @@ class DisposableConnection(FrontEndSubsection, AsyncWidgetBase):
         self._connections.pop(self.id, None)
         super().close()
 
-    def dispose(self, *, start=True) -> asyncio._AwaitableLike[None]:
+    def dispose(self, *, just_coro=False):
         "Close the disposable on the frontend."
 
         async def dispose_():
             if self.comm:
                 with contextlib.suppress(asyncio.CancelledError):
-                    await self.execute_method("dispose", start=start)
+                    await self.execute_method("dispose", just_coro=True)
 
-        return self.start_maybe(dispose_(), start=start)
+        return self.to_task(dispose_(), just_coro=just_coro)

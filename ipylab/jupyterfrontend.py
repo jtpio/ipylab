@@ -8,7 +8,7 @@ from typing import TYPE_CHECKING, Any
 
 from traitlets import Dict, Instance, Tuple, Unicode
 
-from ipylab.asyncwidget import AsyncWidgetBase, TransformMode, pack_code, register, widget_serialization
+from ipylab.asyncwidget import AsyncWidgetBase, TransformMode, pack, pack_code, register, widget_serialization
 from ipylab.commands import CommandPalette, CommandRegistry, Launcher
 from ipylab.dialog import Dialog, FileDialog
 from ipylab.hookspecs import pm
@@ -17,7 +17,6 @@ from ipylab.shell import Shell
 
 if TYPE_CHECKING:
     import types
-    from collections.abc import Callable
 
 
 @register
@@ -86,16 +85,16 @@ class JupyterFrontEnd(AsyncWidgetBase):
     async def _do_operation_for_frontend(self, operation: str, payload: dict, buffers: list) -> Any:
         match operation:
             case "execEval":
-                return await self._execEval(payload, buffers)
+                return await self._exec_eval(payload, buffers)
             case _:
                 pm.hook.unhandled_frontend_operation_message(obj=self, operation=operation)
         raise NotImplementedError
 
-    def shutdownKernel(self, kernelId: str | None = None):
+    def shutdown_kernel(self, kernelId: str | None = None, *, just_coro=False):
         """Shutdown the kernel"""
-        return self.schedule_operation("shutdownKernel", kernelId=kernelId)
+        return self.schedule_operation("shutdownKernel", kernelId=kernelId, just_coro=just_coro)
 
-    def newSession(
+    def new_session(
         self,
         path: str = "",
         *,
@@ -103,7 +102,8 @@ class JupyterFrontEnd(AsyncWidgetBase):
         kernelId="",
         kernelName="python3",
         code: str | types.ModuleType = "",
-        type="ipylab",  # noqa: A002
+        type="console",  # noqa: A002
+        just_coro=False,
     ):
         """
         Create a new kernel and execute code in it or execute code in an existing kernel.
@@ -128,9 +128,10 @@ class JupyterFrontEnd(AsyncWidgetBase):
             type=type,
             code=pack_code(code),
             transform=TransformMode.raw,
+            just_coro=just_coro,
         )
 
-    def newNotebook(
+    def new_notebook(
         self, path: str = "", *, name: str = "", kernelId="", kernelName="python3", code: str | types.ModuleType = ""
     ):
         """Create a new notebook."""
@@ -141,57 +142,23 @@ class JupyterFrontEnd(AsyncWidgetBase):
             kernelId=kernelId,
             kernelName=kernelName,
             code=pack_code(code),
-            transform=TransformMode.raw,
+            transform=TransformMode.connection,
         )
 
-    def injectCode(
-        self, kernelId: str, code: str | types.ModuleType, user_expressions: dict[str, str | types.ModuleType] | None
-    ):
-        """
-        Inject code into a running kernel using the Jupyter builtin `requestExecute`.
-
-        This is equivalent to running code in a notebook cell and the same rules apply.
-        Use `execEval` instead to wait for the result of asynchronous code.
-
-        kernelId: Jupyterlab assigned ID of running kernel to inject the code into.
-
-        code: str | code
-            If passing a function, the function will be executed when its injected.
-
-        user_expressions: dict
-            mapping of key to an eval expression (awaitiable objects are awaited.)
-            The result of the user expression is returned in the payload. It must be
-            jsonizable.
-        """
-
-        return self.schedule_operation(
-            "injectCode",
-            kernelId=kernelId,
-            code=pack_code(code),
-            user_expressions=user_expressions,
-            transform=TransformMode.raw,
-        )
-
-    def execEval(
+    def exec_eval(
         self,
-        code: str | types.ModuleType | Callable,
-        user_expressions: dict[str, str | types.ModuleType] | None,
+        execute: str | inspect._SourceObjectType,
+        evaluate: dict[str, str],
         kernelId="",
+        *,
+        just_coro=False,
         **kwgs,
     ):
-        """Execute and evaluate code in the Python kernel corresponding to kerenelId, or create a new kernel
-        if `kernelId` isn't provided.
+        """Execute and evaluate code in the Python kernel corresponding to kerenelId.
 
-        When kernelId is not passed (default) a new session is created the same way a new session is
-        created (Addnl kwgs).
+        If `kernelId` isn't provided a new session will be launched. kwgs are used for the new session.
 
-        This function is similar to `injectCode` in functionality but avoids blocking kernel comms. It
-        will only work in a python kernel where the widgets have been enabled.
-
-        Handling of execution is performed by `_execEval` of the `JupyterFrontEnd` instance running in
-        the kernel with kernelId.
-
-        exec:
+        execute:
             The code as a script or function to pass to the builtin `exec`, returns `None`.
             ref: https://docs.python.org/3/library/functions.html#exec
         eval:
@@ -203,36 +170,42 @@ class JupyterFrontEnd(AsyncWidgetBase):
         kernelId:
             The Id allocated to the kernel in the frontend.
         Addnl kwgs:
-            path, name, type='ipylab' | 'notebook' | 'console' for a new session.
+            path, name, type='notebook' | 'console' for a new session.
         """
-        return self.app.schedule_operation(
-            "execEval",
-            code=pack_code(code),
-            user_expressions=user_expressions,
-            kernelId=kernelId,
-            **kwgs,
+        coro_ = (
+            None
+            if kernelId
+            else self.new_session(code="import ipylab; ipylab.JupyterFrontEnd()", just_coro=True, **kwgs)
         )
 
-    async def _execEval(self, payload: dict, buffers: list) -> Any:
+        async def execEval_():
+            k_id = kernelId
+            if coro_:
+                result: dict[str, dict[str, str]] = await coro_
+                k_id = result["kernel"]["id"]
+            return await self.app.schedule_operation(
+                "execEval", code=pack_code(execute), evaluate=evaluate, kernelId=k_id, just_coro=True
+            )  # type: ignore
+
+        return self.to_task(execEval_(), just_coro=just_coro)
+
+    async def _exec_eval(self, payload: dict, buffers: list) -> Any:
         """exec/eval code corresponding to a call from execEval, likely from
         another kernel."""
         # TODO: consider if globals / locals / async scope should be supported.
         code = payload.get("code")
-        user_expressions = payload.get("user_expressions") or {}
-        locals_ = payload | {"buffers": buffers}
+        glbls = payload | {"buffers": buffers}
         if code:
-            exec(code, None, locals_)  # noqa: S102
-        if user_expressions:
-            results = {}
-            for name, expression in user_expressions.items():
-                result = eval(expression, None, locals_)  # noqa: S307
+            exec(code, glbls)  # noqa: S102
+        for name, expression in payload.get("evaluate", {}).items():
+            result = eval(expression, glbls)  # noqa: S307
+            while callable(result) or inspect.isawaitable(result):
                 if callable(result):
                     result = result()
                 if inspect.isawaitable(result):
                     result = await result
-                results[name] = result
-            return results
-        return None
+            glbls[name] = result
+        return {"payload": pack(glbls.get("payload")), "buffers": glbls.get("buffers", [])}
 
     def startIyplabPythonBackend(self):
         """Checks backend is running and starts it if it isn't, returning the session model."""

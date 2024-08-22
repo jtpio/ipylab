@@ -11,7 +11,7 @@ import {
   showErrorMessage
 } from '@jupyterlab/apputils';
 import { FileDialog } from '@jupyterlab/filebrowser';
-import { Kernel, Session } from '@jupyterlab/services';
+import { Session } from '@jupyterlab/services';
 import {
   IDisposable,
   ISerializers,
@@ -20,7 +20,7 @@ import {
   JupyterFrontEnd,
   Widget
 } from './ipylab';
-import { injectCode, newNotebook, newSession } from './utils';
+import { newNotebook, newSession } from './utils';
 
 /**
  * The model for a JupyterFrontEnd.
@@ -136,8 +136,6 @@ export class JupyterFrontEndModel extends IpylabModel {
       case 'newNotebook':
         result = await newNotebook(payload);
         return (result as any).sessionContext.session.model;
-      case 'injectCode':
-        return await injectCode(payload);
       case 'execEval':
         // Use the JupyterFrontEndModel associated with the kernel to execute the code
         jfem = await this.getJupyterFrontEndModel(payload);
@@ -196,38 +194,9 @@ export class JupyterFrontEndModel extends IpylabModel {
         return Private.jupyterFrontEndModels.get(payload.kernelId);
       }
     }
-    let kernel: Kernel.IKernelConnection;
-    const model = await this.app.serviceManager.kernels.findById(
-      payload.kernelId
+    throw new Error(
+      `A kernel does not exist for the kernelId= '${payload.kernelId}'`
     );
-    if (model) {
-      kernel = this.app.serviceManager.kernels.connectTo({ model: model });
-    } else {
-      if (payload.kernelId) {
-        throw new Error(
-          `A kernel does not exist for the kernelId= '${payload.kernelId}'`
-        );
-      }
-      const session = await newSession(payload);
-      kernel = session.kernel;
-    }
-    // Currently we use the python kernel to create the JupyterFrontEnd widget.
-    const future = kernel.requestExecute({
-      code: 'import ipylab;ipylab.JupyterFrontEnd()',
-      store_history: false,
-      stop_on_error: true,
-      silent: true,
-      allow_stdin: false
-    });
-    const result = (await future.done) as any;
-    const jfem = Private.jupyterFrontEndModels.get(kernel.id);
-    if (!jfem) {
-      throw new Error(
-        `Failed to setup the JupyterFrontEnd in the kernel ${kernel.id}!
-         traceback=${result.content.traceback}`
-      );
-    }
-    return jfem;
   }
 
   static serializers: ISerializers = {

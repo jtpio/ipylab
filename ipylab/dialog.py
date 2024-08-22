@@ -2,47 +2,42 @@
 # Distributed under the terms of the Modified BSD License.
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
-
 from ipylab.asyncwidget import Widget, pack
 from ipylab.hasapp import HasApp
 
-if TYPE_CHECKING:
-    import asyncio
-
 
 class Dialog(HasApp):
-    def get_boolean(self, title: str, *, start=True) -> asyncio._AwaitableLike[bool]:
+    def get_boolean(self, title: str, *, just_coro=False):
         """Jupyter dialog to get a boolean value.
         see: https://jupyterlab.readthedocs.io/en/stable/extension/ui_helpers.html#input-dialogs
         """
-        return self.app.schedule_operation("getBoolean", title=title, start=start)  # type: ignore
+        return self.app.schedule_operation("getBoolean", title=title, just_coro=just_coro)  # type: ignore
 
-    def get_item(self, title: str, items: tuple | list, *, start=True):
+    def get_item(self, title: str, items: tuple | list, *, just_coro=False):
         """Jupyter dialog to get an item from a list value.
 
         note: will always return a string representation of the selected item.
         see: https://jupyterlab.readthedocs.io/en/stable/extension/ui_helpers.html#input-dialogs
         """
-        return self.app.schedule_operation("getItem", title=title, items=tuple(items), start=start)
+        return self.app.schedule_operation("getItem", title=title, items=tuple(items), just_coro=just_coro)
 
-    def get_number(self, title: str, *, start=True) -> asyncio._AwaitableLike[float]:
+    def get_number(self, title: str, *, just_coro=False):
         """Jupyter dialog to get a number.
         see: https://jupyterlab.readthedocs.io/en/stable/extension/ui_helpers.html#input-dialogs
         """
-        return self.app.schedule_operation("getNumber", title=title, start=start)  # type: ignore
+        return self.app.schedule_operation("getNumber", title=title, just_coro=just_coro)  # type: ignore
 
-    def get_text(self, title: str, *, start=True) -> asyncio._AwaitableLike[str]:
+    def get_text(self, title: str, *, just_coro=False):
         """Jupyter dialog to get a string.
         see: https://jupyterlab.readthedocs.io/en/stable/extension/ui_helpers.html#input-dialogs
         """
-        return self.app.schedule_operation("getText", title=title, start=start)  # type: ignore
+        return self.app.schedule_operation("getText", title=title, just_coro=just_coro)  # type: ignore
 
-    def get_password(self, title: str, *, start=True) -> asyncio._AwaitableLike[str]:
+    def get_password(self, title: str, *, just_coro=False):
         """Jupyter dialog to get a number.
         see: https://jupyterlab.readthedocs.io/en/stable/extension/ui_helpers.html#input-dialogs
         """
-        return self.app.schedule_operation("getPassword", title=title, start=start)  # type: ignore
+        return self.app.schedule_operation("getPassword", title=title, just_coro=just_coro)  # type: ignore
 
     def show_dialog(self, title: str = "", body: str | Widget = "", host: None | Widget = None, **kwgs):
         """Jupyter dialog to get user response with custom buttons and checkbox.
@@ -133,14 +128,14 @@ class FileDialog(HasApp):
     https://jupyterlab.readthedocs.io/en/stable/extension/ui_helpers.html#file-dialogs
     """
 
-    def get_open_files(self, **kwgs) -> asyncio._AwaitableLike[list[str]]:
+    def get_open_files(self, **kwgs):
         """Get a list of files
 
         https://jupyterlab.readthedocs.io/en/latest/api/functions/filebrowser.FileDialog.getOpenFiles.html#getOpenFiles
         """
         return self.app.schedule_operation("getOpenFiles", **kwgs)  # type: ignore
 
-    def get_existing_directory(self, **kwgs) -> asyncio._AwaitableLike[str]:
+    def get_existing_directory(self, **kwgs):
         """
         https://jupyterlab.readthedocs.io/en/latest/api/functions/filebrowser.FileDialog.getExistingDirectory.html#getExistingDirectory
         """

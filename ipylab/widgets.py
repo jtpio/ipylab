@@ -15,8 +15,6 @@ from ipylab.hasapp import HasApp
 from ipylab.shell import Area, InsertMode
 
 if TYPE_CHECKING:
-    import asyncio
-
     from ipylab.disposable_connection import DisposableConnection
 
 
@@ -65,9 +63,9 @@ class Panel(Box, HasApp):
         mode: InsertMode = InsertMode.split_right,
         rank: int | None = None,
         ref: DisposableConnection | str = "",
-        start=True,
+        just_coro=True,
         **options,
-    ) -> asyncio._AwaitableLike[DisposableConnection]:
+    ):
         """Add this panel to the shell."""
         return self.app.shell.addToShell(
             self,
@@ -76,7 +74,7 @@ class Panel(Box, HasApp):
             activate=activate,
             rank=rank,
             ref=ref,
-            start=start,
+            just_coro=just_coro,
             **options,
         )
 

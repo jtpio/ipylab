@@ -27,7 +27,7 @@ class FrontEndSubsection(AsyncWidgetBase):
         *args,
         transform: TransformType = TransformMode.raw,
         toLuminoWidget: Iterable[str] | None = None,
-        start=True,
+        just_coro=False,
     ):
         """Execute a nested method on this objects JFE_SUB_PATH relative to the instance of the
         JupyterFrontEndModel in the JS frontend.
@@ -38,17 +38,13 @@ class FrontEndSubsection(AsyncWidgetBase):
             *args,
             transform=transform,
             toLuminoWidget=toLuminoWidget,
-            start=start,
+            just_coro=just_coro,
         )
 
-    def get_attribute(self, path: str, *, transform: TransformType = TransformMode.raw, start=True):
+    def get_attribute(self, path: str, *, transform: TransformType = TransformMode.raw, just_coro=False):
         """Get an attribute by name from the front end."""
-        return super().get_attribute(f"{self.SUB_PATH_BASE}.{path}", transform=transform, start=start)
+        return super().get_attribute(f"{self.SUB_PATH_BASE}.{path}", transform=transform, just_coro=just_coro)
 
-    def list_attributes(self, path: str = "", *, transform: TransformType = TransformMode.raw, start=True):
+    def list_attributes(self, path: str = "", *, transform: TransformType = TransformMode.raw, just_coro=False):
         """Get a list of all attributes."""
-        return super().list_attributes(
-            f"{self.SUB_PATH_BASE}.{path}",
-            transform=transform,
-            start=start,
-        )
+        return super().list_attributes(f"{self.SUB_PATH_BASE}.{path}", transform=transform, just_coro=just_coro)

@@ -7,7 +7,7 @@ import { IRenderMimeRegistry } from '@jupyterlab/rendermime';
 import { Kernel, Session } from '@jupyterlab/services';
 import { UUID } from '@lumino/coreutils';
 import { Signal } from '@lumino/signaling';
-import { IpylabModel, JSONObject, JSONValue } from './ipylab';
+import { IpylabModel, JSONValue } from './ipylab';
 
 /**
  * Start a new session that support comms needed for iplab needs for comms.
@@ -20,7 +20,7 @@ export async function newSession({
   kernelId = '',
   language = 'python3',
   code = '',
-  type = 'ipylab'
+  type = 'console'
 }: {
   name: string;
   path: string;
@@ -44,12 +44,10 @@ export async function newSession({
   await sessionContext.initialize();
   await sessionContext.ready;
 
-  // TODO: support documents, not exactly here, but in ipylab somewhere.
-  // https://github.com/jupyterlab/extension-examples/tree/main/documents
-  // https://jupyter-ydoc.readthedocs.io/en/latest/custom.html
+  // Create a manager for the kernel to support widgets.
+  // The pull request at this link enables widgets to work without needing a document of console to remain open:
+  //  https://github.com/jupyter-widgets/ipywidgets/pull/3922
 
-  // Create a manager for the kernel. It will stay alive for the life of the kernel.
-  // Requires https://github.com/jupyter-widgets/ipywidgets/pull/3922 to be adopted.
   new KernelWidgetManager(sessionContext.session.kernel, rendermime as any);
   if (code) {
     const future = sessionContext.session.kernel.requestExecute(
@@ -88,44 +86,6 @@ export async function newNotebook({
     await nb.sessionContext.session.setPath(path);
   }
   return nb;
-}
-
-/**Inject code into the kernel.
- * @param payload.kernelId : Normally kernel.id
- * @param payload.code : code to inject
- * @returns
- */
-export async function injectCode({
-  kernelId,
-  code,
-  user_expressions
-}: {
-  kernelId: string;
-  code: string;
-  user_expressions?: JSONObject;
-}): Promise<JSONValue> {
-  const kernelModel = await IpylabModel.app.serviceManager.kernels.findById(
-    kernelId
-  );
-  const connection = IpylabModel.app.serviceManager.kernels.connectTo({
-    model: kernelModel
-  });
-  const future = connection.requestExecute({
-    code: code,
-    store_history: false,
-    stop_on_error: true,
-    silent: true,
-    allow_stdin: false,
-    user_expressions: user_expressions
-  });
-  const result = (await future.done) as any;
-  if (result.content.status === 'ok') {
-    return result.content.payload;
-  } else {
-    throw new Error(
-      `Execution status = ${result.status} not 'ok' traceback=${result.content.traceback}`
-    );
-  }
 }
 
 /**
@@ -209,7 +169,7 @@ export async function transformObject(
       return null;
     case 'connection':
       IpylabModel.trackDisposable(obj);
-      return obj.id;
+      return { id: obj.id };
     case 'attribute':
       // expects simple: {parts:['dotted.attribute']}
       // or advanced: {parts:[{path:'dotted.attribute', transform:'...' }]
@@ -238,7 +198,7 @@ export async function transformObject(
 }
 
 /**
- * Provide a list of all methods belonging to obj.
+ * Provide a list of all attributes belonging to obj.
  *
  * @param obj Any object.
  * @returns

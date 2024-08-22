@@ -2,10 +2,14 @@
 // Distributed under the terms of the Modified BSD License.
 
 import { unpack_models } from '@jupyter-widgets/base';
-import { ObservableMap } from '@jupyterlab/observables';
 import { LabIcon } from '@jupyterlab/ui-components';
-import { ISerializers, IpylabModel, JSONValue, IDisposable } from './ipylab';
-
+import {
+  IDisposable,
+  ISerializers,
+  IpylabModel,
+  JSONValue,
+  onKernelLost
+} from './ipylab';
 /**
  * The model for a command registry.
  */
@@ -19,8 +23,7 @@ export class CommandRegistryModel extends IpylabModel {
       _model_name: CommandRegistryModel.model_name,
       _model_module: CommandRegistryModel.model_module,
       _model_module_version: CommandRegistryModel.model_module_version,
-      _command_list: [],
-      _commands: []
+      _command_list: []
     };
   }
 
@@ -53,19 +56,11 @@ export class CommandRegistryModel extends IpylabModel {
   }
 
   async operation(op: string, payload: any): Promise<JSONValue | IDisposable> {
-    let id, args, result, commands;
     switch (op) {
       case 'execute':
-        id = payload.id;
-        args = payload.args;
-        return await this.commands.execute(id, args);
+        return await this.commands.execute(payload.id, payload.args);
       case 'addPythonCommand': {
-        result = await this._addCommand(payload);
-        // keep track of the commands
-        commands = this.get('_commands');
-        this.set('_commands', commands.concat(payload));
-        this.save_changes();
-        return result;
+        return await this._addCommand(payload);
       }
       case 'removePythonCommand':
         return this._removeCommand(payload.command_id);
@@ -82,7 +77,6 @@ export class CommandRegistryModel extends IpylabModel {
    * Send the list of commands to the backend.
    */
   private _sendCommandList(sender?: object, args?: any): void {
-    // this._commands.notifyCommandChanged();
     if (args && args.type !== 'added' && args.type !== 'removed') {
       return;
     }
@@ -101,19 +95,14 @@ export class CommandRegistryModel extends IpylabModel {
    * @param options.icon
    */
   private async _addCommand(options: any): Promise<IDisposable> {
-    const { id, caption, label, iconClass, icon, command_result_transform } =
-      options;
-    if (this.commands.hasCommand(id)) {
-      const cmd = Private.customCommands.get(id);
-      if (cmd) {
-        cmd.dispose();
-      }
-    }
+    const { id, caption, label, iconClass, icon } = options;
 
     let labIcon: LabIcon | null = null;
     if (icon) {
       labIcon = (await unpack_models(icon, this.widget_manager))?.labIcon;
     }
+
+    this._removeCommand(id);
 
     // TODO: Add better support for enabling/disabling commands
     // Add synchronized lists for disabled and hidden
@@ -126,22 +115,14 @@ export class CommandRegistryModel extends IpylabModel {
       iconClass,
       icon: labIcon,
       execute: (args: any) => {
-        if (!this.comm_live) {
-          command.dispose();
-          return;
-        }
-        return this.scheduleOperation(
-          'execute',
-          { id: id, kwgs: args },
-          command_result_transform
-        );
+        this.scheduleOperation('execute', { id: id, kwgs: args });
       },
       isEnabled: () => commandEnabled(command),
       isVisible: () => commandEnabled(command)
     });
-    Private.customCommands.set(id, command);
     (command as any).id = id;
     IpylabModel.trackDisposable(command);
+    onKernelLost((this.widget_manager as any).kernel, command.dispose, command);
     return command;
   }
 
@@ -152,13 +133,9 @@ export class CommandRegistryModel extends IpylabModel {
    * @param payload.id
    */
   private _removeCommand(command_id: string): null {
-    if (Private.customCommands.has(command_id)) {
-      const cmd = Private.customCommands.delete(command_id);
-      if (cmd) {
-        cmd.dispose();
-      }
+    if (this.hasDisposable(command_id)) {
+      this.getDisposable(command_id).dispose();
     }
-    this.save_changes();
     return null;
   }
 
@@ -167,11 +144,4 @@ export class CommandRegistryModel extends IpylabModel {
   };
 
   static model_name = 'CommandRegistryModel';
-}
-
-/**
- * A namespace for private data
- */
-namespace Private {
-  export const customCommands = new ObservableMap<IDisposable>();
 }

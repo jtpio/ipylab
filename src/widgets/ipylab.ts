@@ -25,6 +25,7 @@ import {
   UUID
 } from '@lumino/coreutils';
 import { IDisposable } from '@lumino/disposable';
+import { Signal } from '@lumino/signaling';
 import { Widget } from '@lumino/widgets';
 import { ObjectHash } from 'backbone';
 import { MODULE_NAME, MODULE_VERSION } from '../version';
@@ -47,9 +48,9 @@ export {
   JSONObject,
   JSONValue,
   JupyterFrontEnd,
-  Widget
+  Widget,
+  onKernelLost
 };
-
 /**
  * Base model for common features
  */
@@ -307,7 +308,7 @@ export class IpylabModel extends WidgetModel {
    * @param id Get a lumino widget using its id.
    * @returns
    */
-  getDisposable(id: string) {
+  getDisposable(id: string): any {
     if (Private.disposables.has(id)) {
       return Private.disposables.get(id);
     }
@@ -316,9 +317,13 @@ export class IpylabModel extends WidgetModel {
     return disposable;
   }
 
+  hasDisposable(id: string) {
+    return Private.disposables.has(id);
+  }
+
   /**
-   *
-   * @param widget Keep a reference to a Lumino widget so it can be found from the backend.
+   *Keep a reference to a Disposable so it can be found from the backend.
+   * @param disposable
    */
   static trackDisposable(disposable: any) {
     if (typeof disposable.dispose !== 'function') {
@@ -330,6 +335,20 @@ export class IpylabModel extends WidgetModel {
     const key = disposable.id;
     if (!Private.disposables.has(key)) {
       Private.disposables.set(key, disposable);
+      if (!disposable.disposed) {
+        // Convert a Disposable into an ObservableDisposable
+        disposable.disposed = new Signal<any, null>(disposable);
+        const dispose_ = disposable.dispose.bind(disposable);
+        const dispose = () => {
+          if (disposable.isDisposed) {
+            return;
+          }
+          dispose_();
+          disposable.disposed.emit(null);
+          Signal.clearData(disposable);
+        };
+        disposable['dispose'] = dispose.bind(disposable);
+      }
       disposable.disposed.connect(() => Private.disposables.delete(key));
     }
   }
@@ -392,5 +411,5 @@ export class IpylabModel extends WidgetModel {
  * A namespace for private data
  */
 namespace Private {
-  export const disposables = new ObservableMap<Widget>();
+  export const disposables = new ObservableMap<IDisposable>();
 }

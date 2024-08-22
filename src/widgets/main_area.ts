@@ -231,7 +231,7 @@ export class MainAreaModel extends IpylabModel {
   private _sessionContext: ISessionContext;
 
   static tracker = new WidgetTracker<IpylabMainAreaWidget>({
-    namespace: 'ipylab'
+    namespace: 'console'
   });
   static model_name = 'MainAreaModel';
   static view_name = 'MainAreaView';

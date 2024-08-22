@@ -21,9 +21,9 @@ class CommandPalette(AsyncWidgetBase):
     _model_name = Unicode("CommandPaletteModel").tag(sync=True)
     items = Tuple(read_only=True).tag(sync=True)
 
-    def add_item(self, command_id: str, category: str, *, rank=None, args: dict | None = None, **kwgs):
+    def add_item(self, command_id: str, category: str, *, rank=None, args: dict | None = None, just_coro=False):
         return self.schedule_operation(
-            operation="addItem", id=command_id, category=category, rank=rank, args=args, **kwgs
+            operation="addItem", id=command_id, category=category, rank=rank, args=args, just_coro=just_coro
         )
 
     def remove_item(self, command_id: str, category):
@@ -74,8 +74,12 @@ class CommandRegistry(AsyncWidgetBase):
         label="",
         icon_class="",
         icon: Icon | None = None,
-        **kwgs,
+        just_coro=False,
     ):
+        """
+        toLuminoWidget : bool
+            If the result should be transformed into a luminoWidget in the frontend.
+        """
         # TODO: support other parameters (isEnabled, isVisible...)
         self._execute_callbacks = self._execute_callbacks | {command_id: execute}
         return self.schedule_operation(
@@ -85,11 +89,11 @@ class CommandRegistry(AsyncWidgetBase):
             label=label,
             iconClass=icon_class,
             icon=pack(icon),
-            command_result_transform=TransformMode.done,
-            **kwgs,
+            transform=TransformMode.connection,
+            just_coro=just_coro,
         )
 
-    def removePythonCommand(self, command_id: str, *, start=True):
+    def removePythonCommand(self, command_id: str, *, just_coro=False):
         # TODO: check whether to keep this method, or return disposables like in lab
         if command_id not in self._execute_callbacks:
             msg = f"{command_id=} is not a registered command!"
@@ -98,7 +102,7 @@ class CommandRegistry(AsyncWidgetBase):
         coro_ = self.schedule_operation(
             "removePythonCommand",
             command_id=command_id,
-            start=False,
+            just_coro=True,
             transform=TransformMode.done,
         )
 
@@ -106,4 +110,4 @@ class CommandRegistry(AsyncWidgetBase):
             await coro_
             self._execute_callbacks.pop(command_id, None)
 
-        return self.start_maybe(removePythonCommand_(), start=start)
+        return self.to_task(removePythonCommand_(), just_coro=just_coro)

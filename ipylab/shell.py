@@ -70,7 +70,7 @@ class Shell(FrontEndSubsection):
         mode: InsertMode = InsertMode.split_right,
         rank: int | None = None,
         ref: DisposableConnection | str = "",
-        start=True,
+        just_coro=False,
         **options,
     ):
         """
@@ -95,17 +95,17 @@ class Shell(FrontEndSubsection):
             transform=TransformMode.connection,
             options=options_ | options,
             toLuminoWidget=["widget", "options.ref"],
-            start=start,
+            just_coro=just_coro,
         )
 
-    def expandLeft(self, *, start=True):
-        return self.execute_method("expandLeft", start=start)
+    def expandLeft(self, *, just_coro=False):
+        return self.execute_method("expandLeft", just_coro=just_coro)
 
-    def expandRight(self, *, start=True):
-        return self.execute_method("expandRight", start=start)
+    def expandRight(self, *, just_coro=False):
+        return self.execute_method("expandRight", just_coro=just_coro)
 
-    def collapseLeft(self, *, start=True):
-        return self.execute_method("collapseLeft", start=start)
+    def collapseLeft(self, *, just_coro=False):
+        return self.execute_method("collapseLeft", just_coro=just_coro)
 
-    def collapseRight(self, *, start=True):
-        return self.execute_method("collapseRight", start=start)
+    def collapseRight(self, *, just_coro=False):
+        return self.execute_method("collapseRight", just_coro=just_coro)
