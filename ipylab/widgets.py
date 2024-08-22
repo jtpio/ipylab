@@ -63,7 +63,7 @@ class Panel(Box, HasApp):
         mode: InsertMode = InsertMode.split_right,
         rank: int | None = None,
         ref: DisposableConnection | str = "",
-        just_coro=True,
+        just_coro=False,
         **options,
     ):
         """Add this panel to the shell."""

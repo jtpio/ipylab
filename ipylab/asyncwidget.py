@@ -373,11 +373,11 @@ class AsyncWidgetBase(WidgetBase):
             just_coro=just_coro,
         )
 
-    def get_attribute(self, path: str, *, transform: TransformType = TransformMode.raw, just_coro=True):
+    def get_attribute(self, path: str, *, transform: TransformType = TransformMode.raw, just_coro=False):
         """A serialized version of the attribute relative to this object."""
         return self.execute_method("getAttribute", path, transform=transform, just_coro=just_coro)
 
-    def list_methods(self, path: str = "", *, depth=2, skip_hidden=True, just_coro=True):
+    def list_methods(self, path: str = "", *, depth=2, skip_hidden=True, just_coro=False):
         """Get a list of methods belonging to the object 'path' of the Frontend instance.
         depth: The depth in the object inheritance to search for methods.
         """
