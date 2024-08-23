@@ -167,8 +167,9 @@ export class JupyterFrontEndModel extends IpylabModel {
     const { widget, area, options } = payload;
     let luminoWidget = widget;
     if (
-      !(luminoWidget instanceof MainAreaWidget) ||
-      typeof luminoWidget.title === 'undefined'
+      area === 'main' &&
+      (!(luminoWidget instanceof MainAreaWidget) ||
+        typeof luminoWidget.title === 'undefined')
     ) {
       luminoWidget = new MainAreaWidget({
         content: luminoWidget as any

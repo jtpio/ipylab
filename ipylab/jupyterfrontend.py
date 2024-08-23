@@ -25,7 +25,7 @@ class JupyterFrontEnd(AsyncWidgetBase):
     SINGLETON = True
 
     version = Unicode(read_only=True).tag(sync=True)
-    command = Instance(CommandRegistry, (), read_only=True).tag(sync=True, **widget_serialization)
+    commands = Instance(CommandRegistry, (), read_only=True).tag(sync=True, **widget_serialization)
     command_pallet = Instance(CommandPalette, (), read_only=True).tag(sync=True, **widget_serialization)
     launcher = Instance(Launcher, (), read_only=True).tag(sync=True, **widget_serialization)
 
@@ -62,7 +62,7 @@ class JupyterFrontEnd(AsyncWidgetBase):
         if not self._ready_response.is_set():
             future = asyncio.gather(
                 super().wait_ready(),
-                self.command.wait_ready(),
+                self.commands.wait_ready(),
                 self.command_pallet.wait_ready(),
                 self.launcher.wait_ready(),
             )

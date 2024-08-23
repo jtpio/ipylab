@@ -9,6 +9,7 @@ from traitlets import Dict, Tuple, Unicode
 
 from ipylab.asyncwidget import AsyncWidgetBase, TransformMode, pack, register
 from ipylab.hookspecs import pm
+from ipylab.jupyterfrontend_subsection import FrontEndSubsection
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -36,10 +37,11 @@ class Launcher(CommandPalette):
 
 
 @register
-class CommandRegistry(AsyncWidgetBase):
+class CommandRegistry(FrontEndSubsection):
     _model_name = Unicode("CommandRegistryModel").tag(sync=True)
     SINGLETON = True
-    commands = Tuple(read_only=True).tag(sync=True)
+    SUB_PATH_BASE = "app.commands"
+    all_commands = Tuple(read_only=True).tag(sync=True)
     _execute_callbacks: Dict[str, Callable[[], None]] = Dict()
 
     async def _do_operation_for_frontend(self, operation: str, payload: dict, buffers: list) -> Any:

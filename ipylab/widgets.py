@@ -3,11 +3,12 @@
 
 from __future__ import annotations
 
+import asyncio
 from typing import TYPE_CHECKING
 
 from ipywidgets import Box, DOMWidget, register, widget_serialization
 from ipywidgets.widgets.trait_types import InstanceDict
-from traitlets import Bool, Dict, Instance, Unicode
+from traitlets import Bool, Dict, Instance, Unicode, observe
 
 import ipylab._frontend as _fe
 from ipylab.asyncwidget import WidgetBase
@@ -85,3 +86,48 @@ class SplitPanel(Panel):
     _view_name = Unicode("SplitPanelView").tag(sync=True)
     orientation = Unicode("vertical").tag(sync=True)
     class_name = Unicode("ipylab-splitpanel").tag(sync=True)
+    _force_update_in_progress = False
+
+    # ============== Start temp fix =============
+    # Below here is added as a temporary fix to address issue https://github.com/jtpio/ipylab/issues/129
+    @observe("children")
+    def _observe_children(self, _):
+        self._rerender()
+
+    def _rerender(self, *, just_coro=False):
+        """Toggle the orientation to cause lumino_widget.parent to re-render content."""
+
+        async def _force_refresh(children):
+            if children != self.children:
+                return
+            await asyncio.sleep(0.1)
+            orientation = self.orientation
+            self.orientation = "horizontal" if orientation == "vertical" else "vertical"
+            await asyncio.sleep(0.001)
+            self.orientation = orientation
+
+        return self.app.to_task(_force_refresh(self.children), just_coro=just_coro)
+
+    def addToShell(
+        self,
+        *,
+        area: Area = Area.main,
+        activate: bool = True,
+        mode: InsertMode = InsertMode.split_right,
+        rank: int | None = None,
+        ref: DisposableConnection | str = "",
+        just_coro=False,
+        **options,
+    ):
+        coro = super().addToShell(
+            area=area, activate=activate, mode=mode, rank=rank, ref=ref, just_coro=True, **options
+        )
+
+        async def _addToShell():
+            result = await coro
+            await self._rerender(just_coro=False)
+            return result
+
+        return self.app.to_task(_addToShell(), just_coro=just_coro)
+
+    # ============== End temp fix =============

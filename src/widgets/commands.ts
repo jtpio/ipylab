@@ -80,7 +80,7 @@ export class CommandRegistryModel extends IpylabModel {
     if (args && args.type !== 'added' && args.type !== 'removed') {
       return;
     }
-    this.set('commands', this.commands.listCommands());
+    this.set('all_commands', this.commands.listCommands());
     this.save_changes();
   }
 
