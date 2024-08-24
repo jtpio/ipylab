@@ -65,7 +65,7 @@ class CommandRegistry(FrontEndSubsection):
             raise KeyError(msg)
         return self._execute_callbacks[command_id]
 
-    def addPythonCommand(
+    def add_command(
         self,
         command_id: str,
         execute: Callable,
@@ -82,7 +82,7 @@ class CommandRegistry(FrontEndSubsection):
         # TODO: support other parameters (isEnabled, isVisible...)
         self._execute_callbacks = self._execute_callbacks | {command_id: execute}
         return self.schedule_operation(
-            "addPythonCommand",
+            "add_command",
             id=command_id,
             caption=caption,
             label=label,
@@ -91,16 +91,16 @@ class CommandRegistry(FrontEndSubsection):
             transform=TransformMode.connection,
         )
 
-    def removePythonCommand(self, command_id: str):
+    def remove_command(self, command_id: str):
         # TODO: check whether to keep this method, or return disposables like in lab
         if command_id not in self._execute_callbacks:
             msg = f"{command_id=} is not a registered command!"
             raise ValueError(msg)
 
-        task = self.schedule_operation("removePythonCommand", command_id=command_id, transform=TransformMode.done)
+        task = self.schedule_operation("remove_command", command_id=command_id, transform=TransformMode.done)
 
-        async def removePythonCommand_():
+        async def remove_command_():
             await task
             self._execute_callbacks.pop(command_id, None)
 
-        return self.to_task(removePythonCommand_())
+        return self.to_task(remove_command_())

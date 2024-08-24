@@ -59,10 +59,10 @@ export class CommandRegistryModel extends IpylabModel {
     switch (op) {
       case 'execute':
         return await this.commands.execute(payload.id, payload.args);
-      case 'addPythonCommand': {
+      case 'add_command': {
         return await this._addCommand(payload);
       }
-      case 'removePythonCommand':
+      case 'remove_command':
         return this._removeCommand(payload.command_id);
       default:
         throw new Error(
