@@ -16,8 +16,9 @@ else:
     from backports.strenum import StrEnum
 
 if t.TYPE_CHECKING:
-    from ipywidgets import Widget
+    from asyncio import Task
 
+    from ipywidgets import Widget
 
 __all__ = ["Area", "InsertMode", "Shell"]
 
@@ -70,9 +71,8 @@ class Shell(FrontEndSubsection):
         mode: InsertMode = InsertMode.split_right,
         rank: int | None = None,
         ref: DisposableConnection | str = "",
-        just_coro=False,
         **options,
-    ):
+    ) -> Task[DisposableConnection]:
         """
         Add the widget to the shell.
 
@@ -95,17 +95,16 @@ class Shell(FrontEndSubsection):
             transform=TransformMode.connection,
             options=options_ | options,
             toLuminoWidget=["widget", "options.ref"],
-            just_coro=just_coro,
         )
 
-    def expandLeft(self, *, just_coro=False):
-        return self.execute_method("expandLeft", just_coro=just_coro)
+    def expandLeft(self):
+        return self.execute_method("expandLeft")
 
-    def expandRight(self, *, just_coro=False):
-        return self.execute_method("expandRight", just_coro=just_coro)
+    def expandRight(self):
+        return self.execute_method("expandRight")
 
-    def collapseLeft(self, *, just_coro=False):
-        return self.execute_method("collapseLeft", just_coro=just_coro)
+    def collapseLeft(self):
+        return self.execute_method("collapseLeft")
 
-    def collapseRight(self, *, just_coro=False):
-        return self.execute_method("collapseRight", just_coro=just_coro)
+    def collapseRight(self):
+        return self.execute_method("collapseRight")

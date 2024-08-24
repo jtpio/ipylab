@@ -16,6 +16,8 @@ from ipylab.hasapp import HasApp
 from ipylab.shell import Area, InsertMode
 
 if TYPE_CHECKING:
+    from asyncio import Task
+
     from ipylab.disposable_connection import DisposableConnection
 
 
@@ -64,20 +66,10 @@ class Panel(Box, HasApp):
         mode: InsertMode = InsertMode.split_right,
         rank: int | None = None,
         ref: DisposableConnection | str = "",
-        just_coro=False,
         **options,
-    ):
+    ) -> Task[DisposableConnection]:
         """Add this panel to the shell."""
-        return self.app.shell.addToShell(
-            self,
-            area=area,
-            mode=mode,
-            activate=activate,
-            rank=rank,
-            ref=ref,
-            just_coro=just_coro,
-            **options,
-        )
+        return self.app.shell.addToShell(self, area=area, mode=mode, activate=activate, rank=rank, ref=ref, **options)
 
 
 @register
@@ -94,7 +86,7 @@ class SplitPanel(Panel):
     def _observe_children(self, _):
         self._rerender()
 
-    def _rerender(self, *, just_coro=False):
+    def _rerender(self):
         """Toggle the orientation to cause lumino_widget.parent to re-render content."""
 
         async def _force_refresh(children):
@@ -106,7 +98,7 @@ class SplitPanel(Panel):
             await asyncio.sleep(0.001)
             self.orientation = orientation
 
-        return self.app.to_task(_force_refresh(self.children), just_coro=just_coro)
+        return self.app.to_task(_force_refresh(self.children))
 
     def addToShell(
         self,
@@ -116,18 +108,15 @@ class SplitPanel(Panel):
         mode: InsertMode = InsertMode.split_right,
         rank: int | None = None,
         ref: DisposableConnection | str = "",
-        just_coro=False,
         **options,
-    ):
-        coro = super().addToShell(
-            area=area, activate=activate, mode=mode, rank=rank, ref=ref, just_coro=True, **options
-        )
+    ) -> Task[DisposableConnection]:
+        task = super().addToShell(area=area, activate=activate, mode=mode, rank=rank, ref=ref, **options)
 
         async def _addToShell():
-            result = await coro
-            await self._rerender(just_coro=False)
+            result = await task
+            await self._rerender()
             return result
 
-        return self.app.to_task(_addToShell(), just_coro=just_coro)
+        return self.app.to_task(_addToShell())
 
     # ============== End temp fix =============

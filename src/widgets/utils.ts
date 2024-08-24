@@ -4,16 +4,16 @@ import { KernelWidgetManager } from '@jupyter-widgets/jupyterlab-manager';
 import { SessionContext } from '@jupyterlab/apputils';
 import { ObservableMap } from '@jupyterlab/observables';
 import { IRenderMimeRegistry } from '@jupyterlab/rendermime';
-import { Kernel, Session } from '@jupyterlab/services';
+import { Kernel } from '@jupyterlab/services';
 import { UUID } from '@lumino/coreutils';
 import { Signal } from '@lumino/signaling';
-import { IpylabModel, JSONValue } from './ipylab';
+import { IDisposable, IpylabModel, JSONValue } from './ipylab';
 
 /**
  * Start a new session that support comms needed for iplab needs for comms.
  * @returns
  */
-export async function newSession({
+export async function newSessionContext({
   name,
   path,
   rendermime,
@@ -29,7 +29,7 @@ export async function newSession({
   language?: string;
   code?: string;
   type?: string;
-}): Promise<Session.ISessionConnection> {
+}): Promise<SessionContext> {
   const sessionContext = new SessionContext({
     sessionManager: IpylabModel.app.serviceManager.sessions,
     specsManager: IpylabModel.app.serviceManager.kernelspecs,
@@ -60,7 +60,7 @@ export async function newSession({
     await future.done;
     future.dispose();
   }
-  return sessionContext.session;
+  return sessionContext;
 }
 
 export async function newNotebook({
@@ -73,7 +73,7 @@ export async function newNotebook({
   path: string;
   kernelId: string;
   kernelName?: string;
-}): Promise<JSONValue> {
+}): Promise<IDisposable> {
   const nb = await IpylabModel.app.commands.execute('notebook:create-new', {
     kernelId: kernelId || `${UUID.uuid4()}`,
     kernelName: kernelName

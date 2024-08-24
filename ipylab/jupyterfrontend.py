@@ -17,6 +17,9 @@ from ipylab.shell import Shell
 
 if TYPE_CHECKING:
     import types
+    from asyncio import Task
+
+    from ipylab.disposable_connection import DisposableConnection
 
 
 @register
@@ -90,11 +93,11 @@ class JupyterFrontEnd(AsyncWidgetBase):
                 pm.hook.unhandled_frontend_operation_message(obj=self, operation=operation)
         raise NotImplementedError
 
-    def shutdown_kernel(self, kernelId: str | None = None, *, just_coro=False):
+    def shutdown_kernel(self, kernelId: str | None = None):
         """Shutdown the kernel"""
-        return self.schedule_operation("shutdownKernel", kernelId=kernelId, just_coro=just_coro)
+        return self.schedule_operation("shutdownKernel", kernelId=kernelId)
 
-    def new_session(
+    def new_sessioncontext(
         self,
         path: str = "",
         *,
@@ -103,10 +106,9 @@ class JupyterFrontEnd(AsyncWidgetBase):
         kernelName="python3",
         code: str | types.ModuleType = "",
         type="console",  # noqa: A002
-        just_coro=False,
-    ):
+    ) -> Task[DisposableConnection]:
         """
-        Create a new kernel and execute code in it or execute code in an existing kernel.
+        Create a new sessionContext, potentiall with a new session and kernel.
 
         path: The session path.
         name: The name of the session.
@@ -120,20 +122,19 @@ class JupyterFrontEnd(AsyncWidgetBase):
 
         """
         return self.schedule_operation(
-            "newSession",
+            "newSessionContext",
             path=path,
             name=name or path,
             kernelId=kernelId,
             kernelName=kernelName,
             type=type,
             code=pack_code(code),
-            transform=TransformMode.raw,
-            just_coro=just_coro,
+            transform=TransformMode.connection,
         )
 
     def new_notebook(
         self, path: str = "", *, name: str = "", kernelId="", kernelName="python3", code: str | types.ModuleType = ""
-    ):
+    ) -> Task[DisposableConnection]:
         """Create a new notebook."""
         return self.schedule_operation(
             "newNotebook",
@@ -145,15 +146,7 @@ class JupyterFrontEnd(AsyncWidgetBase):
             transform=TransformMode.connection,
         )
 
-    def exec_eval(
-        self,
-        execute: str | inspect._SourceObjectType,
-        evaluate: dict[str, str],
-        kernelId="",
-        *,
-        just_coro=False,
-        **kwgs,
-    ):
+    def exec_eval(self, execute: str | inspect._SourceObjectType, evaluate: dict[str, str], kernelId="", **kwgs):
         """Execute and evaluate code in the Python kernel corresponding to kerenelId.
 
         If `kernelId` isn't provided a new session will be launched. kwgs are used for the new session.
@@ -172,22 +165,18 @@ class JupyterFrontEnd(AsyncWidgetBase):
         Addnl kwgs:
             path, name, type='notebook' | 'console' for a new session.
         """
-        coro_ = (
-            None
-            if kernelId
-            else self.new_session(code="import ipylab; ipylab.JupyterFrontEnd()", just_coro=True, **kwgs)
-        )
+        task = None if kernelId else self.new_sessioncontext(code="import ipylab; ipylab.JupyterFrontEnd()", **kwgs)
 
         async def execEval_():
             k_id = kernelId
-            if coro_:
-                result: dict[str, dict[str, str]] = await coro_
-                k_id = result["kernel"]["id"]
+            if task:
+                connection = await task
+                k_id = await connection.get_attribute("session.kernel.id")
             return await self.app.schedule_operation(
-                "execEval", code=pack_code(execute), evaluate=evaluate, kernelId=k_id, just_coro=True
-            )  # type: ignore
+                "execEval", code=pack_code(execute), evaluate=evaluate, kernelId=k_id
+            )
 
-        return self.to_task(execEval_(), just_coro=just_coro)
+        return self.to_task(execEval_())
 
     async def _exec_eval(self, payload: dict, buffers: list) -> Any:
         """exec/eval code corresponding to a call from execEval, likely from
@@ -207,6 +196,6 @@ class JupyterFrontEnd(AsyncWidgetBase):
             glbls[name] = result
         return {"payload": pack(glbls.get("payload")), "buffers": glbls.get("buffers", [])}
 
-    def startIyplabPythonBackend(self):
+    def checkstart_iyplab_python_backend(self, *, restart=False):
         """Checks backend is running and starts it if it isn't, returning the session model."""
-        return self.schedule_operation("startIyplabPythonBackend")
+        return self.schedule_operation("startIyplabPythonBackend", restart=restart, transform=TransformMode.connection)

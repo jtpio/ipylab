@@ -2,42 +2,47 @@
 # Distributed under the terms of the Modified BSD License.
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
 from ipylab.asyncwidget import Widget, pack
 from ipylab.hasapp import HasApp
 
+if TYPE_CHECKING:
+    from asyncio import Task
+
 
 class Dialog(HasApp):
-    def get_boolean(self, title: str, *, just_coro=False):
+    def get_boolean(self, title: str) -> Task[bool]:
         """Jupyter dialog to get a boolean value.
         see: https://jupyterlab.readthedocs.io/en/stable/extension/ui_helpers.html#input-dialogs
         """
-        return self.app.schedule_operation("getBoolean", title=title, just_coro=just_coro)  # type: ignore
+        return self.app.schedule_operation("getBoolean", title=title)
 
-    def get_item(self, title: str, items: tuple | list, *, just_coro=False):
+    def get_item(self, title: str, items: tuple | list):
         """Jupyter dialog to get an item from a list value.
 
         note: will always return a string representation of the selected item.
         see: https://jupyterlab.readthedocs.io/en/stable/extension/ui_helpers.html#input-dialogs
         """
-        return self.app.schedule_operation("getItem", title=title, items=tuple(items), just_coro=just_coro)
+        return self.app.schedule_operation("getItem", title=title, items=tuple(items))
 
-    def get_number(self, title: str, *, just_coro=False):
+    def get_number(self, title: str) -> Task[float]:
         """Jupyter dialog to get a number.
         see: https://jupyterlab.readthedocs.io/en/stable/extension/ui_helpers.html#input-dialogs
         """
-        return self.app.schedule_operation("getNumber", title=title, just_coro=just_coro)  # type: ignore
+        return self.app.schedule_operation("getNumber", title=title)
 
-    def get_text(self, title: str, *, just_coro=False):
+    def get_text(self, title: str) -> Task[str]:
         """Jupyter dialog to get a string.
         see: https://jupyterlab.readthedocs.io/en/stable/extension/ui_helpers.html#input-dialogs
         """
-        return self.app.schedule_operation("getText", title=title, just_coro=just_coro)  # type: ignore
+        return self.app.schedule_operation("getText", title=title)
 
-    def get_password(self, title: str, *, just_coro=False):
+    def get_password(self, title: str) -> Task[str]:
         """Jupyter dialog to get a number.
         see: https://jupyterlab.readthedocs.io/en/stable/extension/ui_helpers.html#input-dialogs
         """
-        return self.app.schedule_operation("getPassword", title=title, just_coro=just_coro)  # type: ignore
+        return self.app.schedule_operation("getPassword", title=title)
 
     def show_dialog(self, title: str = "", body: str | Widget = "", host: None | Widget = None, **kwgs):
         """Jupyter dialog to get user response with custom buttons and checkbox.
@@ -101,7 +106,7 @@ class Dialog(HasApp):
             **kwgs,
         )
 
-    def show_error_message(self, title: str, error: str, buttons: None | list[dict[str, str]] = None):
+    def show_error_message(self, title: str, error: str, buttons: None | list[dict[str, str | list[str]]] = None):
         """Jupyter error message.
 
         buttons = [
@@ -128,15 +133,15 @@ class FileDialog(HasApp):
     https://jupyterlab.readthedocs.io/en/stable/extension/ui_helpers.html#file-dialogs
     """
 
-    def get_open_files(self, **kwgs):
+    def get_open_files(self, **kwgs) -> Task[list[str]]:
         """Get a list of files
 
         https://jupyterlab.readthedocs.io/en/latest/api/functions/filebrowser.FileDialog.getOpenFiles.html#getOpenFiles
         """
-        return self.app.schedule_operation("getOpenFiles", **kwgs)  # type: ignore
+        return self.app.schedule_operation("getOpenFiles", **kwgs)
 
-    def get_existing_directory(self, **kwgs):
+    def get_existing_directory(self, **kwgs) -> Task[str]:
         """
         https://jupyterlab.readthedocs.io/en/latest/api/functions/filebrowser.FileDialog.getExistingDirectory.html#getExistingDirectory
         """
-        return self.app.schedule_operation("getExistingDirectory", **kwgs)  # type: ignore
+        return self.app.schedule_operation("getExistingDirectory", **kwgs)

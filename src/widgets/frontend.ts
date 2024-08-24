@@ -20,7 +20,7 @@ import {
   JupyterFrontEnd,
   Widget
 } from './ipylab';
-import { newNotebook, newSession } from './utils';
+import { newNotebook, newSessionContext } from './utils';
 
 /**
  * The model for a JupyterFrontEnd.
@@ -130,18 +130,18 @@ export class JupyterFrontEndModel extends IpylabModel {
       case 'getExistingDirectory':
         payload.manager = IpylabModel.defaultBrowser.model.manager;
         return await FileDialog.getExistingDirectory(payload).then(_get_result);
-      case 'newSession':
-        result = await newSession(payload);
-        return result.model as any;
+      case 'newSessionContext':
+        return await newSessionContext(payload);
       case 'newNotebook':
-        result = await newNotebook(payload);
-        return (result as any).sessionContext.session.model;
+        return await newNotebook(payload);
       case 'execEval':
         // Use the JupyterFrontEndModel associated with the kernel to execute the code
         jfem = await this.getJupyterFrontEndModel(payload);
         return await jfem.scheduleOperation('execEval', payload);
       case 'startIyplabPythonBackend':
-        return (await IpylabModel.pythonBackend.checkStart()) as any;
+        return (await IpylabModel.pythonBackend.checkStart(
+          payload.restart ?? false
+        )) as any;
       case 'shutdownKernel':
         if (payload.kernelId) {
           await IpylabModel.app.commands.execute('kernelmenu:shutdown', {

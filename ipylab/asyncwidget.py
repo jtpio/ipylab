@@ -22,6 +22,7 @@ else:
     from backports.strenum import StrEnum
 
 if TYPE_CHECKING:
+    import logging
     from collections.abc import Coroutine, Iterable
     from typing import ClassVar
 
@@ -144,6 +145,8 @@ class AsyncWidgetBase(WidgetBase):
     _tasks: Container[set[asyncio.Task]] = Set()
     _comm = None
     add_traits = None  # type: ignore # Don't support the method HasTraits.add_traits as it creates a new type that isn't a subclass of its origin)
+    if TYPE_CHECKING:
+        log: logging.Logger
 
     def __new__(cls, *, model_id=None, **kwgs):
         if not model_id and cls.SINGLETON:
@@ -171,28 +174,39 @@ class AsyncWidgetBase(WidgetBase):
         pass
 
     def close(self):
-        self._ipylab_model_register.pop(self.model_id, None)  # type: ignore
-        for task in self._tasks:
-            task.cancel()
-        super().close()
+        if self._repr_mimebundle_ and self._model_id:
+            self._ipylab_model_register.pop(self._model_id, None)
+            for task in self._tasks:
+                task.cancel()
+            super().close()
 
     def _check_closed(self):
         if not self._repr_mimebundle_:
             msg = f"This widget is closed {self!r}"
             raise RuntimeError(msg)
 
-    # TODO: Add better type hints once python >=3.11
-    def to_task(self, coro: Coroutine, *, just_coro=False) -> asyncio.Task:
-        """Create a task for coro and return the task. If just_coro is True the
-        coro is returned without starting it in a task so it shall be awaited separately."""
+    # TODO: Add better type hints (pass the result of the coro)
+    def to_task(self, coro: Coroutine):
+        """Run the coro in a task."""
 
         self._check_closed()
-        if just_coro:
-            return coro  # type: ignore
-        task = asyncio.create_task(coro)
+        task = asyncio.create_task(self._wrap_coro(coro))
         self._tasks.add(task)
         task.add_done_callback(self._tasks.discard)
         return task
+
+    # TODO: Add better type hints (pass the result of the coro)
+    async def _wrap_coro(self, coro: Coroutine):
+        try:
+            return await coro
+        except asyncio.CancelledError:
+            raise
+        except Exception as e:
+            try:
+                pm.hook.on_task_error(obj=self, error=e)
+                self.log.exception("Exception for %s", self)
+            finally:
+                raise e
 
     def _check_get_error(self, content: dict | None = None) -> IpylabFrontendError | None:
         if content is None:
@@ -302,7 +316,6 @@ class AsyncWidgetBase(WidgetBase):
         *,
         transform: TransformType = TransformMode.raw,
         toLuminoWidget: Iterable[str] | None = None,
-        just_coro=False,
         **kwgs,
     ):
         """
@@ -336,7 +349,7 @@ class AsyncWidgetBase(WidgetBase):
         content = {"ipylab_BE": ipylab_BE, "operation": operation, "kwgs": kwgs, "transform": TransformMode(transform)}
         if toLuminoWidget:
             content["toLuminoWidget"] = list(map(str, toLuminoWidget))
-        return self.to_task(self._send_receive(content), just_coro=just_coro)
+        return self.to_task(self._send_receive(content))
 
     def execute_method(
         self,
@@ -344,11 +357,10 @@ class AsyncWidgetBase(WidgetBase):
         *args,
         transform: TransformType = TransformMode.raw,
         toLuminoWidget: Iterable[str] | None = None,
-        just_coro=False,
     ):
         """Call a method on the corresponding frontend object.
 
-        method: 'dotted.access.to.the.method' relative to the Frontend instance.
+        method: 'dotted.access.to.the.method' relative to obj.
 
         *args
         `args` are passed in order so must correspond with the order in the JS method.
@@ -370,26 +382,25 @@ class AsyncWidgetBase(WidgetBase):
             transform=transform,
             args=args,
             toLuminoWidget=toLuminoWidget,
-            just_coro=just_coro,
         )
 
-    def get_attribute(self, path: str, *, transform: TransformType = TransformMode.raw, just_coro=False):
+    def get_attribute(self, path: str, *, transform: TransformType = TransformMode.raw):
         """A serialized version of the attribute relative to this object."""
-        return self.execute_method("getAttribute", path, transform=transform, just_coro=just_coro)
+        return self.execute_method("getAttribute", path, transform=transform)
 
-    def list_methods(self, path: str = "", *, depth=2, skip_hidden=True, just_coro=False):
+    def list_methods(self, path: str = "", *, depth=2, skip_hidden=True):
         """Get a list of methods belonging to the object 'path' of the Frontend instance.
         depth: The depth in the object inheritance to search for methods.
         """
-        coro_ = self.list_attributes(path, JavascriptType.function, depth, how="names", just_coro=True)
+        task = self.list_attributes(path, JavascriptType.function, depth, how="names")
 
         async def _list_methods():
-            payload: list = await coro_  # type: ignore
+            payload: list = await task
             if skip_hidden:
                 return [n for n in payload if not n.startswith("_")]
             return payload
 
-        return self.to_task(_list_methods(), just_coro=just_coro)
+        return self.to_task(_list_methods())
 
     def list_attributes(
         self,
@@ -399,17 +410,16 @@ class AsyncWidgetBase(WidgetBase):
         *,
         how="group",
         transform: TransformType = TransformMode.raw,
-        just_coro=False,
     ):
         """Get a mapping of attributes of the object at 'path' of the Frontend instance.
 
         depth: The depth in the object inheritance to search for attributes.
         how: ['names', 'group', 'raw'] (ignored if callback provided)
         """
-        coro_ = self.execute_method("listAttributes", path, type, depth, just_coro=True, transform=transform)
+        task = self.execute_method("listAttributes", path, type, depth, transform=transform)
 
         async def list_attributes_():
-            payload: list = await coro_  # type: ignore
+            payload: list = await task
             if how == "names":
                 payload = [row["name"] for row in payload]
             elif how == "group":
@@ -421,9 +431,16 @@ class AsyncWidgetBase(WidgetBase):
                 return groups
             return payload
 
-        return self.to_task(list_attributes_(), just_coro=just_coro)
+        return self.to_task(list_attributes_())
 
-    def execute_command(self, command_id: str, *, execute_kwgs: dict | None = None, just_coro=False, **kwgs):
+    def execute_command(
+        self,
+        command_id: str,
+        *,
+        transform: TransformType = TransformMode.done,
+        toLuminoWidget: Iterable[str] | None = None,
+        **kwgs,
+    ):
         """Execute the command_id registered with Jupyterlab.
 
         `kwgs` correspond to `args` in JupyterLab.
@@ -440,6 +457,6 @@ class AsyncWidgetBase(WidgetBase):
             "app.commands.execute",
             command_id,
             kwgs,  # -> used as 'args' in Jupyter
-            just_coro=just_coro,
-            **execute_kwgs or {},
+            transform=transform,
+            toLuminoWidget=toLuminoWidget,
         )

@@ -48,12 +48,12 @@ class DisposableConnection(FrontEndSubsection, AsyncWidgetBase):
         self._connections.pop(self.id, None)
         super().close()
 
-    def dispose(self, *, just_coro=False):
+    def dispose(self):
         "Close the disposable on the frontend."
 
         async def dispose_():
             if self.comm:
                 with contextlib.suppress(asyncio.CancelledError):
-                    await self.execute_method("dispose", just_coro=True)
+                    await self.execute_method("dispose")
 
-        return self.to_task(dispose_(), just_coro=just_coro)
+        return self.to_task(dispose_())

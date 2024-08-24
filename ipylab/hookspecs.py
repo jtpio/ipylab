@@ -30,6 +30,17 @@ class IpylabHookspec:
                 The content of the message accompanying the frontend error.
         """
 
+    @hookspec
+    def on_task_error(self, obj: AsyncWidgetBase, error: Exception) -> None:
+        """Intercept an error message for logging purposes.
+
+        Fired when an exception occurs in a task started with the method `AsyncWidgetBase.to_task`.
+
+        Args: AsyncWidgetBase
+            obj:
+                The object from where the error.
+        """
+
     @hookspec(firstresult=True)
     def unhandled_frontend_operation_message(self, obj: AsyncWidgetBase, operation: str):
         """Handle a message from the frontend."""

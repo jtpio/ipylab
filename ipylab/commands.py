@@ -22,10 +22,8 @@ class CommandPalette(AsyncWidgetBase):
     _model_name = Unicode("CommandPaletteModel").tag(sync=True)
     items = Tuple(read_only=True).tag(sync=True)
 
-    def add_item(self, command_id: str, category: str, *, rank=None, args: dict | None = None, just_coro=False):
-        return self.schedule_operation(
-            operation="addItem", id=command_id, category=category, rank=rank, args=args, just_coro=just_coro
-        )
+    def add_item(self, command_id: str, category: str, *, rank=None, args: dict | None = None):
+        return self.schedule_operation(operation="addItem", id=command_id, category=category, rank=rank, args=args)
 
     def remove_item(self, command_id: str, category):
         return self.schedule_operation(operation="removeItem", id=command_id, category=category)
@@ -76,7 +74,6 @@ class CommandRegistry(FrontEndSubsection):
         label="",
         icon_class="",
         icon: Icon | None = None,
-        just_coro=False,
     ):
         """
         toLuminoWidget : bool
@@ -92,24 +89,18 @@ class CommandRegistry(FrontEndSubsection):
             iconClass=icon_class,
             icon=pack(icon),
             transform=TransformMode.connection,
-            just_coro=just_coro,
         )
 
-    def removePythonCommand(self, command_id: str, *, just_coro=False):
+    def removePythonCommand(self, command_id: str):
         # TODO: check whether to keep this method, or return disposables like in lab
         if command_id not in self._execute_callbacks:
             msg = f"{command_id=} is not a registered command!"
             raise ValueError(msg)
 
-        coro_ = self.schedule_operation(
-            "removePythonCommand",
-            command_id=command_id,
-            just_coro=True,
-            transform=TransformMode.done,
-        )
+        task = self.schedule_operation("removePythonCommand", command_id=command_id, transform=TransformMode.done)
 
         async def removePythonCommand_():
-            await coro_
+            await task
             self._execute_callbacks.pop(command_id, None)
 
-        return self.to_task(removePythonCommand_(), just_coro=just_coro)
+        return self.to_task(removePythonCommand_())

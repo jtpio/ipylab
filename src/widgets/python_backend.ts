@@ -1,19 +1,23 @@
 import { Session } from '@jupyterlab/services';
 import { IpylabModel, IDisposable } from './ipylab';
-import { newSession } from './utils';
+import { newSessionContext } from './utils';
 /**
  *  The Python backend that auto loads python side plugins using `pluggy` module.
  *
  */
 export class PythonBackendModel {
-  async checkStart() {
+  async checkStart(restart?: false) {
     if (!this._backendSession || this._backendSession.disposed) {
-      this._backendSession = await newSession({
+      const context = await newSessionContext({
         path: 'Ipylab backend',
         name: 'Ipylab backend',
         language: 'python3',
         code: 'import ipylab.scripts; ipylab.scripts.init_ipylab_backend()'
       });
+      this._backendSession = context.session;
+    }
+    if (restart && this._command) {
+      this._command.dispose();
     }
     // Add a command
     if (!this._command || this._command.isDisposed) {
