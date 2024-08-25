@@ -76,7 +76,6 @@ class JupyterFrontEnd(AsyncWidgetBase):
         "Run by the Ipylab python backend."
         # This is called in a separate kernel started by the JavaScript frontend
         # the first time the ipylab plugin is activated.
-        from ipylab.hookspecs import pm
 
         try:
             count = pm.load_setuptools_entrypoints("ipylab_backend")
@@ -89,9 +88,7 @@ class JupyterFrontEnd(AsyncWidgetBase):
         match operation:
             case "execEval":
                 return await self._exec_eval(payload, buffers)
-            case _:
-                pm.hook.unhandled_frontend_operation_message(obj=self, operation=operation)
-        raise NotImplementedError
+        return await super()._do_operation_for_frontend(operation, payload, buffers)
 
     def shutdown_kernel(self, kernelId: str | None = None):
         """Shutdown the kernel"""

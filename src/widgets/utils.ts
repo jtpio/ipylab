@@ -101,7 +101,15 @@ export async function newNotebook({
  * @param path Dotted path to an object below base
  * @returns
  */
-export function getNestedObject(base: object, path: string): any {
+export function getNestedObject({
+  base,
+  path,
+  ifMissing = 'raise'
+}: {
+  base: object;
+  path: string;
+  ifMissing?: string;
+}): any {
   let obj: object = base;
   let path_ = '';
   const parts = path.split('.');
@@ -116,6 +124,9 @@ export function getNestedObject(base: object, path: string): any {
     }
   }
   if (path_ !== path) {
+    if (ifMissing === 'null') {
+      return null;
+    }
     throw new Error(
       `Failed to get the nested attribute ${path_}.${attr} ` +
         ` (base='${(base as any).name ?? 'unknown'}') `
@@ -131,7 +142,10 @@ export function getNestedObject(base: object, path: string): any {
  * @param value
  */
 export function setNestedAttribute(base: object, path: string, value: any) {
-  const obj = getNestedObject(base, path.split('.').slice(0, -1).join('.'));
+  const obj = getNestedObject({
+    base: base,
+    path: path.split('.').slice(0, -1).join('.')
+  });
   obj[path.split('.').slice(-1)[0]] = value;
 }
 
@@ -182,7 +196,7 @@ export async function transformObject(
           path = options.parts[i].path;
           transform = options.parts[i].transform;
         }
-        part = getNestedObject(obj, path);
+        part = getNestedObject({ base: obj, path: path });
         (result as any)[path] = await transformObject(part, transform);
       }
       return result as any;

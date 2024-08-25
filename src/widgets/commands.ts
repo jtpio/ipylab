@@ -2,7 +2,6 @@
 // Distributed under the terms of the Modified BSD License.
 
 import { unpack_models } from '@jupyter-widgets/base';
-import { LabIcon } from '@jupyterlab/ui-components';
 import {
   IDisposable,
   ISerializers,
@@ -10,6 +9,7 @@ import {
   JSONValue,
   onKernelLost
 } from './ipylab';
+import { transformObject } from './utils';
 /**
  * The model for a command registry.
  */
@@ -93,32 +93,29 @@ export class CommandRegistryModel extends IpylabModel {
    * @param options.label
    * @param options.iconClass
    * @param options.icon
+   * @param options.command_result_transform
    */
   private async _addCommand(options: any): Promise<IDisposable> {
-    const { id, caption, label, iconClass, icon } = options;
+    const { id, icon, command_result_transform } = options;
 
-    let labIcon: LabIcon | null = null;
-    if (icon) {
-      labIcon = (await unpack_models(icon, this.widget_manager))?.labIcon;
+    if (options.icon) {
+      options.icon = (await unpack_models(icon, this.widget_manager))?.labIcon;
     }
 
     this._removeCommand(id);
 
-    // TODO: Add better support for enabling/disabling commands
-    // Add synchronized lists for disabled and hidden
-    const commandEnabled = (command: IDisposable): boolean => {
-      return !command.isDisposed && !!this.comm && this.comm_live;
-    };
     const command = this.commands.addCommand(id, {
-      caption,
-      label,
-      iconClass,
-      icon: labIcon,
-      execute: (args: any) => {
-        this.scheduleOperation('execute', { id: id, kwgs: args });
+      execute: async (args: any) => {
+        const result = await this.scheduleOperation('execute', {
+          id: id,
+          kwgs: args
+        });
+        return await transformObject(result, command_result_transform, this);
       },
-      isEnabled: () => commandEnabled(command),
-      isVisible: () => commandEnabled(command)
+      isEnabled: () => this.getDisposable(id)?.config?.enabled ?? true,
+      isVisible: () => this.getDisposable(id)?.config?.visible ?? true,
+      isToggled: () => this.getDisposable(id)?.config?.toggled ?? true,
+      ...options
     });
     (command as any).id = id;
     IpylabModel.trackDisposable(command);

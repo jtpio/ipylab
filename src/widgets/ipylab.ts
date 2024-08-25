@@ -133,7 +133,11 @@ export class IpylabModel extends WidgetModel {
       if (msg.toLuminoWidget instanceof Array) {
         // Replace values with widgets
         for (const path of msg.toLuminoWidget) {
-          const value = getNestedObject(msg.kwgs, path);
+          const value = getNestedObject({
+            base: msg.kwgs,
+            path: path,
+            ifMissing: 'raise'
+          });
           if (value && typeof value === 'string') {
             const luminoWidget = await this.toLuminoWidget(value);
             setNestedAttribute(msg.kwgs, path, luminoWidget);
@@ -214,11 +218,11 @@ export class IpylabModel extends WidgetModel {
       case 'execute_method': {
         let obj;
         (obj as any) = this;
-        const owner = getNestedObject(
-          obj,
-          kwgs.method.split('.').slice(0, -1).join('.')
-        );
-        let func = getNestedObject(obj, kwgs.method);
+        const owner = getNestedObject({
+          base: obj,
+          path: kwgs.method.split('.').slice(0, -1).join('.')
+        });
+        let func = getNestedObject({ base: obj, path: kwgs.method });
         func = func.bind(owner, ...(payload as any).args);
         return await func();
       }
@@ -277,14 +281,19 @@ export class IpylabModel extends WidgetModel {
 
   listAttributes(path: string, type = '', depth = 2) {
     return listAttributes({
-      obj: getNestedObject(this, path),
+      obj: getNestedObject({ base: this, path: path }),
       type: type,
       depth: depth
     });
   }
 
-  getAttribute(path: string) {
-    return getNestedObject(this, path);
+  getAttribute(path: string, ifMissing = 'raise') {
+    return getNestedObject({ base: this, path, ifMissing: ifMissing });
+  }
+
+  async setAttribute(path: string, value: any, valueTransform: string) {
+    const value_ = await transformObject(value, valueTransform ?? 'raw', this);
+    setNestedAttribute(this, path, value_);
   }
 
   close(comm_closed?: boolean): Promise<void> {

@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import asyncio
 import inspect
-import sys
 import traceback
 import uuid
 from typing import TYPE_CHECKING, Any
@@ -13,18 +12,14 @@ from ipywidgets import Widget, register, widget_serialization
 from traitlets import Container, Dict, Instance, Set, Unicode
 
 import ipylab._frontend as _fe
+from ipylab._compat.enum import StrEnum
 from ipylab.hasapp import HasApp
 from ipylab.hookspecs import pm
-
-if sys.version_info >= (3, 11):
-    from enum import StrEnum
-else:
-    from backports.strenum import StrEnum
 
 if TYPE_CHECKING:
     import logging
     from collections.abc import Coroutine, Iterable
-    from typing import ClassVar
+    from typing import ClassVar, Literal
 
 
 __all__ = ["AsyncWidgetBase", "WidgetBase", "register", "pack", "Widget"]
@@ -384,9 +379,43 @@ class AsyncWidgetBase(WidgetBase):
             toLuminoWidget=toLuminoWidget,
         )
 
-    def get_attribute(self, path: str, *, transform: TransformType = TransformMode.raw):
+    def get_attribute(
+        self,
+        path: str,
+        *,
+        transform: TransformType = TransformMode.raw,
+        ifMissing: Literal["raise", "null"] = "raise",
+    ):
         """A serialized version of the attribute relative to this object."""
-        return self.execute_method("getAttribute", path, transform=transform)
+        return self.execute_method("getAttribute", path, ifMissing, transform=transform)
+
+    def set_attribute(
+        self,
+        path: str,
+        value,
+        valueTransform: TransformType = TransformMode.raw,
+        *,
+        valueToLuminoWidget=False,
+    ):
+        """Set the attribute at the path in the frontend.
+        path: str
+            "the.path.to.the.attribute" to be set.
+        value: jsonable
+            The value to set, or instructions for the transform to do in the frontend.
+        valueTransform: TransformType
+            valueTransform is applied to the value prior to setting the attribute.
+        valueToLuminoWidget: bool
+            Whether the value should be converted to a Lumino widget. The value transform
+            can be left as raw unless further adanced transformation is required.
+        """
+        return self.execute_method(
+            "setAttribute",
+            path,
+            pack(value),
+            valueTransform,
+            toLuminoWidget=["args[1]"] if valueToLuminoWidget else [],
+            transform=TransformMode.done,
+        )
 
     def list_methods(self, path: str = "", *, depth=2, skip_hidden=True):
         """Get a list of methods belonging to the object 'path' of the Frontend instance.

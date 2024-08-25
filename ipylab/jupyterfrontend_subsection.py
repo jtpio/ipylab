@@ -9,6 +9,7 @@ from ipylab.asyncwidget import AsyncWidgetBase
 
 if TYPE_CHECKING:
     from collections.abc import Iterable
+    from typing import Literal
 
     from ipylab.asyncwidget import TransformType
 
@@ -32,15 +33,37 @@ class FrontEndSubsection(AsyncWidgetBase):
         JupyterFrontEndModel in the JS frontend.
         """
         return super().execute_method(
-            method if method == "getAttribute" else f"{self.SUB_PATH_BASE}.{method}",
+            method if method in ["getAttribute", "setAttribute"] else f"{self.SUB_PATH_BASE}.{method}",
             *args,
             transform=transform,
             toLuminoWidget=toLuminoWidget,
         )
 
-    def get_attribute(self, path: str, *, transform: TransformType = TransformMode.raw):
+    def get_attribute(
+        self,
+        path: str,
+        *,
+        transform: TransformType = TransformMode.raw,
+        ifMissing: Literal["raise", "null"] = "raise",
+    ):
         """Get an attribute by name from the front end."""
-        return super().get_attribute(f"{self.SUB_PATH_BASE}.{path}", transform=transform)
+        return super().get_attribute(f"{self.SUB_PATH_BASE}.{path}", transform=transform, ifMissing=ifMissing)
+
+    def set_attribute(
+        self,
+        path: str,
+        value,
+        valueTransform: TransformType = TransformMode.raw,
+        *,
+        valueToLuminoWidget=False,
+    ):
+        """Set an attribute on the object in the frontend based on the object to which this refers."""
+        return super().set_attribute(
+            f"{self.SUB_PATH_BASE}.{path}",
+            value,
+            valueTransform,
+            valueToLuminoWidget=valueToLuminoWidget,
+        )
 
     def list_attributes(self, path: str = "", *, transform: TransformType = TransformMode.raw):
         """Get a list of all attributes."""

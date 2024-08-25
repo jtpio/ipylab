@@ -2,18 +2,13 @@
 # Distributed under the terms of the Modified BSD License.
 from __future__ import annotations
 
-import sys
 import typing as t
 
 from ipylab import pack
+from ipylab._compat.enum import StrEnum
 from ipylab.asyncwidget import TransformMode
 from ipylab.disposable_connection import DisposableConnection
 from ipylab.jupyterfrontend_subsection import FrontEndSubsection
-
-if sys.version_info >= (3, 11):
-    from enum import StrEnum
-else:
-    from backports.strenum import StrEnum
 
 if t.TYPE_CHECKING:
     from asyncio import Task
