@@ -57,10 +57,30 @@ class CommandConnection(DisposableConnection):
         return self.to_task(get_config_())
 
     def add_launcher(self, category: str):
-        return self.app.commands.launcher.add(self, category)
+        """Add a launcher for this command.
+
+        When this link is closed the launcher will be disposed.
+        """
+
+        async def add_launcher_():
+            launcher = await self.app.commands.launcher.add(self, category)
+            self.observe(lambda _: launcher.dispose(), names="comm")
+            return launcher
+
+        return self.to_task(add_launcher_())
 
     def add_to_command_pallet(self, category: str):
-        return self.app.commands.pallet.add(self, category)
+        """Add a pallet item for this command.
+
+        When this link is closed the pallet item will be disposed.
+        """
+
+        async def add_to_command_pallet_():
+            pallet_item = await self.app.commands.pallet.add(self, category)
+            self.observe(lambda _: pallet_item.dispose(), names="comm")
+            return pallet_item
+
+        return self.to_task(add_to_command_pallet_())
 
 
 class CommandPalletConnection(DisposableConnection):
