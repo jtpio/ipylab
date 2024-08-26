@@ -13,12 +13,15 @@ export class TitleModel extends WidgetModel {
   /**
    * The default attributes.
    */
-  defaults(): any {
+  defaults(): Backbone.ObjectHash {
     return {
       ...super.defaults(),
       _model_name: TitleModel.model_name,
       _model_module: TitleModel.model_module,
-      _model_module_version: TitleModel.model_module_version
+      _model_module_version: TitleModel.model_module_version,
+      _view_name: null,
+      _view_module: MODULE_NAME,
+      _view_module_version: MODULE_VERSION
     };
   }
 

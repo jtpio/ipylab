@@ -64,15 +64,11 @@ export class SplitPanelModel extends PanelModel {
   /**
    * The default attributes.
    */
-  defaults(): any {
+  defaults(): Backbone.ObjectHash {
     return {
       ...super.defaults(),
       _model_name: SplitPanelModel.model_name,
-      _model_module: SplitPanelModel.model_module,
-      _model_module_version: SplitPanelModel.model_module_version,
-      _view_name: SplitPanelModel.view_name,
-      _view_module: SplitPanelModel.model_module,
-      _view_module_version: SplitPanelModel.model_module_version
+      _view_name: SplitPanelModel.view_name
     };
   }
 

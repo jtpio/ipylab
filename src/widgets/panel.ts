@@ -20,7 +20,7 @@ export class PanelModel extends BoxModel {
   /**
    * The default attributes.
    */
-  defaults(): any {
+  defaults(): Backbone.ObjectHash {
     return {
       ...super.defaults(),
       _model_name: PanelModel.model_name,

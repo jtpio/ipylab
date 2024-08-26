@@ -16,10 +16,15 @@ export class DisposableConnectionModel extends IpylabModel {
     options: IBackboneModelOptions
   ): Promise<void> {
     super.initialize(attributes, options);
-    this.obj.disposed.connect(() => this.close());
+    this.base.disposed.connect(() => {
+      if (!this.get('_dispose')) {
+        this.close();
+      }
+    });
+    this.listenTo(this, 'change:_dispose', () => this.base.dispose());
   }
 
-  get obj() {
+  get base() {
     try {
       return this.getDisposable(this.get('id'));
     } catch {
@@ -30,7 +35,7 @@ export class DisposableConnectionModel extends IpylabModel {
   /**
    * The default attributes.
    */
-  defaults(): any {
+  defaults(): Backbone.ObjectHash {
     return {
       ...super.defaults(),
       _model_name: IpylabModel.disposable_model_name,

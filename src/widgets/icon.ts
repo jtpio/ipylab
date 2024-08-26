@@ -33,7 +33,7 @@ export class IconModel extends DOMWidgetModel {
   /**
    * The default attributes.
    */
-  defaults(): any {
+  defaults(): Backbone.ObjectHash {
     return {
       ...super.defaults(),
       _model_name: IconModel.model_name,

@@ -3,40 +3,36 @@
 
 from __future__ import annotations
 
-import asyncio
-import contextlib
 from typing import Generic, TypeVar
 
 from ipywidgets import register
-from traitlets import Unicode
+from traitlets import Bool, Unicode
 
 from ipylab.asyncwidget import AsyncWidgetBase
-from ipylab.jupyterfrontend_subsection import FrontEndSubsection
 
 T = TypeVar("T", bound="DisposableConnection")
 
 
 @register
-class DisposableConnection(FrontEndSubsection, AsyncWidgetBase, Generic[T]):
+class DisposableConnection(AsyncWidgetBase, Generic[T]):
     """A connection to a disposable object in the Frontend.
 
-    The dispose method is directly accesssable.
+    This defines the 'base' as the disposable object meaning the frontend attribute methods
+    are associated directly with the object on the frontend.
 
-    Other attributes and methods are available using the corresponding built in methods.
-
-    The comm trait can be observed for when the lumino widget in Jupyterlab is closed.
+    The 'dispose' method will call the dispose method on the frontend object and close.
 
     see: https://lumino.readthedocs.io/en/latest/api/modules/disposable.html
 
     Subclasses that are inherited with and ID_PREFIX
     """
 
-    SUB_PATH_BASE = "obj"
     ID_PREFIX = ""
     _CLASS_DEFINITIONS: dict[str, type[T]] = {}  # noqa RUF012
     _connections: dict[str, T] = {}  # noqa RUF012
     _model_name = Unicode("DisposableConnectionModel").tag(sync=True)
     id = Unicode(read_only=True).tag(sync=True)
+    _dispose = Bool(read_only=True).tag(sync=True)
 
     def __init_subclass__(cls, **kwargs) -> None:
         if cls.ID_PREFIX:
@@ -60,10 +56,17 @@ class DisposableConnection(FrontEndSubsection, AsyncWidgetBase, Generic[T]):
     def to_id(cls, name_or_id: str | T) -> str:
         """Generate an id for the given name."""
         if isinstance(name_or_id, DisposableConnection):
+            if not isinstance(name_or_id, cls):
+                msg = f"{name_or_id} is not a subclass of {cls}"
+                raise TypeError(msg)
             return name_or_id.id
         if not cls.ID_PREFIX:
             return name_or_id
         return f"{cls.ID_PREFIX}:{name_or_id.removeprefix(cls.ID_PREFIX).strip(':')}"
+
+    @classmethod
+    def get_instances(cls) -> tuple[T]:
+        return tuple(item for item in cls._connections.values() if item.__class__ is cls)  # type: ignore
 
     def __init__(self, *, id: str, model_id=None, **kwgs):  # noqa: A002
         if self._async_widget_base_init_complete:
@@ -76,16 +79,22 @@ class DisposableConnection(FrontEndSubsection, AsyncWidgetBase, Generic[T]):
         super().close()
 
     def dispose(self):
-        "Close the disposable on the frontend."
-
-        async def dispose_():
-            if self.comm:
-                with contextlib.suppress(asyncio.CancelledError):
-                    await self.execute_method("dispose")
-
-        return self.to_task(dispose_())
+        "Dispose of the disposable on the frontend and close."
+        self.set_trait("_dispose", True)
+        self.close()
 
     @classmethod
-    def get_existing_connection(cls, name_or_id: str | T):
-        "Get an existing connection"
-        return cls._connections.get(cls.to_id(name_or_id))
+    def get_existing_connection(cls, name_or_id: str | T, *, quiet=False):
+        """Get an existing connection.
+
+        quiet: bool
+            If the connection does exist:
+                * False -> Will raise an error.
+                * True -> Will return None.
+        """
+        id_ = cls.to_id(name_or_id)
+        conn = cls._connections.get(id_)
+        if not conn and not quiet:
+            msg = f"A connection does not exist with id='{id_}'"
+            raise ValueError(msg)
+        return conn

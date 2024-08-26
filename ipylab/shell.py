@@ -6,9 +6,8 @@ import typing as t
 
 from ipylab import pack
 from ipylab._compat.enum import StrEnum
-from ipylab.asyncwidget import TransformMode
+from ipylab.asyncwidget import AsyncWidgetBase, TransformMode, Unicode
 from ipylab.disposable_connection import DisposableConnection
-from ipylab.jupyterfrontend_subsection import FrontEndSubsection
 
 if t.TYPE_CHECKING:
     from asyncio import Task
@@ -44,7 +43,7 @@ class InsertMode(StrEnum):
     tab_after = "tab-after"
 
 
-class Shell(FrontEndSubsection):
+class Shell(AsyncWidgetBase):
     """
     Provides access to the shell.
     The minimal interface is:
@@ -55,7 +54,7 @@ class Shell(FrontEndSubsection):
     ref: https://jupyterlab.readthedocs.io/en/latest/api/interfaces/application.JupyterFrontEnd.IShell.html#add
     """
 
-    SUB_PATH_BASE = "app.shell"
+    _basename = Unicode("shell")
 
     def addToShell(
         self,

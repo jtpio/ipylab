@@ -64,12 +64,51 @@ export class IpylabModel extends WidgetModel {
     const msg = `ipylab ${this.get('_model_name')} ready for operations`;
     this.send({ init: msg });
     onKernelLost((this.widget_manager as any).kernel, this.close, this);
+    const basename = this.get('_basename');
+    this._base = basename
+      ? getNestedObject({ base: this, path: basename })
+      : this;
+  }
+
+  get base(): object {
+    return this._base;
   }
 
   get app() {
     return IpylabModel.app;
   }
 
+  get rendermime() {
+    return IpylabModel.rendermime;
+  }
+
+  get labShell() {
+    return IpylabModel.labShell;
+  }
+
+  get defaultBrowser() {
+    return IpylabModel.defaultBrowser;
+  }
+
+  get pallet() {
+    return IpylabModel.palette;
+  }
+
+  get translator() {
+    return IpylabModel.translator;
+  }
+
+  get launcher() {
+    return IpylabModel.launcher;
+  }
+
+  get commands() {
+    return IpylabModel.app.commands;
+  }
+
+  get exports() {
+    return IpylabModel.exports;
+  }
   get kernelId() {
     return this._kernelId;
   }
@@ -77,6 +116,10 @@ export class IpylabModel extends WidgetModel {
   get kernelLive() {
     const status = (this.widget_manager as any)?.kernel?.status;
     return status ? !['dead'].includes(status) : false;
+  }
+
+  getModelName(): string {
+    return this.constructor.prototype.defaults()['_modelName'];
   }
 
   /**
@@ -105,7 +148,7 @@ export class IpylabModel extends WidgetModel {
 
   /**
    * Perform an operation for the backend returning the result if successful
-   * or an error 'message' if unsuccessful.
+   * or an 'error' message if unsuccessful.
    * Results are 'transformed' by the method specified in the call to the operation from the backend.
    * The transformed result is returned to the backend using the ipylab_BE value (uuid4).
    * @param msg
@@ -113,7 +156,6 @@ export class IpylabModel extends WidgetModel {
   private async _do_operation_for_backend(msg: any) {
     const operation: string = msg.operation;
     const ipylab_BE: string = msg.ipylab_BE;
-    const transform: object | string = msg.transform;
 
     try {
       if (!operation) {
@@ -136,7 +178,7 @@ export class IpylabModel extends WidgetModel {
           const value = getNestedObject({
             base: msg.kwgs,
             path: path,
-            ifMissing: 'raise'
+            nullIfMissing: false
           });
           if (value && typeof value === 'string') {
             const luminoWidget = await this.toLuminoWidget(value);
@@ -144,11 +186,7 @@ export class IpylabModel extends WidgetModel {
           }
         }
       }
-      if (operation === 'FE_execute') {
-        result = await this._fe_execute(msg.kwgs);
-      } else {
-        result = await this.operation(operation, msg.kwgs);
-      }
+      result = await this.operation(operation, msg.kwgs);
       let buffers = null;
       if ((result as any)?.buffers) {
         buffers = (result as any).buffers;
@@ -160,7 +198,7 @@ export class IpylabModel extends WidgetModel {
       const content = {
         ipylab_BE: ipylab_BE,
         operation: operation,
-        payload: await transformObject(result, transform, this)
+        payload: await transformObject(result, msg.transform, this, msg.kwgs)
       };
       this.send(content, null, buffers);
     } catch (e) {
@@ -203,32 +241,6 @@ export class IpylabModel extends WidgetModel {
   }
 
   /**
-   * Perform execute request from backend.
-   * Options:
-   *  - execute_method: Execute the method using dotted access.
-   *      eg. 'shell.expandLeft' will execute the method this.shell.expandLeft
-   *      args must be passed in an array in the as defined in the method.
-   * @param payload
-   * @returns
-   */
-  async _fe_execute(payload: object): Promise<JSONValue> {
-    const { mode, kwgs } = (payload as any).FE_execute;
-    delete (payload as any).FE_execute;
-    switch (mode) {
-      case 'execute_method': {
-        let obj;
-        (obj as any) = this;
-        const owner = getNestedObject({
-          base: obj,
-          path: kwgs.method.split('.').slice(0, -1).join('.')
-        });
-        let func = getNestedObject({ base: obj, path: kwgs.method });
-        func = func.bind(owner, ...(payload as any).args);
-        return await func();
-      }
-    }
-  }
-  /**
    * Perform an operation and return the result. The returned result
    * will be transformed prior to returning the response message to the backend.
    *
@@ -238,15 +250,18 @@ export class IpylabModel extends WidgetModel {
    */
   async operation(op: string, payload: any): Promise<JSONValue | IDisposable> {
     switch (op) {
-      case 'myFunction':
-        // do something
-        return; // the result (it will get converted as required);
+      case 'executeMethod':
+        return await this._executeMethod(payload);
+      case 'listAttributes':
+        return this._listAttributes(payload);
+      case 'setAttribute':
+        return this._setAttribute(payload);
+      case 'getAttribute':
+        return this._getAttribute(payload);
       default:
         // Each failed operation should throw an error if it is un-handled
         throw new Error(
-          `operation='${op}' has not been implemented in ${this.get(
-            '_model_name'
-          )}!`
+          `operation='${op}' has not been implemented in ${this.getModelName()}!`
         );
     }
   }
@@ -276,24 +291,56 @@ export class IpylabModel extends WidgetModel {
     this._pendingBackendOperations.set(ipylab_FE, opDone);
     this.send(msg);
     const result: any = await opDone.promise;
-    return await transformObject(result, transform ?? 'raw', this);
+    return await transformObject(result, transform ?? 'raw', this, payload);
   }
 
-  listAttributes(path: string, type = '', depth = 2) {
+  private async _executeMethod(payload: any): Promise<JSONValue> {
+    const { path, args } = payload;
+    const obj = this.base;
+    const ownername = path.split('.').slice(0, -1).join('.');
+    const owner = getNestedObject({
+      base: obj,
+      path: ownername,
+      basename: this.get('_basename')
+    });
+    let func = getNestedObject({ base: obj, path: path, basename: ownername });
+    func = func.bind(owner, ...args);
+    return await func();
+  }
+
+  private _listAttributes(payload: any) {
+    const { path, type, depth } = payload as any;
     return listAttributes({
-      obj: getNestedObject({ base: this, path: path }),
+      obj: getNestedObject({
+        base: this.base,
+        path: path,
+        basename: this.get('_basename')
+      }),
       type: type,
-      depth: depth
+      depth: depth ?? 2
     });
   }
 
-  getAttribute(path: string, ifMissing = 'raise') {
-    return getNestedObject({ base: this, path, ifMissing: ifMissing });
+  private _getAttribute(payload: any) {
+    const { path, nullIfMissing } = payload;
+    return getNestedObject({
+      base: this.base,
+      path,
+      nullIfMissing: nullIfMissing ?? false,
+      basename: this.get('_basename')
+    });
   }
 
-  async setAttribute(path: string, value: any, valueTransform: string) {
-    const value_ = await transformObject(value, valueTransform ?? 'raw', this);
-    setNestedAttribute(this, path, value_);
+  private async _setAttribute(payload: any): Promise<null> {
+    const { path, value, valueTransform, valueTransformKwgs } = payload;
+    const value_ = await transformObject(
+      value,
+      valueTransform ?? 'raw',
+      this,
+      valueTransformKwgs
+    );
+    setNestedAttribute(this.base, path, value_);
+    return null;
   }
 
   close(comm_closed?: boolean): Promise<void> {
@@ -389,6 +436,20 @@ export class IpylabModel extends WidgetModel {
       throw new Error(`Lumino widget with id='${id}' not found in the shell.`);
     }
   }
+  /**
+   * The default attributes.
+   */
+  defaults(): Backbone.ObjectHash {
+    return {
+      ...super.defaults(),
+      _model_name: IpylabModel.model_name,
+      _model_module: IpylabModel.model_module,
+      _model_module_version: IpylabModel.model_module_version,
+      _view_name: IpylabModel.view_name,
+      _view_module: IpylabModel.view_module,
+      _view_module_version: IpylabModel.view_module_version
+    };
+  }
 
   static serializers: ISerializers = {
     ...WidgetModel.serializers
@@ -396,6 +457,7 @@ export class IpylabModel extends WidgetModel {
 
   private _pendingBackendOperations = new Map<string, PromiseDelegate<any>>();
   private _kernelId: string;
+  private _base: object | null;
   static pythonBackend = new PythonBackendModel();
   static model_name: string;
   static model_module = MODULE_NAME;

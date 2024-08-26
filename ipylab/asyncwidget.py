@@ -47,7 +47,7 @@ class TransformMode(StrEnum):
     - raw: No conversion. Note: data is serialized when sending, some objects shouldn't be serialized.
     - attribute: A dotted attribute of the returned object is returned. ['path']='dotted.path.name'
     - function: Use a function to calculate the return value. ['code'] = 'function...'
-    - connection: Hopefully return a connection to a disposeable.
+    - connection: Return a connection to a disposable object in the frontend.
 
     `attribute`
     ---------
@@ -71,10 +71,12 @@ class TransformMode(StrEnum):
     --------
     JS code defining a function and the data to return.
 
+    The function must accept two args: obj, options.
+
     ```
     transform = {
         "mode": "function",
-        "code": "function (obj) { return obj.id; }",
+        "code": "function (obj, options) { return obj.id; }",
     }"""
 
     raw = "raw"
@@ -130,6 +132,7 @@ class AsyncWidgetBase(WidgetBase):
     """The base for all widgets that need async comms with the frontend model."""
 
     _model_name = Unicode("IpylabModel", help="Name of the model.", read_only=True).tag(sync=True)
+    _basename = Unicode(allow_none=True).tag(sync=True)
     kernelId = Unicode(read_only=True).tag(sync=True)  # noqa: N815
     _async_widget_base_init_complete = False
     _ipylab_model_register: ClassVar[dict[str, Any]] = {}
@@ -169,10 +172,11 @@ class AsyncWidgetBase(WidgetBase):
         pass
 
     def close(self):
+        for task in self._tasks:
+            task.cancel()
+        self._tasks.clear()
         if self._repr_mimebundle_ and self._model_id:
             self._ipylab_model_register.pop(self._model_id, None)
-            for task in self._tasks:
-                task.cancel()
             super().close()
 
     def _check_closed(self):
@@ -304,7 +308,6 @@ class AsyncWidgetBase(WidgetBase):
         """
         pm.hook.unhandled_frontend_operation_message(obj=self, operation=operation)
 
-    # TODO: add overloads for the transform type
     def schedule_operation(
         self,
         operation: str,
@@ -313,14 +316,14 @@ class AsyncWidgetBase(WidgetBase):
         toLuminoWidget: Iterable[str] | None = None,
         **kwgs,
     ):
-        """
+        """Create a new task requesting an operation to be performed in the frontend.
 
         operation: str
             Name corresponding to operation in JS frontend.
 
         transform : TransformMode | dict
             see ipylab.TransformMode
-        note: If there is a name clash with the operation, use kwgs={}
+
         toLuminoWidget: Iterable[str] | None
             Items in kwgs that should be converted to a Lumino widget
             Each string should correspond to the dotted path/index in kwgs that has
@@ -334,6 +337,7 @@ class AsyncWidgetBase(WidgetBase):
                 toLuminoWidget = ['args.0', 'args.3']
 
         **kwgs: Keyword arguments for the frontend operation.
+            kwgs are also available to the transform.
         """
         # validation
         self._check_closed()
@@ -348,18 +352,21 @@ class AsyncWidgetBase(WidgetBase):
 
     def execute_method(
         self,
-        method: str,
+        path: str,
         *args,
         transform: TransformType = TransformMode.raw,
         toLuminoWidget: Iterable[str] | None = None,
+        **kwgs,
     ):
         """Call a method on the corresponding frontend object.
 
-        method: 'dotted.access.to.the.method' relative to obj.
+        path: 'dotted.access.to.the.method' relative to obj.
 
         *args
         `args` are passed in order so must correspond with the order in the JS method.
-        Specifying arguments by name is not currently support.
+        Specifying arguments by name is not currently supported.
+
+        **kwgs are only used for the transform.
 
         example:
         ```
@@ -369,32 +376,25 @@ class AsyncWidgetBase(WidgetBase):
 
         # This operation is sent to the frontend function _fe_execute in 'ipylab/src/widgets/ipylab.ts'
         return self.schedule_operation(
-            operation="FE_execute",
-            FE_execute={
-                "mode": "execute_method",
-                "kwgs": {"method": method},
-            },
-            transform=transform,
+            operation="executeMethod",
+            path=path,
             args=args,
+            transform=transform,
             toLuminoWidget=toLuminoWidget,
+            **kwgs,
         )
 
-    def get_attribute(
-        self,
-        path: str,
-        *,
-        transform: TransformType = TransformMode.raw,
-        ifMissing: Literal["raise", "null"] = "raise",
-    ):
+    def get_attribute(self, path: str, *, transform: TransformType = TransformMode.raw, nullIfMissing=False):
         """A serialized version of the attribute relative to this object."""
-        return self.execute_method("getAttribute", path, ifMissing, transform=transform)
+        return self.schedule_operation("getAttribute", path=path, nullIfMissing=nullIfMissing, transform=transform)
 
     def set_attribute(
         self,
         path: str,
         value,
-        valueTransform: TransformType = TransformMode.raw,
         *,
+        valueTransform: TransformType | dict = TransformMode.raw,
+        valueTransformKwgs: None | dict = None,
         valueToLuminoWidget=False,
     ):
         """Set the attribute at the path in the frontend.
@@ -404,32 +404,20 @@ class AsyncWidgetBase(WidgetBase):
             The value to set, or instructions for the transform to do in the frontend.
         valueTransform: TransformType
             valueTransform is applied to the value prior to setting the attribute.
+            It may be specified as a dict with the mapping: transform:TransformType.<value>
         valueToLuminoWidget: bool
             Whether the value should be converted to a Lumino widget. The value transform
             can be left as raw unless further adanced transformation is required.
         """
-        return self.execute_method(
+        return self.schedule_operation(
             "setAttribute",
-            path,
-            pack(value),
-            valueTransform,
+            path=path,
+            value=pack(value),
+            valueTransform=valueTransform,
             toLuminoWidget=["args[1]"] if valueToLuminoWidget else [],
+            valueTransformKwgs=valueTransformKwgs,
             transform=TransformMode.done,
         )
-
-    def list_methods(self, path: str = "", *, depth=2, skip_hidden=True):
-        """Get a list of methods belonging to the object 'path' of the Frontend instance.
-        depth: The depth in the object inheritance to search for methods.
-        """
-        task = self.list_attributes(path, JavascriptType.function, depth, how="names")
-
-        async def _list_methods():
-            payload: list = await task
-            if skip_hidden:
-                return [n for n in payload if not n.startswith("_")]
-            return payload
-
-        return self.to_task(_list_methods())
 
     def list_attributes(
         self,
@@ -437,15 +425,15 @@ class AsyncWidgetBase(WidgetBase):
         type: JavascriptType = JavascriptType.function,  # noqa: A002
         depth=2,
         *,
-        how="group",
+        how: Literal["names", "group", "raw"] = "group",
         transform: TransformType = TransformMode.raw,
     ):
         """Get a mapping of attributes of the object at 'path' of the Frontend instance.
 
         depth: The depth in the object inheritance to search for attributes.
-        how: ['names', 'group', 'raw'] (ignored if callback provided)
+        how: ['names', 'group', 'raw']
         """
-        task = self.execute_method("listAttributes", path, type, depth, transform=transform)
+        task = self.schedule_operation("listAttributes", path=path, type=type, depth=depth, transform=transform)
 
         async def list_attributes_():
             payload: list = await task
@@ -462,30 +450,16 @@ class AsyncWidgetBase(WidgetBase):
 
         return self.to_task(list_attributes_())
 
-    def execute_command(
-        self,
-        command_id: str,
-        *,
-        transform: TransformType = TransformMode.done,
-        toLuminoWidget: Iterable[str] | None = None,
-        **kwgs,
-    ):
-        """Execute the command_id registered with Jupyterlab.
-
-        `kwgs` correspond to `args` in JupyterLab.
-
-        execute_kwgs: dict | None
-            Passed to execute_method (we use a dict to avoid any potential of argument clash).
-
-        Finding what `args` can be used remains an outstanding issue in JupyterLab.
-
-        see: https://github.com/jtpio/ipylab/issues/128#issuecomment-1683097383 for hints
-        about how args can be found.
+    def list_methods(self, path: str = "", *, depth=2, skip_hidden=True):
+        """Get a list of methods belonging to the object 'path' of the Frontend instance.
+        depth: The depth in the object inheritance to search for methods.
         """
-        return self.execute_method(
-            "app.commands.execute",
-            command_id,
-            kwgs,  # -> used as 'args' in Jupyter
-            transform=transform,
-            toLuminoWidget=toLuminoWidget,
-        )
+        task = self.list_attributes(path, JavascriptType.function, depth, how="names")
+
+        async def _list_methods():
+            payload: list = await task
+            if skip_hidden:
+                return [n for n in payload if not n.startswith("_")]
+            return payload
+
+        return self.to_task(_list_methods())

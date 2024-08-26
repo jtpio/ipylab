@@ -104,11 +104,13 @@ export async function newNotebook({
 export function getNestedObject({
   base,
   path,
-  ifMissing = 'raise'
+  nullIfMissing = false,
+  basename = ''
 }: {
   base: object;
   path: string;
-  ifMissing?: string;
+  nullIfMissing?: boolean;
+  basename?: string;
 }): any {
   let obj: object = base;
   let path_ = '';
@@ -124,12 +126,13 @@ export function getNestedObject({
     }
   }
   if (path_ !== path) {
-    if (ifMissing === 'null') {
+    if (nullIfMissing) {
       return null;
     }
     throw new Error(
-      `Failed to get the nested attribute ${path_}.${attr} ` +
-        ` (base='${(base as any).name ?? 'unknown'}') `
+      `Failed to get the nested attribute ${path_}.${attr} ` + basename
+        ? ` (base='${basename}') `
+        : ''
     );
   }
   return obj;
@@ -141,10 +144,16 @@ export function getNestedObject({
  * @param path
  * @param value
  */
-export function setNestedAttribute(base: object, path: string, value: any) {
+export function setNestedAttribute(
+  base: object,
+  path: string,
+  value: any,
+  basename: string = ''
+) {
   const obj = getNestedObject({
     base: base,
-    path: path.split('.').slice(0, -1).join('.')
+    path: path.split('.').slice(0, -1).join('.'),
+    basename: basename
   });
   obj[path.split('.').slice(-1)[0]] = value;
 }
@@ -168,9 +177,10 @@ export function toFunction(code: string) {
 export async function transformObject(
   obj: any,
   options: string | any,
-  thisArg: object = null
+  thisArg: object = null,
+  kwgs: any = null
 ): Promise<JSONValue> {
-  const mode = typeof options === 'string' ? options : options.mode;
+  const mode = typeof options === 'string' ? options : options.transform;
 
   let path: string, transform: string, result, part: string, func;
 
@@ -182,6 +192,15 @@ export async function transformObject(
     case 'null':
       return null;
     case 'connection':
+      if (!obj.id) {
+        if (kwgs && typeof kwgs.id === 'string') {
+          obj['id'] = kwgs.id;
+        } else {
+          throw new Error(
+            "The object doesn't have an id and one wasn't provided"
+          );
+        }
+      }
       IpylabModel.trackDisposable(obj);
       return { id: obj.id };
     case 'attribute':
@@ -197,13 +216,13 @@ export async function transformObject(
           transform = options.parts[i].transform;
         }
         part = getNestedObject({ base: obj, path: path });
-        (result as any)[path] = await transformObject(part, transform);
+        (result as any)[path] = await transformObject(part, transform, kwgs);
       }
       return result as any;
     case 'function':
       func = toFunction(options.code).bind(thisArg);
       if (func.constructor.name === 'AsyncFunction') {
-        return await func(obj);
+        return await func(obj, options);
       }
       return func(obj);
     default:

@@ -10,23 +10,11 @@ import {
   onKernelLost
 } from './ipylab';
 import { transformObject } from './utils';
+
 /**
  * The model for a command registry.
  */
 export class CommandRegistryModel extends IpylabModel {
-  /**
-   * The default attributes.
-   */
-  defaults(): any {
-    return {
-      ...super.defaults(),
-      _model_name: CommandRegistryModel.model_name,
-      _model_module: CommandRegistryModel.model_module,
-      _model_module_version: CommandRegistryModel.model_module_version,
-      _command_list: []
-    };
-  }
-
   /**
    * Initialize a CommandRegistryModel instance.
    *
@@ -39,8 +27,8 @@ export class CommandRegistryModel extends IpylabModel {
     this._sendCommandList();
   }
 
-  get commands() {
-    return IpylabModel.app.commands;
+  get base() {
+    return this.commands;
   }
 
   /**
@@ -59,17 +47,11 @@ export class CommandRegistryModel extends IpylabModel {
     switch (op) {
       case 'execute':
         return await this.commands.execute(payload.id, payload.args);
-      case 'add_command': {
+      case 'addCommand': {
         return await this._addCommand(payload);
       }
-      case 'remove_command':
-        return this._removeCommand(payload.command_id);
       default:
-        throw new Error(
-          `operation='${op}' has not been implemented in ${this.get(
-            '_model_name'
-          )}!`
-        );
+        return await super.operation(op, payload);
     }
   }
 
@@ -93,24 +75,31 @@ export class CommandRegistryModel extends IpylabModel {
    * @param options.label
    * @param options.iconClass
    * @param options.icon
-   * @param options.command_result_transform
+   * @param options.commandResultTransform
    */
   private async _addCommand(options: any): Promise<IDisposable> {
-    const { id, icon, command_result_transform } = options;
+    const { id, icon, commandResultTransform } = options;
 
     if (options.icon) {
       options.icon = (await unpack_models(icon, this.widget_manager))?.labIcon;
     }
-
-    this._removeCommand(id);
-
+    if (this.hasDisposable(id)) {
+      this.getDisposable(id).dispose();
+    }
     const command = this.commands.addCommand(id, {
       execute: async (args: any) => {
         const result = await this.scheduleOperation('execute', {
           id: id,
           kwgs: args
         });
-        return await transformObject(result, command_result_transform, this);
+        return await transformObject(
+          result,
+          commandResultTransform,
+          this,
+          typeof commandResultTransform === 'string'
+            ? null
+            : commandResultTransform
+        );
       },
       isEnabled: () => this.getDisposable(id)?.config?.enabled ?? true,
       isVisible: () => this.getDisposable(id)?.config?.visible ?? true,
@@ -124,21 +113,20 @@ export class CommandRegistryModel extends IpylabModel {
   }
 
   /**
-   * Remove a command from the command registry.
-   *
-   * @param payload The command payload.
-   * @param payload.id
+   * The default attributes.
    */
-  private _removeCommand(command_id: string): null {
-    if (this.hasDisposable(command_id)) {
-      this.getDisposable(command_id).dispose();
-    }
-    return null;
+  defaults(): Backbone.ObjectHash {
+    return {
+      ...super.defaults(),
+      _model_name: CommandRegistryModel.model_name
+    };
   }
 
   static serializers: ISerializers = {
     ...IpylabModel.serializers
   };
 
-  static model_name = 'CommandRegistryModel';
+  get model_name() {
+    return 'CommandRegistryModel';
+  }
 }

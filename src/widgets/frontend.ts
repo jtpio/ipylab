@@ -2,7 +2,6 @@
 // Distributed under the terms of the Modified BSD License.
 
 // import { unpack_models } from '@jupyter-widgets/base';
-import { LabShell } from '@jupyterlab/application';
 import {
   DOMUtils,
   InputDialog,
@@ -21,7 +20,6 @@ import {
   Widget
 } from './ipylab';
 import { newNotebook, newSessionContext } from './utils';
-
 /**
  * The model for a JupyterFrontEnd.
  */
@@ -29,12 +27,10 @@ export class JupyterFrontEndModel extends IpylabModel {
   /**
    * The default attributes.
    */
-  defaults(): any {
+  defaults(): Backbone.ObjectHash {
     return {
       ...super.defaults(),
-      _model_name: JupyterFrontEndModel.model_name,
-      _model_module: JupyterFrontEndModel.model_module,
-      _model_module_version: JupyterFrontEndModel.model_module_version
+      _model_name: JupyterFrontEndModel.model_name
     };
   }
 
@@ -74,9 +70,6 @@ export class JupyterFrontEndModel extends IpylabModel {
 
   get shell(): JupyterFrontEnd.IShell {
     return IpylabModel.app.shell;
-  }
-  get labShell(): LabShell {
-    return IpylabModel.labShell;
   }
 
   get sessionManager(): Session.IManager {
@@ -125,10 +118,10 @@ export class JupyterFrontEndModel extends IpylabModel {
         await showErrorMessage(payload.title, payload.error, payload.buttons);
         return IpylabModel.OPERATION_DONE;
       case 'getOpenFiles':
-        payload.manager = IpylabModel.defaultBrowser.model.manager;
+        payload.manager = this.defaultBrowser.model.manager;
         return await FileDialog.getOpenFiles(payload).then(_get_result);
       case 'getExistingDirectory':
-        payload.manager = IpylabModel.defaultBrowser.model.manager;
+        payload.manager = this.defaultBrowser.model.manager;
         return await FileDialog.getExistingDirectory(payload).then(_get_result);
       case 'newSessionContext':
         return await newSessionContext(payload);
@@ -144,7 +137,7 @@ export class JupyterFrontEndModel extends IpylabModel {
         )) as any;
       case 'shutdownKernel':
         if (payload.kernelId) {
-          await IpylabModel.app.commands.execute('kernelmenu:shutdown', {
+          await this.commands.execute('kernelmenu:shutdown', {
             id: payload.kernelId ?? this.kernelId
           });
         } else {
@@ -152,9 +145,7 @@ export class JupyterFrontEndModel extends IpylabModel {
         }
         return null;
       default:
-        throw new Error(
-          `operation='${op}' has not been implemented in ${JupyterFrontEndModel.model_name}!`
-        );
+        return await super.operation(op, payload);
     }
   }
 

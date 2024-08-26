@@ -2,75 +2,40 @@
 # Distributed under the terms of the Modified BSD License.
 from __future__ import annotations
 
-import asyncio
 import inspect
 from typing import TYPE_CHECKING, Any
 
 from traitlets import Dict, Instance, Tuple, Unicode
 
 from ipylab.asyncwidget import AsyncWidgetBase, TransformMode, pack, pack_code, register, widget_serialization
-from ipylab.commands import CommandPalette, CommandRegistry, Launcher
+from ipylab.commands import CommandRegistry
 from ipylab.dialog import Dialog, FileDialog
 from ipylab.hookspecs import pm
 from ipylab.sessions import SessionManager
 from ipylab.shell import Shell
 
 if TYPE_CHECKING:
-    import types
-    from asyncio import Task
+    from collections.abc import Iterable
 
-    from ipylab.disposable_connection import DisposableConnection
+    from ipylab.asyncwidget import TransformType
 
 
 @register
 class JupyterFrontEnd(AsyncWidgetBase):
     _model_name = Unicode("JupyterFrontEndModel").tag(sync=True)
+    _basename = Unicode("app", read_only=True).tag(sync=True)
     SINGLETON = True
 
     version = Unicode(read_only=True).tag(sync=True)
     commands = Instance(CommandRegistry, (), read_only=True).tag(sync=True, **widget_serialization)
-    command_pallet = Instance(CommandPalette, (), read_only=True).tag(sync=True, **widget_serialization)
-    launcher = Instance(Launcher, (), read_only=True).tag(sync=True, **widget_serialization)
 
     current_widget_id = Unicode(read_only=True).tag(sync=True)
     current_session = Dict(read_only=True).tag(sync=True)
     all_sessions = Tuple(read_only=True).tag(sync=True)
-
-    @property
-    def dialog(self) -> Dialog:
-        if not hasattr(self, "_dialog"):
-            self._dialog = Dialog()
-        return self._dialog
-
-    @property
-    def file_dialog(self) -> FileDialog:
-        if not hasattr(self, "_fileDialog"):
-            self._fileDialog = FileDialog()
-        return self._fileDialog
-
-    @property
-    def shell(self) -> Shell:
-        if not hasattr(self, "_shell"):
-            self._shell = Shell()
-        return self._shell
-
-    @property
-    def sessionManager(self) -> SessionManager:
-        if not hasattr(self, "_sessionManger"):
-            self._sessionManger = SessionManager()
-        return self._sessionManger
-
-    async def wait_ready(self, timeout=5):  # noqa: ASYNC109
-        """Wait until connected to app indicates it is ready."""
-        if not self._ready_response.is_set():
-            future = asyncio.gather(
-                super().wait_ready(),
-                self.commands.wait_ready(),
-                self.command_pallet.wait_ready(),
-                self.launcher.wait_ready(),
-            )
-            await asyncio.wait_for(future, timeout)
-        return self
+    dialog = Instance(Dialog, (), read_only=True)
+    file_dialog = Instance(FileDialog, (), read_only=True)
+    shell = Instance(Shell, (), read_only=True)
+    session_manager = Instance(SessionManager, (), read_only=True)
 
     def _init_python_backend(self):
         "Run by the Ipylab python backend."
@@ -94,53 +59,32 @@ class JupyterFrontEnd(AsyncWidgetBase):
         """Shutdown the kernel"""
         return self.schedule_operation("shutdownKernel", kernelId=kernelId)
 
-    def new_sessioncontext(
+    def execute_command(
         self,
-        path: str = "",
+        command_id: str,
         *,
-        name: str = "",
-        kernelId="",
-        kernelName="python3",
-        code: str | types.ModuleType = "",
-        type="console",  # noqa: A002
-    ) -> Task[DisposableConnection]:
+        transform: TransformType = TransformMode.done,
+        toLuminoWidget: Iterable[str] | None = None,
+        **kwgs,
+    ):
+        """Execute the command_id registered with Jupyterlab.
+
+        `kwgs` correspond to `args` in JupyterLab.
+
+        execute_kwgs: dict | None
+            Passed to execute_method (we use a dict to avoid any potential of argument clash).
+
+        Finding what `args` can be used remains an outstanding issue in JupyterLab.
+
+        see: https://github.com/jtpio/ipylab/issues/128#issuecomment-1683097383 for hints
+        about how args can be found.
         """
-        Create a new sessionContext, potentiall with a new session and kernel.
-
-        path: The session path.
-        name: The name of the session.
-        kernelName: The name of the kernel (only Python kernel implemented).
-        code: A string, module or function.
-        type: The type of session.
-
-        If passing a function, the function will be executed. It is important
-        that objects that must stay alive outside the function must be kept alive.
-        So it is advised to use a code.
-
-        """
-        return self.schedule_operation(
-            "newSessionContext",
-            path=path,
-            name=name or path,
-            kernelId=kernelId,
-            kernelName=kernelName,
-            type=type,
-            code=pack_code(code),
-            transform=TransformMode.connection,
-        )
-
-    def new_notebook(
-        self, path: str = "", *, name: str = "", kernelId="", kernelName="python3", code: str | types.ModuleType = ""
-    ) -> Task[DisposableConnection]:
-        """Create a new notebook."""
-        return self.schedule_operation(
-            "newNotebook",
-            path=path,
-            name=name or path,
-            kernelId=kernelId,
-            kernelName=kernelName,
-            code=pack_code(code),
-            transform=TransformMode.connection,
+        return self.execute_method(
+            "commands.execute",
+            command_id,
+            kwgs,  # -> used as 'args' in Jupyter
+            transform=transform,
+            toLuminoWidget=toLuminoWidget,
         )
 
     def exec_eval(self, execute: str | inspect._SourceObjectType, evaluate: dict[str, str], kernelId="", **kwgs):
@@ -162,7 +106,9 @@ class JupyterFrontEnd(AsyncWidgetBase):
         Addnl kwgs:
             path, name, type='notebook' | 'console' for a new session.
         """
-        task = None if kernelId else self.new_sessioncontext(code="import ipylab; ipylab.JupyterFrontEnd()", **kwgs)
+
+        code = "import ipylab; ipylab.JupyterFrontEnd()"
+        task = None if kernelId else self.session_manager.new_sessioncontext(code=code, **kwgs)
 
         async def execEval_():
             k_id = kernelId
