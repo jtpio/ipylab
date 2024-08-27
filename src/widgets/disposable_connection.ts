@@ -46,7 +46,7 @@ export class DisposableConnectionModel extends IpylabModel {
       _view_module_version: null
     };
   }
-
+  static model_name = 'DisposableConnectionModel';
   static serializers = {
     ...IpylabModel.serializers,
     content: { deserialize: unpack_models }

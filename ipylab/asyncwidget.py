@@ -48,6 +48,8 @@ class TransformMode(StrEnum):
     - attribute: A dotted attribute of the returned object is returned. ['path']='dotted.path.name'
     - function: Use a function to calculate the return value. ['code'] = 'function...'
     - connection: Return a connection to a disposable object in the frontend.
+        By default the disposable will be closed when the kernel is shutdown.
+        To leave the disposable open use the setting `onKernelLost=False` when creating the connection.
 
     `attribute`
     ---------
@@ -75,7 +77,7 @@ class TransformMode(StrEnum):
 
     ```
     transform = {
-        "mode": "function",
+        "transform": TransformMode.function,
         "code": "function (obj, options) { return obj.id; }",
     }"""
 
@@ -393,9 +395,10 @@ class AsyncWidgetBase(WidgetBase):
         path: str,
         value,
         *,
-        valueTransform: TransformType | dict = TransformMode.raw,
-        valueTransformKwgs: None | dict = None,
+        value_transform: TransformType | dict = TransformMode.raw,
+        value_transform_kwgs: None | dict = None,
         valueToLuminoWidget=False,
+        transform=TransformMode.done,
     ):
         """Set the attribute at the path in the frontend.
         path: str
@@ -409,14 +412,27 @@ class AsyncWidgetBase(WidgetBase):
             Whether the value should be converted to a Lumino widget. The value transform
             can be left as raw unless further adanced transformation is required.
         """
+        vt = dict(value_transform_kwgs) if value_transform_kwgs else {}
+        vt["transform"] = TransformMode(value_transform)
         return self.schedule_operation(
             "setAttribute",
             path=path,
             value=pack(value),
-            valueTransform=valueTransform,
-            toLuminoWidget=["args[1]"] if valueToLuminoWidget else [],
-            valueTransformKwgs=valueTransformKwgs,
-            transform=TransformMode.done,
+            valueTransform=vt,
+            toLuminoWidget=["value"] if valueToLuminoWidget else None,
+            transform=transform,
+        )
+
+    def update_values(self, path: str, values: dict, *, toLuminoWidget: Iterable[str] | None = None):
+        """Update the values of the object at the path in the frontend.
+        path: str
+            "the.path.to.the.attribute" to be set.
+        toLuminoWidget:
+            Dotted attribute names to convert to LuminoWidgets in the frontend.
+            eg. ["values.value_to_lumino_widget"]
+        """
+        return self.schedule_operation(
+            "updateValues", path=path, values=values, transform=TransformMode.raw, toLuminoWidget=toLuminoWidget
         )
 
     def list_attributes(
@@ -427,6 +443,7 @@ class AsyncWidgetBase(WidgetBase):
         *,
         how: Literal["names", "group", "raw"] = "group",
         transform: TransformType = TransformMode.raw,
+        skip_hidden=True,
     ):
         """Get a mapping of attributes of the object at 'path' of the Frontend instance.
 
@@ -436,17 +453,24 @@ class AsyncWidgetBase(WidgetBase):
         task = self.schedule_operation("listAttributes", path=path, type=type, depth=depth, transform=transform)
 
         async def list_attributes_():
+            def filt(x: dict | str):
+                if not skip_hidden:
+                    return x
+                if isinstance(x, dict):
+                    return not x["name"].startswith("_")
+                return not x.startswith("_")
+
             payload: list = await task
             if how == "names":
-                payload = [row["name"] for row in payload]
+                payload = [row["name"] for row in filter(filt, payload)]
             elif how == "group":
                 groups = {}
-                for item in payload:
+                for item in filter(filt, payload):
                     st = groups.get(item["type"], [])
                     st.append(item["name"])
                     groups[item["type"]] = st
                 return groups
-            return payload
+            return list(filter(filt, payload))
 
         return self.to_task(list_attributes_())
 

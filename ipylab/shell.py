@@ -54,7 +54,7 @@ class Shell(AsyncWidgetBase):
     ref: https://jupyterlab.readthedocs.io/en/latest/api/interfaces/application.JupyterFrontEnd.IShell.html#add
     """
 
-    _basename = Unicode("shell")
+    _basename = Unicode("shell").tag(sync=True)
 
     def addToShell(
         self,

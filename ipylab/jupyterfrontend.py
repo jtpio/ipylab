@@ -18,6 +18,7 @@ if TYPE_CHECKING:
     from collections.abc import Iterable
 
     from ipylab.asyncwidget import TransformType
+    from ipylab.commands import CommandConnection
 
 
 @register
@@ -61,7 +62,7 @@ class JupyterFrontEnd(AsyncWidgetBase):
 
     def execute_command(
         self,
-        command_id: str,
+        command_id: str | CommandConnection,
         *,
         transform: TransformType = TransformMode.done,
         toLuminoWidget: Iterable[str] | None = None,
@@ -81,13 +82,21 @@ class JupyterFrontEnd(AsyncWidgetBase):
         """
         return self.execute_method(
             "commands.execute",
-            command_id,
+            str(command_id),
             kwgs,  # -> used as 'args' in Jupyter
             transform=transform,
             toLuminoWidget=toLuminoWidget,
         )
 
-    def exec_eval(self, execute: str | inspect._SourceObjectType, evaluate: dict[str, str], kernelId="", **kwgs):
+    def exec_eval(
+        self,
+        execute: str | inspect._SourceObjectType,
+        evaluate: dict[str, str],
+        kernelId="",
+        frontend_transform: TransformMode | dict = TransformMode.done,
+        frontend_transform_kwgs: None | dict = None,
+        **kwgs,
+    ):
         """Execute and evaluate code in the Python kernel corresponding to kerenelId.
 
         If `kernelId` isn't provided a new session will be launched. kwgs are used for the new session.
@@ -109,6 +118,8 @@ class JupyterFrontEnd(AsyncWidgetBase):
 
         code = "import ipylab; ipylab.JupyterFrontEnd()"
         task = None if kernelId else self.session_manager.new_sessioncontext(code=code, **kwgs)
+        tfm = dict(frontend_transform_kwgs) if frontend_transform_kwgs else {}
+        tfm["transform"] = TransformMode(frontend_transform)
 
         async def execEval_():
             k_id = kernelId
@@ -116,7 +127,7 @@ class JupyterFrontEnd(AsyncWidgetBase):
                 connection = await task
                 k_id = await connection.get_attribute("session.kernel.id")
             return await self.app.schedule_operation(
-                "execEval", code=pack_code(execute), evaluate=evaluate, kernelId=k_id
+                "execEval", code=pack_code(execute), evaluate=evaluate, kernelId=k_id, frontendTransform=tfm
             )
 
         return self.to_task(execEval_())

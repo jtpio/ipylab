@@ -14,7 +14,7 @@ class SessionManager(AsyncWidgetBase):
     """
 
     SINGLETON = True
-    _basename = Unicode("app.sessionManager").tag(sync=True)
+    _basename = Unicode("app.serviceManager.sessions").tag(sync=True)
 
     def refreshRunning(self):
         """Force a call to refresh running sessions."""

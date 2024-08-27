@@ -21,9 +21,18 @@ if TYPE_CHECKING:
 
 
 class CommandOptions(TypedDict):
-    enabled: Optional[bool]
-    visible: Optional[bool]
-    toggled: Optional[bool]
+    caption: Optional[str]
+    className: Optional[str]  # noqa: N815
+    dataset: Optional[Any]
+    describedBy: Optional[dict]  # noqa: N815
+    iconClass: Optional[str]  # noqa: N815
+    iconLabel: Optional[str]  # noqa: N815
+    isEnabled: Optional[bool]  # noqa: N815
+    isToggled: Optional[bool]  # noqa: N815
+    isVisible: Optional[bool]  # noqa: N815
+    label: Optional[str]
+    mnemonic: Optional[str]
+    usage: Optional[str]
 
 
 class CommandConnection(DisposableConnection):
@@ -38,11 +47,7 @@ class CommandConnection(DisposableConnection):
 
     def configure(self, *, emit=True, **kwgs: Unpack[CommandOptions]) -> Task[CommandOptions]:
         async def configure_():
-            config = await self.get_config()
-            for k, v in kwgs.items():
-                if v is not None:
-                    config[k] = v
-            await self.set_attribute("config", config)
+            config = await self.update_values("config", kwgs)  # type: ignore
             if emit:
                 await self.app.commands.execute_method("commandChanged.emit", {"id": self.id})
             return config
@@ -69,14 +74,14 @@ class CommandConnection(DisposableConnection):
 
         return self.to_task(add_launcher_())
 
-    def add_to_command_pallet(self, category: str):
+    def add_to_command_pallet(self, category: str, **kwgs):
         """Add a pallet item for this command.
 
         When this link is closed the pallet item will be disposed.
         """
 
         async def add_to_command_pallet_():
-            pallet_item = await self.app.commands.pallet.add(self, category)
+            pallet_item = await self.app.commands.pallet.add(self, category, **kwgs)
             self.observe(lambda _: pallet_item.dispose(), names="comm")
             return pallet_item
 
@@ -84,9 +89,7 @@ class CommandConnection(DisposableConnection):
 
 
 class CommandPalletConnection(DisposableConnection):
-    """
-    ref:
-    """
+    """A connection to an ipylab command added to the Jupyter command pallet (CTRL + SHIFT + L)"""
 
     ID_PREFIX = "ipylab command pallet"
 
@@ -96,7 +99,8 @@ class CommandPalletConnection(DisposableConnection):
 
 
 class LauncherConnection(DisposableConnection):
-    """
+    """A connection to an ipylab command added to the Jupyter command pallet (CTRL + SHIFT + L)
+
     ref: https://jupyterlab.readthedocs.io/en/latest/api/interfaces/launcher.ILauncher-1.html
     """
 
@@ -108,6 +112,7 @@ class LauncherConnection(DisposableConnection):
 
 
 class CommandPalette(AsyncWidgetBase):
+    # https://jupyterlab.readthedocs.io/en/latest/api/interfaces/apputils.ICommandPalette.html
     _basename = Unicode("pallet").tag(sync=True)
     SINGLETON = True
     items: Container[tuple[CommandPalletConnection, ...]] = TypedTuple(trait=Instance(CommandPalletConnection))
@@ -122,11 +127,9 @@ class CommandPalette(AsyncWidgetBase):
         category: str,
         *,
         rank=None,
-        kernelIconUrl="",
-        metadata: dict | None = None,
-        **args,
+        args: dict | None = None,
     ) -> Task[CommandPalletConnection]:
-        """Add a command to the command pallet (must be registered in this kerenel)."""
+        """Add a command to the command pallet (must be registered in this kernel)."""
         id_ = self._to_pallet_command_category_id(command, category)
         conn = CommandPalletConnection.get_existing_connection(id_, quiet=True)
         if conn:
@@ -134,12 +137,10 @@ class CommandPalette(AsyncWidgetBase):
         return self.execute_method(
             "addItem",
             {
-                "command": str(command),
-                "category": category,
-                "rank": rank,
                 "args": args,
-                "kernelIconUrl": kernelIconUrl,
-                "metadata": metadata,
+                "category": category,
+                "command": str(command),
+                "rank": rank,
             },
             id=id_,
             transform=TransformMode.connection,
@@ -192,6 +193,7 @@ class Launcher(AsyncWidgetBase):
 @register
 class CommandRegistry(AsyncWidgetBase):
     _model_name = Unicode("CommandRegistryModel").tag(sync=True)
+    _basename = Unicode("commands").tag(sync=True)
     SINGLETON = True
     all_commands = Tuple(read_only=True).tag(sync=True)
     pallet = Instance(CommandPalette, (), read_only=True)
@@ -204,8 +206,8 @@ class CommandRegistry(AsyncWidgetBase):
             case "execute":
                 conn = self.get_existing_command_connection(payload["id"])
                 cmd = conn.python_command
-                kwgs = payload.get("kwgs") or {} | {"buffers": buffers}
-                for k in set(kwgs).difference(inspect.signature(cmd).parameters.keys()):
+                kwgs = (payload.get("kwgs") or {}) | {"buffers": buffers}
+                for k in set(kwgs).difference(inspect.signature(cmd).parameters):
                     kwgs.pop(k)
                 result = cmd(**kwgs)
                 if inspect.isawaitable(result):
@@ -220,9 +222,10 @@ class CommandRegistry(AsyncWidgetBase):
         *,
         caption="",
         label="",
-        icon_class="",
+        icon_class: str | None = None,
         icon: Icon | None = None,
-        commandResultTransform: TransformMode | dict[str, Any] = TransformMode.done,
+        frontend_transform: TransformMode | dict = TransformMode.done,
+        frontend_transform_kwgs: None | dict = None,
         **kwgs,
     ) -> Task[CommandConnection]:
         """Add a python command that can be executed by Jupyterlab.
@@ -236,6 +239,8 @@ class CommandRegistry(AsyncWidgetBase):
 
         ref: https://lumino.readthedocs.io/en/latest/api/interfaces/commands.CommandRegistry.ICommandOptions.html
         """
+        tfm = dict(frontend_transform_kwgs) if frontend_transform_kwgs else {}
+        tfm["transform"] = TransformMode(frontend_transform)
         task = self.schedule_operation(
             "addCommand",
             id=CommandConnection.to_id(name),
@@ -244,7 +249,8 @@ class CommandRegistry(AsyncWidgetBase):
             iconClass=icon_class,
             transform=TransformMode.connection,
             icon=pack(icon),
-            commandResultTransform=commandResultTransform,
+            frontendTransform=tfm,
+            # toLuminoWidget=["icon"] if isinstance(icon, Icon) else None,
             **kwgs,
         )
 

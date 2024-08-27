@@ -10,13 +10,11 @@ import {
   showErrorMessage
 } from '@jupyterlab/apputils';
 import { FileDialog } from '@jupyterlab/filebrowser';
-import { Session } from '@jupyterlab/services';
 import {
   IDisposable,
   ISerializers,
   IpylabModel,
   JSONValue,
-  JupyterFrontEnd,
   Widget
 } from './ipylab';
 import { newNotebook, newSessionContext } from './utils';
@@ -68,14 +66,6 @@ export class JupyterFrontEndModel extends IpylabModel {
     return super.close(comm_closed);
   }
 
-  get shell(): JupyterFrontEnd.IShell {
-    return IpylabModel.app.shell;
-  }
-
-  get sessionManager(): Session.IManager {
-    return IpylabModel.app.serviceManager.sessions;
-  }
-
   private _updateSessionDetails(): void {
     const currentWidget = this.shell.currentWidget as any;
     const current_session = currentWidget?.sessionContext?.session?.model ?? {};
@@ -97,7 +87,7 @@ export class JupyterFrontEndModel extends IpylabModel {
       }
       return result.value;
     }
-    let result, jfem: any;
+    let result;
     switch (op) {
       case 'addToShell':
         return await this._addToShell(payload);
@@ -128,9 +118,7 @@ export class JupyterFrontEndModel extends IpylabModel {
       case 'newNotebook':
         return await newNotebook(payload);
       case 'execEval':
-        // Use the JupyterFrontEndModel associated with the kernel to execute the code
-        jfem = await this.getJupyterFrontEndModel(payload);
-        return await jfem.scheduleOperation('execEval', payload);
+        return await this._execEval(payload);
       case 'startIyplabPythonBackend':
         return (await IpylabModel.pythonBackend.checkStart(
           payload.restart ?? false
@@ -138,10 +126,10 @@ export class JupyterFrontEndModel extends IpylabModel {
       case 'shutdownKernel':
         if (payload.kernelId) {
           await this.commands.execute('kernelmenu:shutdown', {
-            id: payload.kernelId ?? this.kernelId
+            id: payload.kernelId
           });
         } else {
-          (this.widget_manager as any).kernel.shutdown();
+          this.kernel.shutdown();
         }
         return null;
       default:
@@ -175,20 +163,17 @@ export class JupyterFrontEndModel extends IpylabModel {
   }
 
   /**
-   * Obtain the instance of the JupyterFrontEndModel for the sessions kernel.
-   * If kernelId is not provided, a new kernel is created.
-   * @param payload
-   * @returns
+   *Send an execEval request to another kernel using its JupyterFrontEndModel.
    */
-  async getJupyterFrontEndModel(payload: any): Promise<JupyterFrontEndModel> {
-    if (payload.kernelId) {
-      if (Private.jupyterFrontEndModels.has(payload.kernelId)) {
-        return Private.jupyterFrontEndModels.get(payload.kernelId);
-      }
+  private async _execEval(payload: any): Promise<JSONValue | IDisposable> {
+    if (!Private.jupyterFrontEndModels.has(payload.kernelId)) {
+      throw new Error(
+        `JupyterFrontEndModel not found for kernelId='${payload.kernelId}'`
+      );
     }
-    throw new Error(
-      `A kernel does not exist for the kernelId= '${payload.kernelId}'`
-    );
+    const jfem = Private.jupyterFrontEndModels.get(payload.kernelId);
+    const payload_ = { ...payload, ...payload.frontendTransform };
+    return await jfem.scheduleOperation('execEval', payload_);
   }
 
   static serializers: ISerializers = {

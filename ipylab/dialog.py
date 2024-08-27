@@ -96,13 +96,12 @@ class Dialog(HasApp):
 
             source: https://jupyterlab.readthedocs.io/en/stable/extension/ui_helpers.html#generic-dialog
         """
-
         return self.app.schedule_operation(
             "showDialog",
-            title=pack(title),
+            title=title,
             body=pack(body),
-            host=pack(host),
-            toLuminoWidget=["title", "body", "host"],
+            host=host,
+            toLuminoWidget=["body"] if isinstance(body, Widget) else None,
             **kwgs,
         )
 

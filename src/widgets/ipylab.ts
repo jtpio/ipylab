@@ -2,7 +2,6 @@
 // Distributed under the terms of the Modified BSD License.
 
 // SessionManager exposes `JupyterLab.serviceManager.sessions` to user python kernel
-
 import {
   IBackboneModelOptions,
   ISerializers,
@@ -16,6 +15,7 @@ import { IDefaultFileBrowser } from '@jupyterlab/filebrowser';
 import { ILauncher } from '@jupyterlab/launcher';
 import { ObservableMap } from '@jupyterlab/observables';
 import { IRenderMimeRegistry } from '@jupyterlab/rendermime';
+import { Kernel, Session } from '@jupyterlab/services';
 import { ITranslator } from '@jupyterlab/translation';
 import { CommandRegistry } from '@lumino/commands';
 import {
@@ -35,7 +35,7 @@ import {
   listAttributes,
   onKernelLost,
   setNestedAttribute,
-  transformObject
+  toFunction
 } from './utils';
 export {
   CommandRegistry,
@@ -57,16 +57,19 @@ export {
 export class IpylabModel extends WidgetModel {
   initialize(attributes: ObjectHash, options: IBackboneModelOptions): void {
     super.initialize(attributes, options);
-    this._kernelId = (this.widget_manager as any).kernel.id;
-    this.set('kernelId', this._kernelId);
+    this.set('kernelId', this.kernelId);
     this.on('msg:custom', this._onCustomMessage.bind(this));
     this.save_changes();
     const msg = `ipylab ${this.get('_model_name')} ready for operations`;
     this.send({ init: msg });
-    onKernelLost((this.widget_manager as any).kernel, this.close, this);
+    onKernelLost(this.kernel, this.close, this);
     const basename = this.get('_basename');
     this._base = basename
-      ? getNestedObject({ base: this, path: basename })
+      ? getNestedObject({
+          base: this,
+          path: basename,
+          basename: `model_name= '${this.defaults()._model_name}`
+        })
       : this;
   }
 
@@ -110,16 +113,23 @@ export class IpylabModel extends WidgetModel {
     return IpylabModel.exports;
   }
   get kernelId() {
-    return this._kernelId;
+    return this.kernel.id;
+  }
+  get shell(): JupyterFrontEnd.IShell {
+    return IpylabModel.app.shell;
+  }
+
+  get sessionManager(): Session.IManager {
+    return IpylabModel.app.serviceManager.sessions;
+  }
+
+  get kernel(): Kernel.IKernelConnection {
+    return (this.widget_manager as any).kernel;
   }
 
   get kernelLive() {
-    const status = (this.widget_manager as any)?.kernel?.status;
+    const status = this.kernel?.status;
     return status ? !['dead'].includes(status) : false;
-  }
-
-  getModelName(): string {
-    return this.constructor.prototype.defaults()['_modelName'];
   }
 
   /**
@@ -198,7 +208,7 @@ export class IpylabModel extends WidgetModel {
       const content = {
         ipylab_BE: ipylab_BE,
         operation: operation,
-        payload: await transformObject(result, msg.transform, this, msg.kwgs)
+        payload: await this.transformObject(result, msg)
       };
       this.send(content, null, buffers);
     } catch (e) {
@@ -234,7 +244,7 @@ export class IpylabModel extends WidgetModel {
       const view = await this.widget_manager.create_view(model, {});
       const lw = view.luminoWidget;
       IpylabModel.trackDisposable(lw);
-      onKernelLost((this.widget_manager as any).kernel, lw.dispose, lw);
+      onKernelLost(this.kernel, lw.dispose, lw);
       return lw;
     }
     return this.getDisposable(value);
@@ -256,12 +266,16 @@ export class IpylabModel extends WidgetModel {
         return this._listAttributes(payload);
       case 'setAttribute':
         return this._setAttribute(payload);
+      case 'updateValues':
+        return this._updateValues(payload);
       case 'getAttribute':
         return this._getAttribute(payload);
       default:
         // Each failed operation should throw an error if it is un-handled
         throw new Error(
-          `operation='${op}' has not been implemented in ${this.getModelName()}!`
+          `operation='${op}' has not been implemented in ${
+            this.defaults().model_name
+          }!`
         );
     }
   }
@@ -276,8 +290,7 @@ export class IpylabModel extends WidgetModel {
    */
   async scheduleOperation(
     operation: string,
-    payload: JSONValue,
-    transform?: object | string
+    payload: JSONValue
   ): Promise<JSONValue> {
     const ipylab_FE = `${UUID.uuid4()}`;
     const msg = {
@@ -291,7 +304,7 @@ export class IpylabModel extends WidgetModel {
     this._pendingBackendOperations.set(ipylab_FE, opDone);
     this.send(msg);
     const result: any = await opDone.promise;
-    return await transformObject(result, transform ?? 'raw', this, payload);
+    return await this.transformObject(result, payload);
   }
 
   private async _executeMethod(payload: any): Promise<JSONValue> {
@@ -331,16 +344,21 @@ export class IpylabModel extends WidgetModel {
     });
   }
 
+  /**
+   * Assign the values at the path instead of replacing it.
+   */
+  private async _updateValues(payload: any): Promise<null> {
+    const obj = this._getAttribute(payload);
+    return Object.assign(obj, payload.values);
+  }
+  /**
+   * Set an attribute at the path with transformation.
+   */
   private async _setAttribute(payload: any): Promise<null> {
-    const { path, value, valueTransform, valueTransformKwgs } = payload;
-    const value_ = await transformObject(
-      value,
-      valueTransform ?? 'raw',
-      this,
-      valueTransformKwgs
-    );
+    const { path, value, valueTransform } = payload;
+    const value_ = await this.transformObject(value, valueTransform);
     setNestedAttribute(this.base, path, value_);
-    return null;
+    return value_;
   }
 
   close(comm_closed?: boolean): Promise<void> {
@@ -375,6 +393,70 @@ export class IpylabModel extends WidgetModel {
 
   hasDisposable(id: string) {
     return Private.disposables.has(id);
+  }
+
+  /**
+   * Transform the object for sending.
+   * @param obj
+   * @param args The mode as a string or an object with mode and any other parameters.
+   * @returns
+   */
+  async transformObject(obj: any, args: string | any): Promise<JSONValue> {
+    const transform = typeof args === 'string' ? args : args.transform;
+
+    let path: string, transform_: string, result, part: string, func;
+
+    switch (transform) {
+      case 'done':
+        return IpylabModel.OPERATION_DONE;
+      case 'raw':
+        return obj as any;
+      case 'null':
+        return null;
+      case 'connection':
+        if (!obj.id) {
+          if (args && typeof args.id === 'string') {
+            obj['id'] = args.id;
+          } else if (args.kwgs && typeof args.kwgs.id === 'string') {
+            obj['id'] = args.kwgs.id;
+          } else {
+            obj['id'] = `${UUID.uuid4()}`;
+          }
+        }
+        IpylabModel.trackDisposable(obj);
+        if (
+          this.kernel &&
+          args?.onKernelLost !== false &&
+          args?.onKernelLost?.kwgs !== false
+        ) {
+          onKernelLost(this.kernel, obj.dispose, obj, true);
+        }
+        return { id: obj.id };
+      case 'attribute':
+        // expects simple: {parts:['dotted.attribute']}
+        // or advanced: {parts:[{path:'dotted.attribute', transform:'...' }]
+        result = new Object();
+        for (let i = 0; i < args.parts.length; i++) {
+          if (typeof args.parts[i] === 'string') {
+            path = args.parts[i];
+            transform_ = 'raw';
+          } else {
+            path = args.parts[i].path;
+            transform_ = args.parts[i].transform;
+          }
+          part = getNestedObject({ base: obj, path: path });
+          (result as any)[path] = await this.transformObject(part, transform_);
+        }
+        return result as any;
+      case 'function':
+        func = toFunction(args.code).bind(this);
+        if (func.constructor.name === 'AsyncFunction') {
+          return await func(obj, args);
+        }
+        return func(obj);
+      default:
+        throw new Error(`Invalid return mode: '${transform}'`);
+    }
   }
 
   /**
@@ -456,10 +538,9 @@ export class IpylabModel extends WidgetModel {
   };
 
   private _pendingBackendOperations = new Map<string, PromiseDelegate<any>>();
-  private _kernelId: string;
   private _base: object | null;
   static pythonBackend = new PythonBackendModel();
-  static model_name: string;
+  static model_name: string = 'IpylabModel';
   static model_module = MODULE_NAME;
   static model_module_version = MODULE_VERSION;
   static view_name: string;

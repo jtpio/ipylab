@@ -2,16 +2,13 @@
 // Distributed under the terms of the Modified BSD License.
 
 import {
-  IBackboneModelOptions,
   JupyterLuminoPanelWidget,
   WidgetView,
   unpack_models
 } from '@jupyter-widgets/base';
 import { BoxModel, BoxView } from '@jupyter-widgets/controls';
-import { ObjectHash } from 'backbone';
 import { MODULE_NAME, MODULE_VERSION } from '../version';
 import { TitleModel } from '../widgets/title';
-import { onKernelLost } from './utils';
 
 /**
  * The model for a panel.
@@ -30,15 +27,6 @@ export class PanelModel extends BoxModel {
       _view_module: PanelModel.model_module,
       _view_module_version: PanelModel.model_module_version
     };
-  }
-
-  initialize(attributes: ObjectHash, options: IBackboneModelOptions): void {
-    super.initialize(attributes, options);
-    onKernelLost((this.widget_manager as any).kernel, this.close, this);
-  }
-
-  get kernelLive() {
-    return !['dead'].includes((this.widget_manager as any).kernel.status);
   }
 
   class_name: string; // class_name is set in widgets.py

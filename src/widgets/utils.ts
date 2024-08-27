@@ -7,7 +7,7 @@ import { IRenderMimeRegistry } from '@jupyterlab/rendermime';
 import { Kernel } from '@jupyterlab/services';
 import { UUID } from '@lumino/coreutils';
 import { Signal } from '@lumino/signaling';
-import { IDisposable, IpylabModel, JSONValue } from './ipylab';
+import { IDisposable, IpylabModel } from './ipylab';
 
 /**
  * Start a new session that support comms needed for iplab needs for comms.
@@ -165,69 +165,6 @@ export function setNestedAttribute(
  */
 export function toFunction(code: string) {
   return new Function('return ' + code)();
-}
-
-/**
- * Transform the object for sending.
- * @param obj
- * @param options The mode as a string or an object with mode and any other parameters.
- * @param thisArg 'function' mode only - the binding of `this`.
- * @returns
- */
-export async function transformObject(
-  obj: any,
-  options: string | any,
-  thisArg: object = null,
-  kwgs: any = null
-): Promise<JSONValue> {
-  const mode = typeof options === 'string' ? options : options.transform;
-
-  let path: string, transform: string, result, part: string, func;
-
-  switch (mode) {
-    case 'done':
-      return IpylabModel.OPERATION_DONE;
-    case 'raw':
-      return obj as any;
-    case 'null':
-      return null;
-    case 'connection':
-      if (!obj.id) {
-        if (kwgs && typeof kwgs.id === 'string') {
-          obj['id'] = kwgs.id;
-        } else {
-          throw new Error(
-            "The object doesn't have an id and one wasn't provided"
-          );
-        }
-      }
-      IpylabModel.trackDisposable(obj);
-      return { id: obj.id };
-    case 'attribute':
-      // expects simple: {parts:['dotted.attribute']}
-      // or advanced: {parts:[{path:'dotted.attribute', transform:'...' }]
-      result = new Object();
-      for (let i = 0; i < options.parts.length; i++) {
-        if (typeof options.parts[i] === 'string') {
-          path = options.parts[i];
-          transform = 'raw';
-        } else {
-          path = options.parts[i].path;
-          transform = options.parts[i].transform;
-        }
-        part = getNestedObject({ base: obj, path: path });
-        (result as any)[path] = await transformObject(part, transform, kwgs);
-      }
-      return result as any;
-    case 'function':
-      func = toFunction(options.code).bind(thisArg);
-      if (func.constructor.name === 'AsyncFunction') {
-        return await func(obj, options);
-      }
-      return func(obj);
-    default:
-      throw new Error(`Invalid return mode: '${mode}'`);
-  }
 }
 
 /**
