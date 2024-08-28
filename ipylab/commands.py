@@ -49,7 +49,7 @@ class CommandConnection(DisposableConnection):
         async def configure_():
             config = await self.update_values("config", kwgs)  # type: ignore
             if emit:
-                await self.app.commands.execute_method("commandChanged.emit", {"id": self.id})
+                await self.app.commands.execute_method("commandChanged.emit", {"id": self.cid})
             return config
 
         return self.to_task(configure_())
@@ -117,10 +117,6 @@ class CommandPalette(AsyncWidgetBase):
     SINGLETON = True
     items: Container[tuple[CommandPalletConnection, ...]] = TypedTuple(trait=Instance(CommandPalletConnection))
 
-    def _to_pallet_command_category_id(self, command_id: str | CommandConnection, category: str):
-        cmd = str(CommandConnection.get_existing_connection(command_id))
-        return f"{CommandPalletConnection.to_id(str(cmd))} | {category}"
-
     def add(
         self,
         command: str | CommandConnection,
@@ -130,8 +126,8 @@ class CommandPalette(AsyncWidgetBase):
         args: dict | None = None,
     ) -> Task[CommandPalletConnection]:
         """Add a command to the command pallet (must be registered in this kernel)."""
-        id_ = self._to_pallet_command_category_id(command, category)
-        conn = CommandPalletConnection.get_existing_connection(id_, quiet=True)
+        cid = CommandPalletConnection.to_cid(str(command), category)
+        conn = CommandPalletConnection.get_existing_connection(cid, quiet=True)
         if conn:
             conn.dispose()
         return self.execute_method(
@@ -142,14 +138,12 @@ class CommandPalette(AsyncWidgetBase):
                 "command": str(command),
                 "rank": rank,
             },
-            id=id_,
+            cid=cid,
             transform=TransformMode.connection,
         )
 
-    def remove(self, command_id: str | CommandConnection, category: str):
-        conn = CommandPalletConnection.get_existing_connection(
-            self._to_pallet_command_category_id(command_id, category), quiet=True
-        )
+    def remove(self, commandID: str | CommandConnection, category: str):
+        conn = CommandPalletConnection.get_existing_connection(str(commandID), category, quiet=True)
         if conn:
             conn.dispose()
 
@@ -159,17 +153,13 @@ class Launcher(AsyncWidgetBase):
     SINGLETON = True
     items: Container[tuple[LauncherConnection, ...]] = TypedTuple(trait=Instance(LauncherConnection))
 
-    def _to_launcher_connection_id(self, command_id: str | CommandConnection, category: str):
-        cmd = str(CommandConnection.get_existing_connection(command_id))
-        return f"{LauncherConnection.to_id(str(cmd))} | {category}"
-
     def add(self, command: str | CommandConnection, category: str, *, rank=None, **args) -> Task[LauncherConnection]:
         """Add a launcher for the command (must be registered in this kerenel).
 
         ref: https://jupyterlab.readthedocs.io/en/latest/api/interfaces/launcher.ILauncher.IItemOptions.html
         """
-        id_ = self._to_launcher_connection_id(command, category)
-        conn = LauncherConnection.get_existing_connection(id_, quiet=True)
+        cid = LauncherConnection.to_cid(str(command), category)
+        conn = LauncherConnection.get_existing_connection(cid, quiet=True)
         if conn:
             conn.dispose()
         return self.execute_method(
@@ -180,12 +170,12 @@ class Launcher(AsyncWidgetBase):
                 "rank": rank,
                 "args": args,
             },
-            id=id_,
+            cid=cid,
             transform=TransformMode.connection,
         )
 
     def remove(self, command_id: str | CommandConnection, category: str):
-        conn = LauncherConnection.get_existing_connection(self._to_launcher_connection_id(command_id, category))
+        conn = LauncherConnection.get_existing_connection(str(command_id), category)
         if conn:
             conn.dispose()
 
@@ -241,9 +231,11 @@ class CommandRegistry(AsyncWidgetBase):
         """
         tfm = dict(frontend_transform_kwgs) if frontend_transform_kwgs else {}
         tfm["transform"] = TransformMode(frontend_transform)
+        cid = CommandConnection.to_cid(name)
         task = self.schedule_operation(
             "addCommand",
-            id=CommandConnection.to_id(name),
+            id=cid,
+            cid=cid,
             caption=caption,
             label=label,
             iconClass=icon_class,

@@ -3,6 +3,7 @@
 
 from __future__ import annotations
 
+import uuid
 from typing import Generic, TypeVar
 
 from ipywidgets import register
@@ -20,18 +21,22 @@ class DisposableConnection(AsyncWidgetBase, Generic[T]):
     This defines the 'base' as the disposable object meaning the frontend attribute methods
     are associated directly with the object on the frontend.
 
-    The 'dispose' method will call the dispose method on the frontend object and close.
+    The 'dispose' method will call the dispose method on the frontend object and close
 
     see: https://lumino.readthedocs.io/en/latest/api/modules/disposable.html
 
-    Subclasses that are inherited with and ID_PREFIX
+    Subclasses that are inherited with and ID_PREFIX.
+
+    In some cases it may be necessary use the keyword argument `cid` to ensure
+    the subclass instance is returned. The class methods `to_cid` and `new_cid`
+    will generate an appropriate id.
     """
 
     ID_PREFIX = ""
     _CLASS_DEFINITIONS: dict[str, type[T]] = {}  # noqa RUF012
     _connections: dict[str, T] = {}  # noqa RUF012
     _model_name = Unicode("DisposableConnectionModel").tag(sync=True)
-    id = Unicode(read_only=True).tag(sync=True)
+    cid = Unicode(read_only=True).tag(sync=True)
     _dispose = Bool(read_only=True).tag(sync=True)
 
     def __init_subclass__(cls, **kwargs) -> None:
@@ -39,43 +44,40 @@ class DisposableConnection(AsyncWidgetBase, Generic[T]):
             cls._CLASS_DEFINITIONS[cls.ID_PREFIX] = cls  # type: ignore
         super().__init_subclass__(**kwargs)
 
-    def __new__(cls, *, id: str, **kwgs):  # noqa A002
-        if id not in cls._connections:
-            if cls.ID_PREFIX and not id.startswith(cls.ID_PREFIX):
-                msg = f"Expected prefix '{cls.ID_PREFIX}' not found for {id=}"
+    def __new__(cls, *, cid: str, **kwgs):
+        if cid not in cls._connections:
+            if cls.ID_PREFIX and not cid.startswith(cls.ID_PREFIX):
+                msg = f"Expected prefix '{cls.ID_PREFIX}' not found for {cid=}"
                 raise ValueError(msg)
             # Check if a subclass is registered with 'ID_PREFIX'
-            cls_ = cls._CLASS_DEFINITIONS.get(id.split(":")[0], cls) if ":" in id else cls
-            cls._connections[id] = super().__new__(cls_, **kwgs)  # type: ignore
-        return cls._connections[id]
+            cls_ = cls._CLASS_DEFINITIONS.get(cid.split(":")[0], cls) if ":" in cid else cls
+            cls._connections[cid] = super().__new__(cls_, **kwgs)  # type: ignore
+        return cls._connections[cid]
 
     def __str__(self):
-        return self.id
+        return self.cid
 
     @classmethod
-    def to_id(cls, name_or_id: str | T) -> str:
-        """Generate an id for the given name."""
-        if isinstance(name_or_id, DisposableConnection):
-            if not isinstance(name_or_id, cls):
-                msg = f"{name_or_id} is not a subclass of {cls}"
-                raise TypeError(msg)
-            return name_or_id.id
-        if not cls.ID_PREFIX:
-            return name_or_id
-        return f"{cls.ID_PREFIX}:{name_or_id.removeprefix(cls.ID_PREFIX).strip(':')}"
+    def to_cid(cls, *args: str) -> str:
+        """Generate an id for the args"""
+        return " | ".join([f"{cls.ID_PREFIX}:{args[0].removeprefix(cls.ID_PREFIX).strip(':')}", *args[1:]]).strip(": ")
+
+    @classmethod
+    def new_cid(cls, *args):
+        return cls.to_cid(str(uuid.uuid4()), *args)
 
     @classmethod
     def get_instances(cls) -> tuple[T]:
         return tuple(item for item in cls._connections.values() if item.__class__ is cls)  # type: ignore
 
-    def __init__(self, *, id: str, model_id=None, **kwgs):  # noqa: A002
+    def __init__(self, *, cid: str, model_id=None, **kwgs):
         if self._async_widget_base_init_complete:
             return
-        self.set_trait("id", id)
+        self.set_trait("cid", cid)
         super().__init__(model_id=model_id, **kwgs)
 
     def close(self):
-        self._connections.pop(self.id, None)
+        self._connections.pop(self.cid, None)
         super().close()
 
     def dispose(self):
@@ -84,7 +86,7 @@ class DisposableConnection(AsyncWidgetBase, Generic[T]):
         self.close()
 
     @classmethod
-    def get_existing_connection(cls, name_or_id: str | T, *, quiet=False):
+    def get_existing_connection(cls, *name_or_id: str, quiet=False):
         """Get an existing connection.
 
         quiet: bool
@@ -92,9 +94,9 @@ class DisposableConnection(AsyncWidgetBase, Generic[T]):
                 * False -> Will raise an error.
                 * True -> Will return None.
         """
-        id_ = cls.to_id(name_or_id)
-        conn = cls._connections.get(id_)
+        cid = cls.to_cid(*name_or_id)
+        conn = cls._connections.get(cid)
         if not conn and not quiet:
-            msg = f"A connection does not exist with id='{id_}'"
+            msg = f"A connection does not exist with id='{cid}'"
             raise ValueError(msg)
         return conn

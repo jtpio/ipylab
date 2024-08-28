@@ -7,12 +7,13 @@ import typing as t
 from ipylab import pack
 from ipylab._compat.enum import StrEnum
 from ipylab.asyncwidget import AsyncWidgetBase, TransformMode, Unicode
-from ipylab.disposable_connection import DisposableConnection
 
 if t.TYPE_CHECKING:
     from asyncio import Task
 
     from ipywidgets import Widget
+
+    from ipylab.disposable_connection import DisposableConnection
 
 __all__ = ["Area", "InsertMode", "Shell"]
 
@@ -80,7 +81,7 @@ class Shell(AsyncWidgetBase):
             "activate": activate,
             "mode": InsertMode(mode),
             "rank": int(rank) if rank else None,
-            "ref": ref.id if isinstance(ref, DisposableConnection) else ref or None,
+            "ref": pack(ref),
         }
         return self.app.schedule_operation(
             "addToShell",

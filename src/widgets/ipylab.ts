@@ -243,7 +243,6 @@ export class IpylabModel extends WidgetModel {
       }
       const view = await this.widget_manager.create_view(model, {});
       const lw = view.luminoWidget;
-      IpylabModel.trackDisposable(lw);
       onKernelLost(this.kernel, lw.dispose, lw);
       return lw;
     }
@@ -354,7 +353,7 @@ export class IpylabModel extends WidgetModel {
   /**
    * Set an attribute at the path with transformation.
    */
-  private async _setAttribute(payload: any): Promise<null> {
+  private async _setAttribute(payload: any): Promise<any> {
     const { path, value, valueTransform } = payload;
     const value_ = await this.transformObject(value, valueTransform);
     setNestedAttribute(this.base, path, value_);
@@ -387,7 +386,7 @@ export class IpylabModel extends WidgetModel {
       return Private.disposables.get(id);
     }
     const disposable = this._getLuminoWidgetFromShell(id);
-    IpylabModel.trackDisposable(disposable);
+    IpylabModel.trackDisposable(disposable, id);
     return disposable;
   }
 
@@ -405,6 +404,7 @@ export class IpylabModel extends WidgetModel {
     const transform = typeof args === 'string' ? args : args.transform;
 
     let path: string, transform_: string, result, part: string, func;
+    let cid;
 
     switch (transform) {
       case 'done':
@@ -414,16 +414,8 @@ export class IpylabModel extends WidgetModel {
       case 'null':
         return null;
       case 'connection':
-        if (!obj.id) {
-          if (args && typeof args.id === 'string') {
-            obj['id'] = args.id;
-          } else if (args.kwgs && typeof args.kwgs.id === 'string') {
-            obj['id'] = args.kwgs.id;
-          } else {
-            obj['id'] = `${UUID.uuid4()}`;
-          }
-        }
-        IpylabModel.trackDisposable(obj);
+        cid = args?.cid || args?.kwgs?.cid || obj.id || DOMUtils.createDomID();
+        IpylabModel.trackDisposable(obj, cid);
         if (
           this.kernel &&
           args?.onKernelLost !== false &&
@@ -431,7 +423,7 @@ export class IpylabModel extends WidgetModel {
         ) {
           onKernelLost(this.kernel, obj.dispose, obj, true);
         }
-        return { id: obj.id };
+        return { cid: cid };
       case 'attribute':
         // expects simple: {parts:['dotted.attribute']}
         // or advanced: {parts:[{path:'dotted.attribute', transform:'...' }]
@@ -463,16 +455,15 @@ export class IpylabModel extends WidgetModel {
    *Keep a reference to a Disposable so it can be found from the backend.
    * @param disposable
    */
-  static trackDisposable(disposable: any) {
+  static trackDisposable(disposable: any, cid: string) {
     if (typeof disposable.dispose !== 'function') {
       throw new Error(`Not disposable: ${disposable}`);
     }
-    if (!disposable.id) {
-      disposable.id = DOMUtils.createDomID();
+    if (!cid) {
+      throw new Error('Cannot track without an id');
     }
-    const key = disposable.id;
-    if (!Private.disposables.has(key)) {
-      Private.disposables.set(key, disposable);
+    if (!Private.disposables.has(cid)) {
+      Private.disposables.set(cid, disposable);
       if (!disposable.disposed) {
         // Convert a Disposable into an ObservableDisposable
         disposable.disposed = new Signal<any, null>(disposable);
@@ -487,7 +478,7 @@ export class IpylabModel extends WidgetModel {
         };
         disposable['dispose'] = dispose.bind(disposable);
       }
-      disposable.disposed.connect(() => Private.disposables.delete(key));
+      disposable.disposed.connect(() => Private.disposables.delete(cid));
     }
   }
 

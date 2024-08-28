@@ -3,13 +3,7 @@
 
 import { unpack_models } from '@jupyter-widgets/base';
 import { CommandRegistry } from '@lumino/commands';
-import {
-  IDisposable,
-  ISerializers,
-  IpylabModel,
-  JSONValue,
-  onKernelLost
-} from './ipylab';
+import { IDisposable, ISerializers, IpylabModel, JSONValue } from './ipylab';
 /**
  * The model for a command registry.
  */
@@ -108,11 +102,7 @@ export class CommandRegistryModel extends IpylabModel {
       usage: () => config?.usage
     };
     const command = this.commands.addCommand(id, options_ as any);
-    (command as any).id = id;
     (command as any).config = config;
-
-    IpylabModel.trackDisposable(command);
-    onKernelLost(this.kernel, command.dispose, command);
     return command;
   }
 

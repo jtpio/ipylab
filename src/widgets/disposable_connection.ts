@@ -6,9 +6,7 @@ import { ObjectHash } from 'backbone';
 import { IpylabModel } from './ipylab';
 
 /**
- * Maintain a connection to a Lumino widget such as a MainAreaWidget, Console, TextEditor, etc...
- * The widget must exist in the shell or have already been added to the tracker.
- *
+ * Maintain a connection to any object with a dispose method.
  */
 export class DisposableConnectionModel extends IpylabModel {
   async initialize(
@@ -26,7 +24,7 @@ export class DisposableConnectionModel extends IpylabModel {
 
   get base() {
     try {
-      return this.getDisposable(this.get('id'));
+      return this.getDisposable(this.get('cid'));
     } catch {
       this.close();
     }
