@@ -268,7 +268,7 @@ export class IpylabModel extends WidgetModel {
       case 'updateValues':
         return this._updateValues(payload);
       case 'getAttribute':
-        return this._getAttribute(payload);
+        return await this._getAttribute(payload);
       default:
         // Each failed operation should throw an error if it is un-handled
         throw new Error(

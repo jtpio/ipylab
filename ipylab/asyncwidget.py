@@ -387,7 +387,11 @@ class AsyncWidgetBase(WidgetBase):
         )
 
     def get_attribute(self, path: str, *, transform: TransformType = TransformMode.raw, nullIfMissing=False):
-        """A serialized version of the attribute relative to this object."""
+        """Obtain a serialized version of the attribute relative to this object.
+
+        Tip: This method will await the attribute in the Frontend prior to returning the result
+        where the attribute is an awaitable.
+        """
         return self.schedule_operation("getAttribute", path=path, nullIfMissing=nullIfMissing, transform=transform)
 
     def set_attribute(

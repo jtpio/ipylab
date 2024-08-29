@@ -130,9 +130,8 @@ export function getNestedObject({
       return null;
     }
     throw new Error(
-      `Failed to get the nested attribute ${path_}.${attr} ` + basename
-        ? ` (base='${basename}') `
-        : ''
+      `Failed to get the attribute '${attr}' in the nested path '${path}'.` +
+        (basename ? ` from the base '${basename}'` : '')
     );
   }
   return obj;
