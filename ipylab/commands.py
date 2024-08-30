@@ -61,27 +61,31 @@ class CommandConnection(DisposableConnection):
 
         return self.to_task(get_config_())
 
-    def add_launcher(self, category: str, **kwgs):
+    def add_launcher(self, category: str, rank=None, **args):
         """Add a launcher for this command.
+
+        **args are used when calling the command.
 
         When this link is closed the launcher will be disposed.
         """
 
         async def add_launcher_():
-            launcher = await self.app.commands.launcher.add(self, category, **kwgs)
+            launcher = await self.app.commands.launcher.add(self, category, rank=rank, **args)
             self.observe(lambda _: launcher.dispose(), names="comm")
             return launcher
 
         return self.to_task(add_launcher_())
 
-    def add_to_command_pallet(self, category: str, **kwgs):
+    def add_to_command_pallet(self, category: str, rank=None, **args):
         """Add a pallet item for this command.
+
+        **args are used when calling the command.
 
         When this link is closed the pallet item will be disposed.
         """
 
         async def add_to_command_pallet_():
-            pallet_item = await self.app.commands.pallet.add(self, category, **kwgs)
+            pallet_item = await self.app.commands.pallet.add(self, category, rank=rank, **args)
             self.observe(lambda _: pallet_item.dispose(), names="comm")
             return pallet_item
 
@@ -133,7 +137,10 @@ class CommandPalette(AsyncWidgetBase):
         rank=None,
         args: dict | None = None,
     ) -> Task[CommandPalletConnection]:
-        """Add a command to the command pallet (must be registered in this kernel)."""
+        """Add a command to the command pallet (must be registered in this kernel).
+
+        **args are used when calling the command.
+        """
         conn = CommandPalletConnection.get_existing_connection(command, category, quiet=True)
         if conn:
             conn.dispose()
