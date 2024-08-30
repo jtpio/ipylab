@@ -1,6 +1,6 @@
 {
     "name": "ipylab",
-    "version": "2.0.0-b1",
+    "version": "2.0.0-b2",
     "description": "Control JupyterLab from Python notebooks",
     "keywords": [
         "jupyter",
@@ -49,6 +49,7 @@
         "clean:labextension": "rimraf ipylab/labextension ipylab/_version.py",
         "clean:lib": "rimraf lib tsconfig.tsbuildinfo",
         "clean:lintcache": "rimraf .eslintcache .stylelintcache",
+        "deduplicate": "jlpm dlx yarn-berry-deduplicate -s fewerHighest && jlpm install",
         "eslint": "jlpm eslint:check --fix",
         "eslint:check": "eslint . --cache --ext .ts,.tsx",
         "eslint:files": "eslint --fix",
