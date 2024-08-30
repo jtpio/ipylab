@@ -17,7 +17,7 @@ import {
   JSONValue,
   Widget
 } from './ipylab';
-import { newNotebook, newSessionContext } from './utils';
+import { newSessionContext } from './utils';
 /**
  * The model for a JupyterFrontEnd.
  */
@@ -115,8 +115,6 @@ export class JupyterFrontEndModel extends IpylabModel {
         return await FileDialog.getExistingDirectory(payload).then(_get_result);
       case 'newSessionContext':
         return await newSessionContext(payload);
-      case 'newNotebook':
-        return await newNotebook(payload);
       case 'execEval':
         return await this._execEval(payload);
       case 'startIyplabPythonBackend':

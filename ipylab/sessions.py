@@ -60,17 +60,3 @@ class SessionManager(AsyncWidgetBase):
             code=pack_code(code),
             transform=TransformMode.connection,
         )
-
-    def new_notebook(
-        self, path: str = "", *, name: str = "", kernelId="", kernelName="python3", code: str | ModuleType = ""
-    ) -> Task[DisposableConnection]:
-        """Create a new notebook."""
-        return self.schedule_operation(
-            "newNotebook",
-            path=path,
-            name=name or path,
-            kernelId=kernelId,
-            kernelName=kernelName,
-            code=pack_code(code),
-            transform=TransformMode.connection,
-        )

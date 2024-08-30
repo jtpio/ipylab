@@ -7,7 +7,7 @@ import { IRenderMimeRegistry } from '@jupyterlab/rendermime';
 import { Kernel } from '@jupyterlab/services';
 import { UUID } from '@lumino/coreutils';
 import { Signal } from '@lumino/signaling';
-import { IDisposable, IpylabModel } from './ipylab';
+import { IpylabModel } from './ipylab';
 
 /**
  * Start a new session that support comms needed for iplab needs for comms.
@@ -61,31 +61,6 @@ export async function newSessionContext({
     future.dispose();
   }
   return sessionContext;
-}
-
-export async function newNotebook({
-  name,
-  path,
-  kernelId,
-  kernelName = 'python3'
-}: {
-  name: string;
-  path: string;
-  kernelId: string;
-  kernelName?: string;
-}): Promise<IDisposable> {
-  const nb = await IpylabModel.app.commands.execute('notebook:create-new', {
-    kernelId: kernelId || `${UUID.uuid4()}`,
-    kernelName: kernelName
-  });
-  await nb.sessionContext.ready;
-  if (name) {
-    await nb.sessionContext.session.setName(name);
-  }
-  if (path) {
-    await nb.sessionContext.session.setPath(path);
-  }
-  return nb;
 }
 
 /**
