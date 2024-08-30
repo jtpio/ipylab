@@ -58,7 +58,7 @@ class Panel(Box, HasApp):
     class_name = Unicode("ipylab-panel").tag(sync=True)
     _comm = None
 
-    def addToShell(
+    def add_to_shell(
         self,
         *,
         area: Area = Area.main,
@@ -69,7 +69,7 @@ class Panel(Box, HasApp):
         **options,
     ) -> Task[DisposableConnection]:
         """Add this panel to the shell."""
-        return self.app.shell.addToShell(self, area=area, mode=mode, activate=activate, rank=rank, ref=ref, **options)
+        return self.app.shell.add(self, area=area, mode=mode, activate=activate, rank=rank, ref=ref, **options)
 
 
 @register
@@ -100,7 +100,7 @@ class SplitPanel(Panel):
 
         return self.app.to_task(_force_refresh(self.children))
 
-    def addToShell(
+    def add_to_shell(
         self,
         *,
         area: Area = Area.main,
@@ -110,13 +110,13 @@ class SplitPanel(Panel):
         ref: DisposableConnection | str = "",
         **options,
     ) -> Task[DisposableConnection]:
-        task = super().addToShell(area=area, activate=activate, mode=mode, rank=rank, ref=ref, **options)
+        task = super().add_to_shell(area=area, activate=activate, mode=mode, rank=rank, ref=ref, **options)
 
-        async def _addToShell():
+        async def _add_to_shell():
             result = await task
             await self._rerender()
             return result
 
-        return self.app.to_task(_addToShell())
+        return self.app.to_task(_add_to_shell())
 
     # ============== End temp fix =============

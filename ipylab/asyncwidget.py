@@ -18,6 +18,7 @@ from ipylab.hookspecs import pm
 
 if TYPE_CHECKING:
     import logging
+    from asyncio import Task
     from collections.abc import Coroutine, Iterable
     from typing import ClassVar, Literal
 
@@ -205,7 +206,8 @@ class AsyncWidgetBase(WidgetBase):
         except Exception as e:
             try:
                 pm.hook.on_task_error(obj=self, error=e)
-                self.log.exception("Exception for %s", self)
+                msg = f"Exception for  {type(self)}"
+                self.log.exception(msg)
             finally:
                 raise e
 
@@ -401,7 +403,7 @@ class AsyncWidgetBase(WidgetBase):
         *,
         value_transform: TransformType | dict = TransformMode.raw,
         value_transform_kwgs: None | dict = None,
-        valueToLuminoWidget=False,
+        value_toLuminoWidget=False,
         transform=TransformMode.done,
     ):
         """Set the attribute at the path in the frontend.
@@ -412,7 +414,7 @@ class AsyncWidgetBase(WidgetBase):
         valueTransform: TransformType
             valueTransform is applied to the value prior to setting the attribute.
             It may be specified as a dict with the mapping: transform:TransformType.<value>
-        valueToLuminoWidget: bool
+        value_toLuminoWidget: bool
             Whether the value should be converted to a Lumino widget. The value transform
             can be left as raw unless further adanced transformation is required.
         """
@@ -423,7 +425,7 @@ class AsyncWidgetBase(WidgetBase):
             path=path,
             value=pack(value),
             valueTransform=vt,
-            toLuminoWidget=["value"] if valueToLuminoWidget else None,
+            toLuminoWidget=["value"] if value_toLuminoWidget else None,
             transform=transform,
         )
 
@@ -433,7 +435,7 @@ class AsyncWidgetBase(WidgetBase):
             "the.path.to.the.attribute" to be set.
         toLuminoWidget:
             Dotted attribute names to convert to LuminoWidgets in the frontend.
-            eg. ["values.value_to_lumino_widget"]
+            eg. ["values.value_toLuminoWidget"]
         """
         return self.schedule_operation(
             "updateValues", path=path, values=values, transform=TransformMode.raw, toLuminoWidget=toLuminoWidget
@@ -448,7 +450,7 @@ class AsyncWidgetBase(WidgetBase):
         how: Literal["names", "group", "raw"] = "group",
         transform: TransformType = TransformMode.raw,
         skip_hidden=True,
-    ):
+    ) -> Task[dict | list]:
         """Get a mapping of attributes of the object at 'path' of the Frontend instance.
 
         depth: The depth in the object inheritance to search for attributes.
@@ -464,7 +466,7 @@ class AsyncWidgetBase(WidgetBase):
                     return not x["name"].startswith("_")
                 return not x.startswith("_")
 
-            payload: list = await task
+            payload: list = await task  # type: ignore
             if how == "names":
                 payload = [row["name"] for row in filter(filt, payload)]
             elif how == "group":
@@ -476,7 +478,7 @@ class AsyncWidgetBase(WidgetBase):
                 return groups
             return list(filter(filt, payload))
 
-        return self.to_task(list_attributes_())
+        return self.to_task(list_attributes_())  # type: ignore
 
     def list_methods(self, path: str = "", *, depth=2, skip_hidden=True):
         """Get a list of methods belonging to the object 'path' of the Frontend instance.
@@ -485,7 +487,7 @@ class AsyncWidgetBase(WidgetBase):
         task = self.list_attributes(path, JavascriptType.function, depth, how="names")
 
         async def _list_methods():
-            payload: list = await task
+            payload = (await task) or []
             if skip_hidden:
                 return [n for n in payload if not n.startswith("_")]
             return payload

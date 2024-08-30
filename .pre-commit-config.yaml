@@ -30,15 +30,15 @@ repos:
     hooks:
       - id: check-json5
   - repo: https://github.com/python-jsonschema/check-jsonschema
-    rev: 0.29.1
+    rev: 0.29.2
     hooks:
       - id: check-github-workflows
-  - repo: https://github.com/ComPWA/mirrors-taplo
-    rev: 'v0.8.1'
+  - repo: https://github.com/ComPWA/taplo-pre-commit
+    rev: v0.9.3
     hooks:
-      - id: taplo
+      - id: taplo-format
   - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.6.1
+    rev: v0.6.3
     hooks:
       - id: ruff
         types_or: [python, jupyter]

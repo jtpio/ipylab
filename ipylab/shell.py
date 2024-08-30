@@ -57,7 +57,7 @@ class Shell(AsyncWidgetBase):
 
     _basename = Unicode("shell").tag(sync=True)
 
-    def addToShell(
+    def add(
         self,
         widget: Widget,
         *,
@@ -92,14 +92,14 @@ class Shell(AsyncWidgetBase):
             toLuminoWidget=["widget", "options.ref"],
         )
 
-    def expandLeft(self):
+    def expand_left(self):
         return self.execute_method("expandLeft")
 
-    def expandRight(self):
+    def expand_right(self):
         return self.execute_method("expandRight")
 
-    def collapseLeft(self):
+    def collapse_left(self):
         return self.execute_method("collapseLeft")
 
-    def collapseRight(self):
+    def collapse_right(self):
         return self.execute_method("collapseRight")

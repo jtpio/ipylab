@@ -97,7 +97,7 @@ class JupyterFrontEnd(AsyncWidgetBase):
         frontend_transform_kwgs: None | dict = None,
         **kwgs,
     ):
-        """Execute and evaluate code in the Python kernel corresponding to kerenelId.
+        """Execute and evaluate code in the Python kernel corresponding to kernelId.
 
         If `kernelId` isn't provided a new session will be launched. kwgs are used for the new session.
 
@@ -121,7 +121,7 @@ class JupyterFrontEnd(AsyncWidgetBase):
         tfm = dict(frontend_transform_kwgs) if frontend_transform_kwgs else {}
         tfm["transform"] = TransformMode(frontend_transform)
 
-        async def execEval_():
+        async def exec_eval_():
             k_id = kernelId
             if task:
                 connection = await task
@@ -130,7 +130,7 @@ class JupyterFrontEnd(AsyncWidgetBase):
                 "execEval", code=pack_code(execute), evaluate=evaluate, kernelId=k_id, frontendTransform=tfm
             )
 
-        return self.to_task(execEval_())
+        return self.to_task(exec_eval_())
 
     async def _exec_eval(self, payload: dict, buffers: list) -> Any:
         """exec/eval code corresponding to a call from execEval, likely from

@@ -25,14 +25,14 @@ class DisposableConnection(AsyncWidgetBase, Generic[T]):
 
     see: https://lumino.readthedocs.io/en/latest/api/modules/disposable.html
 
-    Subclasses that are inherited with and ID_PREFIX.
+    Subclasses that are inherited with and CID_PREFIX.
 
     In some cases it may be necessary use the keyword argument `cid` to ensure
     the subclass instance is returned. The class methods `to_cid` and `new_cid`
     will generate an appropriate id.
     """
 
-    ID_PREFIX = ""
+    CID_PREFIX = ""
     _CLASS_DEFINITIONS: dict[str, type[T]] = {}  # noqa RUF012
     _connections: dict[str, T] = {}  # noqa RUF012
     _model_name = Unicode("DisposableConnectionModel").tag(sync=True)
@@ -40,16 +40,16 @@ class DisposableConnection(AsyncWidgetBase, Generic[T]):
     _dispose = Bool(read_only=True).tag(sync=True)
 
     def __init_subclass__(cls, **kwargs) -> None:
-        if cls.ID_PREFIX:
-            cls._CLASS_DEFINITIONS[cls.ID_PREFIX] = cls  # type: ignore
+        if cls.CID_PREFIX:
+            cls._CLASS_DEFINITIONS[cls.CID_PREFIX] = cls  # type: ignore
         super().__init_subclass__(**kwargs)
 
     def __new__(cls, *, cid: str, **kwgs):
         if cid not in cls._connections:
-            if cls.ID_PREFIX and not cid.startswith(cls.ID_PREFIX):
-                msg = f"Expected prefix '{cls.ID_PREFIX}' not found for {cid=}"
+            if cls.CID_PREFIX and not cid.startswith(cls.CID_PREFIX):
+                msg = f"Expected prefix '{cls.CID_PREFIX}' not found for {cid=}"
                 raise ValueError(msg)
-            # Check if a subclass is registered with 'ID_PREFIX'
+            # Check if a subclass is registered with 'CID_PREFIX'
             cls_ = cls._CLASS_DEFINITIONS.get(cid.split(":")[0], cls) if ":" in cid else cls
             cls._connections[cid] = super().__new__(cls_, **kwgs)  # type: ignore
         return cls._connections[cid]
@@ -60,7 +60,9 @@ class DisposableConnection(AsyncWidgetBase, Generic[T]):
     @classmethod
     def to_cid(cls, *args: str) -> str:
         """Generate an id for the args"""
-        return " | ".join([f"{cls.ID_PREFIX}:{args[0].removeprefix(cls.ID_PREFIX).strip(':')}", *args[1:]]).strip(": ")
+        return " | ".join([f"{cls.CID_PREFIX}:{args[0].removeprefix(cls.CID_PREFIX).strip(':')}", *args[1:]]).strip(
+            ": "
+        )
 
     @classmethod
     def new_cid(cls, *args):

@@ -16,11 +16,11 @@ class SessionManager(AsyncWidgetBase):
     SINGLETON = True
     _basename = Unicode("app.serviceManager.sessions").tag(sync=True)
 
-    def refreshRunning(self):
+    def refresh_running(self):
         """Force a call to refresh running sessions."""
         return self.execute_method("refreshRunning")
 
-    def stopIfNeeded(self, path):
+    def stop_if_needed(self, path):
         """
         https://jupyterlab.readthedocs.io/en/latest/api/interfaces/services.Session.IManager.html#stopIfNeeded
         """

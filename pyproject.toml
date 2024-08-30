@@ -106,6 +106,6 @@ ignore-words-list = 'statics'
 write = true
 
 [tool.ruff.lint]
-ignore = ["BLE001", "N802", "N803", "N803"]
+ignore = ["BLE001", "N803"]
 [tool.ruff.format]
 docstring-code-format = true

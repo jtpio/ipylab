@@ -9,6 +9,7 @@ from ipylab.hasapp import HasApp
 
 if TYPE_CHECKING:
     from asyncio import Task
+    from typing import Any
 
 
 class Dialog(HasApp):
@@ -18,7 +19,7 @@ class Dialog(HasApp):
         """
         return self.app.schedule_operation("getBoolean", title=title)
 
-    def get_item(self, title: str, items: tuple | list):
+    def get_item(self, title: str, items: tuple | list) -> Task[str]:
         """Jupyter dialog to get an item from a list value.
 
         note: will always return a string representation of the selected item.
@@ -44,7 +45,9 @@ class Dialog(HasApp):
         """
         return self.app.schedule_operation("getPassword", title=title)
 
-    def show_dialog(self, title: str = "", body: str | Widget = "", host: None | Widget = None, **kwgs):
+    def show_dialog(
+        self, title: str = "", body: str | Widget = "", host: None | Widget = None, **kwgs
+    ) -> Task[dict[str, Any]]:
         """Jupyter dialog to get user response with custom buttons and checkbox.
 
             returns {'value':any, 'isChecked':bool|None}
@@ -105,7 +108,9 @@ class Dialog(HasApp):
             **kwgs,
         )
 
-    def show_error_message(self, title: str, error: str, buttons: None | list[dict[str, str | list[str]]] = None):
+    def show_error_message(
+        self, title: str, error: str, buttons: None | list[dict[str, str | list[str]]] = None
+    ) -> Task[None]:
         """Jupyter error message.
 
         buttons = [

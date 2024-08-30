@@ -38,7 +38,7 @@ class CommandOptions(TypedDict):
 class CommandConnection(DisposableConnection):
     """A Disposable Ipylab command registered in the command pallet."""
 
-    ID_PREFIX = "ipylab command"
+    CID_PREFIX = "ipylab command"
     python_command = CallableTrait(allow_none=False)
 
     @observe("comm")
@@ -61,14 +61,14 @@ class CommandConnection(DisposableConnection):
 
         return self.to_task(get_config_())
 
-    def add_launcher(self, category: str):
+    def add_launcher(self, category: str, **kwgs):
         """Add a launcher for this command.
 
         When this link is closed the launcher will be disposed.
         """
 
         async def add_launcher_():
-            launcher = await self.app.commands.launcher.add(self, category)
+            launcher = await self.app.commands.launcher.add(self, category, **kwgs)
             self.observe(lambda _: launcher.dispose(), names="comm")
             return launcher
 
@@ -89,26 +89,34 @@ class CommandConnection(DisposableConnection):
 
 
 class CommandPalletConnection(DisposableConnection):
-    """A connection to an ipylab command added to the Jupyter command pallet (CTRL + SHIFT + L)"""
+    """A connection to an ipylab command in the Jupyter command pallet."""
 
-    ID_PREFIX = "ipylab command pallet"
+    CID_PREFIX = "ipylab command pallet"
 
     @observe("comm")
     def _ipylab_observe_comm(self, _):
         self.app.commands.pallet.set_trait("items", self.get_instances())
 
+    @classmethod
+    def to_cid(cls, command: str | CommandConnection, category: str):
+        return super().to_cid(str(command), category)
 
-class LauncherConnection(DisposableConnection):
-    """A connection to an ipylab command added to the Jupyter command pallet (CTRL + SHIFT + L)
+    @classmethod
+    def get_existing_connection(cls, command: str | CommandConnection, category: str, *, quiet=False):
+        return super().get_existing_connection(str(command), category, quiet=quiet)
+
+    @classmethod
+    def new_cid(cls, command: str | CommandConnection, category: str):
+        return super().new_cid(str(command), category)
+
+
+class LauncherConnection(CommandPalletConnection):
+    """A connection to an ipylab launcher.
 
     ref: https://jupyterlab.readthedocs.io/en/latest/api/interfaces/launcher.ILauncher-1.html
     """
 
-    ID_PREFIX = "ipylab launcher"
-
-    @observe("comm")
-    def _ipylab_observe_comm(self, _):
-        self.app.commands.launcher.set_trait("items", self.get_instances())
+    CID_PREFIX = "ipylab launcher"
 
 
 class CommandPalette(AsyncWidgetBase):
@@ -126,8 +134,7 @@ class CommandPalette(AsyncWidgetBase):
         args: dict | None = None,
     ) -> Task[CommandPalletConnection]:
         """Add a command to the command pallet (must be registered in this kernel)."""
-        cid = CommandPalletConnection.to_cid(str(command), category)
-        conn = CommandPalletConnection.get_existing_connection(cid, quiet=True)
+        conn = CommandPalletConnection.get_existing_connection(command, category, quiet=True)
         if conn:
             conn.dispose()
         return self.execute_method(
@@ -138,12 +145,12 @@ class CommandPalette(AsyncWidgetBase):
                 "command": str(command),
                 "rank": rank,
             },
-            cid=cid,
+            cid=CommandPalletConnection.to_cid(str(command), category),
             transform=TransformMode.connection,
         )
 
-    def remove(self, commandID: str | CommandConnection, category: str):
-        conn = CommandPalletConnection.get_existing_connection(str(commandID), category, quiet=True)
+    def remove(self, command: str | CommandConnection, category: str):
+        conn = CommandPalletConnection.get_existing_connection(str(command), category, quiet=True)
         if conn:
             conn.dispose()
 
@@ -154,12 +161,11 @@ class Launcher(AsyncWidgetBase):
     items: Container[tuple[LauncherConnection, ...]] = TypedTuple(trait=Instance(LauncherConnection))
 
     def add(self, command: str | CommandConnection, category: str, *, rank=None, **args) -> Task[LauncherConnection]:
-        """Add a launcher for the command (must be registered in this kerenel).
+        """Add a launcher for the command (must be registered in this kernel).
 
         ref: https://jupyterlab.readthedocs.io/en/latest/api/interfaces/launcher.ILauncher.IItemOptions.html
         """
-        cid = LauncherConnection.to_cid(str(command), category)
-        conn = LauncherConnection.get_existing_connection(cid, quiet=True)
+        conn = LauncherConnection.get_existing_connection(command, category, quiet=True)
         if conn:
             conn.dispose()
         return self.execute_method(
@@ -170,7 +176,7 @@ class Launcher(AsyncWidgetBase):
                 "rank": rank,
                 "args": args,
             },
-            cid=cid,
+            cid=LauncherConnection.to_cid(str(command), category),
             transform=TransformMode.connection,
         )
 
@@ -242,7 +248,6 @@ class CommandRegistry(AsyncWidgetBase):
             transform=TransformMode.connection,
             icon=pack(icon),
             frontendTransform=tfm,
-            # toLuminoWidget=["icon"] if isinstance(icon, Icon) else None,
             **kwgs,
         )
 
