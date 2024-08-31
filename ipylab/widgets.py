@@ -8,7 +8,7 @@ from typing import TYPE_CHECKING
 
 from ipywidgets import Box, DOMWidget, register, widget_serialization
 from ipywidgets.widgets.trait_types import InstanceDict
-from traitlets import Bool, Dict, Instance, Unicode, observe
+from traitlets import Dict, Instance, Unicode, observe
 
 import ipylab._frontend as _fe
 from ipylab.asyncwidget import WidgetBase
@@ -38,7 +38,6 @@ class Title(WidgetBase):
     icon_class = Unicode().tag(sync=True)
     caption = Unicode().tag(sync=True)
     class_name = Unicode().tag(sync=True)
-    closable = Bool(True).tag(sync=True)
     dataset = Dict().tag(sync=True)
     icon_label = Unicode().tag(sync=True)
     # Widgets

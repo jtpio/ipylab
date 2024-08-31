@@ -43,7 +43,6 @@ export class TitleModel extends WidgetModel {
   update_title(title: Title<any>) {
     title.caption = this.get('caption');
     title.className = this.get('class_name');
-    title.closable = this.get('closable');
     title.label = this.get('label');
     title.dataset = this.get('dataset');
     title.iconLabel = this.get('icon_label');
