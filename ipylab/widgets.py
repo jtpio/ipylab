@@ -99,6 +99,8 @@ class SplitPanel(Panel):
 
         return self.app.to_task(_force_refresh(self.children))
 
+    # ============== End temp fix =============
+
     def add_to_shell(
         self,
         *,
@@ -117,5 +119,3 @@ class SplitPanel(Panel):
             return result
 
         return self.app.to_task(_add_to_shell())
-
-    # ============== End temp fix =============
