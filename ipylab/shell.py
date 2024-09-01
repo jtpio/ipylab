@@ -6,7 +6,7 @@ import typing as t
 
 from ipylab import pack
 from ipylab._compat.enum import StrEnum
-from ipylab.asyncwidget import AsyncWidgetBase, TransformMode, Unicode
+from ipylab.asyncwidget import AsyncWidgetBase, TransformMode, TransformType, Unicode
 
 if t.TYPE_CHECKING:
     from asyncio import Task
@@ -67,6 +67,7 @@ class Shell(AsyncWidgetBase):
         mode: InsertMode = InsertMode.tab_after,
         rank: int | None = None,
         ref: DisposableConnection | None = None,
+        transform: TransformType = TransformMode.connection,
         **options,
     ) -> Task[DisposableConnection]:
         """
@@ -88,7 +89,7 @@ class Shell(AsyncWidgetBase):
             "addToShell",
             widget=pack(widget),
             area=Area(area),
-            transform=TransformMode.connection,
+            transform=transform,
             options=options_ | options,
             toLuminoWidget=["widget", "options.ref"],
         )

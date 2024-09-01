@@ -11,14 +11,21 @@ from ipywidgets.widgets.trait_types import InstanceDict
 from traitlets import Dict, Instance, Unicode, observe
 
 import ipylab._frontend as _fe
-from ipylab.asyncwidget import WidgetBase
+from ipylab.asyncwidget import TransformMode, WidgetBase
+from ipylab.disposable_connection import DisposableConnection
 from ipylab.hasapp import HasApp
 from ipylab.shell import Area, InsertMode
 
 if TYPE_CHECKING:
     from asyncio import Task
 
-    from ipylab.disposable_connection import DisposableConnection
+
+class MainAreaConnection(DisposableConnection):
+    CID_PREFIX = "ipylab MainArea"
+
+    def activate(self):
+        self._check_closed()
+        return self.app.shell.execute_method("activateById", self.id)
 
 
 @register
@@ -68,7 +75,16 @@ class Panel(Box, HasApp):
         **options,
     ) -> Task[DisposableConnection]:
         """Add this panel to the shell."""
-        return self.app.shell.add(self, area=area, mode=mode, activate=activate, rank=rank, ref=ref, **options)
+        return self.app.shell.add(
+            self,
+            area=area,
+            mode=mode,
+            activate=activate,
+            rank=rank,
+            ref=ref,
+            transform={"transform": TransformMode.connection, "cid": MainAreaConnection.new_cid()},
+            **options,
+        )
 
 
 @register

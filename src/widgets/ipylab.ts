@@ -410,7 +410,7 @@ export class IpylabModel extends WidgetModel {
       case 'done':
         return IpylabModel.OPERATION_DONE;
       case 'raw':
-        return obj as any;
+        return (await obj) as any;
       case 'null':
         return null;
       case 'connection':
