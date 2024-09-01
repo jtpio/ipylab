@@ -6,7 +6,7 @@ import sys
 
 
 def init_ipylab_backend():
-    """Initialize an ipylab backend.
+    """Initialize the ipylab backend.
 
     Intended to run inside a kernel launched by Jupyter.
     """

@@ -9,7 +9,7 @@ from ipywidgets import TypedTuple
 from traitlets import Callable as CallableTrait
 from traitlets import Container, Instance, Tuple, Unicode, observe
 
-from ipylab._compat.typing import Any, Optional, TypedDict, Unpack
+from ipylab._compat.typing import Any, NotRequired, TypedDict, Unpack
 from ipylab.asyncwidget import AsyncWidgetBase, TransformMode, pack, register
 from ipylab.disposable_connection import DisposableConnection
 
@@ -17,22 +17,25 @@ if TYPE_CHECKING:
     from asyncio import Task
     from collections.abc import Callable, Coroutine
 
+    from ipylab.asyncwidget import TransformType
     from ipylab.widgets import Icon
+
+__all__ = ["CommandConnection", "CommandPalletConnection", "LauncherConnection"]
 
 
 class CommandOptions(TypedDict):
-    caption: Optional[str]
-    className: Optional[str]  # noqa: N815
-    dataset: Optional[Any]
-    describedBy: Optional[dict]  # noqa: N815
-    iconClass: Optional[str]  # noqa: N815
-    iconLabel: Optional[str]  # noqa: N815
-    isEnabled: Optional[bool]  # noqa: N815
-    isToggled: Optional[bool]  # noqa: N815
-    isVisible: Optional[bool]  # noqa: N815
-    label: Optional[str]
-    mnemonic: Optional[str]
-    usage: Optional[str]
+    caption: NotRequired[str]
+    className: NotRequired[str]  # noqa: N815
+    dataset: NotRequired[Any]
+    describedBy: NotRequired[dict]  # noqa: N815
+    iconClass: NotRequired[str]  # noqa: N815
+    iconLabel: NotRequired[str]  # noqa: N815
+    isEnabled: NotRequired[bool]  # noqa: N815
+    isToggled: NotRequired[bool]  # noqa: N815
+    isVisible: NotRequired[bool]  # noqa: N815
+    label: NotRequired[str]
+    mnemonic: NotRequired[str]
+    usage: NotRequired[str]
 
 
 class CommandConnection(DisposableConnection):
@@ -152,8 +155,10 @@ class CommandPalette(AsyncWidgetBase):
                 "command": str(command),
                 "rank": rank,
             },
-            cid=CommandPalletConnection.to_cid(str(command), category),
-            transform=TransformMode.connection,
+            transform={
+                "transform": TransformMode.connection,
+                "cid": CommandPalletConnection.to_cid(str(command), category),
+            },
         )
 
     def remove(self, command: str | CommandConnection, category: str):
@@ -183,8 +188,10 @@ class Launcher(AsyncWidgetBase):
                 "rank": rank,
                 "args": args,
             },
-            cid=LauncherConnection.to_cid(str(command), category),
-            transform=TransformMode.connection,
+            transform={
+                "transform": TransformMode.connection,
+                "cid": LauncherConnection.to_cid(str(command), category),
+            },
         )
 
     def remove(self, command_id: str | CommandConnection, category: str):
@@ -209,7 +216,7 @@ class CommandRegistry(AsyncWidgetBase):
             case "execute":
                 conn = self.get_existing_command_connection(payload["id"])
                 cmd = conn.python_command
-                kwgs = (payload.get("kwgs") or {}) | {"buffers": buffers}
+                kwgs = (payload.get("args") or {}) | {"buffers": buffers}
                 for k in set(kwgs).difference(inspect.signature(cmd).parameters):
                     kwgs.pop(k)
                 result = cmd(**kwgs)
@@ -227,8 +234,7 @@ class CommandRegistry(AsyncWidgetBase):
         label="",
         icon_class: str | None = None,
         icon: Icon | None = None,
-        frontend_transform: TransformMode | dict = TransformMode.done,
-        frontend_transform_kwgs: None | dict = None,
+        frontend_transform: TransformType = TransformMode.done,
         **kwgs,
     ) -> Task[CommandConnection]:
         """Add a python command that can be executed by Jupyterlab.
@@ -242,19 +248,16 @@ class CommandRegistry(AsyncWidgetBase):
 
         ref: https://lumino.readthedocs.io/en/latest/api/interfaces/commands.CommandRegistry.ICommandOptions.html
         """
-        tfm = dict(frontend_transform_kwgs) if frontend_transform_kwgs else {}
-        tfm["transform"] = TransformMode(frontend_transform)
         cid = CommandConnection.to_cid(name)
         task = self.schedule_operation(
             "addCommand",
             id=cid,
-            cid=cid,
             caption=caption,
             label=label,
             iconClass=icon_class,
-            transform=TransformMode.connection,
+            transform={"transform": TransformMode.connection, "cid": cid},
             icon=pack(icon),
-            frontendTransform=tfm,
+            frontendTransform=TransformMode.validate(frontend_transform),
             **kwgs,
         )
 

@@ -183,7 +183,7 @@ export class IpylabModel extends WidgetModel {
       }
       let result;
       if (msg.toLuminoWidget instanceof Array) {
-        // Replace values with widgets
+        // Replace values in kwgs with widgets
         for (const path of msg.toLuminoWidget) {
           const value = getNestedObject({
             base: msg.kwgs,
@@ -208,7 +208,7 @@ export class IpylabModel extends WidgetModel {
       const content = {
         ipylab_BE: ipylab_BE,
         operation: operation,
-        payload: await this.transformObject(result, msg)
+        payload: await this.transformObject(result, msg.transform)
       };
       this.send(content, null, buffers);
     } catch (e) {
@@ -289,7 +289,8 @@ export class IpylabModel extends WidgetModel {
    */
   async scheduleOperation(
     operation: string,
-    payload: JSONValue
+    payload: JSONValue,
+    transform: any
   ): Promise<JSONValue> {
     const ipylab_FE = `${UUID.uuid4()}`;
     const msg = {
@@ -303,7 +304,7 @@ export class IpylabModel extends WidgetModel {
     this._pendingBackendOperations.set(ipylab_FE, opDone);
     this.send(msg);
     const result: any = await opDone.promise;
-    return await this.transformObject(result, payload);
+    return await this.transformObject(result, transform);
   }
 
   private async _executeMethod(payload: any): Promise<JSONValue> {
@@ -402,8 +403,7 @@ export class IpylabModel extends WidgetModel {
    */
   async transformObject(obj: any, args: string | any): Promise<JSONValue> {
     const transform = typeof args === 'string' ? args : args.transform;
-
-    let path: string, transform_: string, result, part: string, func;
+    let result, func;
     let cid;
 
     switch (transform) {
@@ -414,30 +414,21 @@ export class IpylabModel extends WidgetModel {
       case 'null':
         return null;
       case 'connection':
-        cid = args?.cid || args?.kwgs?.cid || obj.id || DOMUtils.createDomID();
+        cid = args?.cid || obj.id || DOMUtils.createDomID();
         IpylabModel.trackDisposable(obj, cid);
-        if (
-          this.kernel &&
-          args?.onKernelLost !== false &&
-          args?.onKernelLost?.kwgs !== false
-        ) {
+        if (this.kernel && args?.dispose_on_kernel_lost !== false) {
           onKernelLost(this.kernel, obj.dispose, obj, true);
         }
-        return { cid: cid };
-      case 'attribute':
-        // expects simple: {parts:['dotted.attribute']}
-        // or advanced: {parts:[{path:'dotted.attribute', transform:'...' }]
+        return { cid: cid, id: obj.id };
+      case 'advanced':
+        // expects args.mappings = {key:transform}
         result = new Object();
-        for (let i = 0; i < args.parts.length; i++) {
-          if (typeof args.parts[i] === 'string') {
-            path = args.parts[i];
-            transform_ = 'raw';
-          } else {
-            path = args.parts[i].path;
-            transform_ = args.parts[i].transform;
-          }
-          part = getNestedObject({ base: obj, path: path });
-          (result as any)[path] = await this.transformObject(part, transform_);
+        for (const key of Object.keys(args.mappings)) {
+          const base = getNestedObject({ base: obj, path: key });
+          (result as any)[key] = await this.transformObject(
+            base,
+            args.mappings[key]
+          );
         }
         return result as any;
       case 'function':

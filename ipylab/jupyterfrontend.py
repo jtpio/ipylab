@@ -66,26 +66,20 @@ class JupyterFrontEnd(AsyncWidgetBase):
         *,
         transform: TransformType = TransformMode.done,
         toLuminoWidget: Iterable[str] | None = None,
-        **kwgs,
+        **args,
     ):
-        """Execute the command_id registered with Jupyterlab.
+        """Execute a command registered with `id` in Jupyterlab.
 
-        `kwgs` correspond to `args` in JupyterLab.
+        `args` are passed to the command.
 
         execute_kwgs: dict | None
             Passed to execute_method (we use a dict to avoid any potential of argument clash).
 
-        Finding what `args` can be used remains an outstanding issue in JupyterLab.
-
         see: https://github.com/jtpio/ipylab/issues/128#issuecomment-1683097383 for hints
-        about how args can be found.
+        about what args can be used.
         """
         return self.execute_method(
-            "commands.execute",
-            str(command_id),
-            kwgs,  # -> used as 'args' in Jupyter
-            transform=transform,
-            toLuminoWidget=toLuminoWidget,
+            "commands.execute", str(command_id), args, transform=transform, toLuminoWidget=toLuminoWidget
         )
 
     def exec_eval(
@@ -93,33 +87,35 @@ class JupyterFrontEnd(AsyncWidgetBase):
         execute: str | inspect._SourceObjectType,
         evaluate: dict[str, str],
         kernelId="",
-        frontend_transform: TransformMode | dict = TransformMode.done,
-        frontend_transform_kwgs: None | dict = None,
+        frontend_transform: TransformType = TransformMode.done,
         **kwgs,
     ):
-        """Execute and evaluate code in the Python kernel corresponding to kernelId.
+        """Execute and evaluate code in the Python kernel with the id `kernelId`.
 
-        If `kernelId` isn't provided a new session will be launched. kwgs are used for the new session.
+        If `kernelId` isn't provided a new kernel will be created. kwgs are provided to the new session.
 
         execute:
-            The code as a script or function to pass to the builtin `exec`, returns `None`.
+            The code as text or function to executed.
             ref: https://docs.python.org/3/library/functions.html#exec
         eval:
-            An expression to evaluate using the builtin `eval`.
-            If the evaluation returns an executable, it will be executed. I the
-            result is awaitable, the result will be awaited.
-            The serialized result or result of the awaitable will be returned via the frontend.
+            A dictionary of `symbol name` to `expression` mappings to be evaluated in the kernel.
+            Each expression is evaluated in turn adding the symbol to the namespace. The evaluation
+            of the expression will also be called and or awaited until the returned symbol is no
+            longer callable or awaitable.
+
             ref: https://docs.python.org/3/library/functions.html#eval
+
+            Once evaluation is complete, the symbols named `payload` and `buffers` will be sent
+            back (if they were defined).
         kernelId:
             The Id allocated to the kernel in the frontend.
-        Addnl kwgs:
-            path, name, type='notebook' | 'console' for a new session.
+        frontend_transform: TransformType
+            The transform to use in the frontend on the payload returned from evaluation.
         """
 
         code = "import ipylab; ipylab.JupyterFrontEnd()"
         task = None if kernelId else self.session_manager.new_sessioncontext(code=code, **kwgs)
-        tfm = dict(frontend_transform_kwgs) if frontend_transform_kwgs else {}
-        tfm["transform"] = TransformMode(frontend_transform)
+        frontend_transform = TransformMode.validate(frontend_transform)
 
         async def exec_eval_():
             k_id = kernelId
@@ -127,7 +123,11 @@ class JupyterFrontEnd(AsyncWidgetBase):
                 connection = await task
                 k_id = await connection.get_attribute("session.kernel.id")
             return await self.app.schedule_operation(
-                "execEval", code=pack_code(execute), evaluate=evaluate, kernelId=k_id, frontendTransform=tfm
+                "execEval",
+                code=pack_code(execute),
+                evaluate=dict(evaluate),
+                kernelId=k_id,
+                frontendTransform=frontend_transform,
             )
 
         return self.to_task(exec_eval_())

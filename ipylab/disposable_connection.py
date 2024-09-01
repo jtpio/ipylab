@@ -36,7 +36,8 @@ class DisposableConnection(AsyncWidgetBase, Generic[T]):
     _CLASS_DEFINITIONS: dict[str, type[T]] = {}  # noqa RUF012
     _connections: dict[str, T] = {}  # noqa RUF012
     _model_name = Unicode("DisposableConnectionModel").tag(sync=True)
-    cid = Unicode(read_only=True).tag(sync=True)
+    cid = Unicode(read_only=True, help="connection id").tag(sync=True)
+    id = Unicode(allow_none=True, read_only=True, help="id of the disposable if it has one")
     _dispose = Bool(read_only=True).tag(sync=True)
 
     def __init_subclass__(cls, **kwargs) -> None:
@@ -44,7 +45,7 @@ class DisposableConnection(AsyncWidgetBase, Generic[T]):
             cls._CLASS_DEFINITIONS[cls.CID_PREFIX] = cls  # type: ignore
         super().__init_subclass__(**kwargs)
 
-    def __new__(cls, *, cid: str, **kwgs):
+    def __new__(cls, *, cid: str, id: str | None = None, **kwgs):  # noqa: A002, ARG003
         if cid not in cls._connections:
             if cls.CID_PREFIX and not cid.startswith(cls.CID_PREFIX):
                 msg = f"Expected prefix '{cls.CID_PREFIX}' not found for {cid=}"
@@ -53,6 +54,13 @@ class DisposableConnection(AsyncWidgetBase, Generic[T]):
             cls_ = cls._CLASS_DEFINITIONS.get(cid.split(":")[0], cls) if ":" in cid else cls
             cls._connections[cid] = super().__new__(cls_, **kwgs)  # type: ignore
         return cls._connections[cid]
+
+    def __init__(self, *, cid: str, model_id=None, id: str | None = None, **kwgs):  # noqa: A002
+        if self._async_widget_base_init_complete:
+            return
+        self.set_trait("cid", cid)
+        self.set_trait("id", id)
+        super().__init__(model_id=model_id, **kwgs)
 
     def __str__(self):
         return self.cid
@@ -71,12 +79,6 @@ class DisposableConnection(AsyncWidgetBase, Generic[T]):
     @classmethod
     def get_instances(cls) -> tuple[T]:
         return tuple(item for item in cls._connections.values() if item.__class__ is cls)  # type: ignore
-
-    def __init__(self, *, cid: str, model_id=None, **kwgs):
-        if self._async_widget_base_init_complete:
-            return
-        self.set_trait("cid", cid)
-        super().__init__(model_id=model_id, **kwgs)
 
     def close(self):
         self._connections.pop(self.cid, None)

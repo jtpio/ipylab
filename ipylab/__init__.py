@@ -18,10 +18,12 @@ __all__ = [
     "TransformMode",
     "pack",
     "pack_code",
+    "commands",
 ]
 
+from ipylab.disposable_connection import DisposableConnection  # noqa: I001
+from ipylab import commands
 from ipylab.asyncwidget import TransformMode, pack, pack_code
-from ipylab.disposable_connection import DisposableConnection
 from ipylab.hasapp import HasApp
 from ipylab.hookspecs import hookimpl
 from ipylab.jupyterfrontend import JupyterFrontEnd

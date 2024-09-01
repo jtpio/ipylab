@@ -5,6 +5,7 @@ from __future__ import annotations
 import asyncio
 import inspect
 import traceback
+import typing
 import uuid
 from typing import TYPE_CHECKING, Any
 
@@ -12,7 +13,9 @@ from ipywidgets import Widget, register, widget_serialization
 from traitlets import Container, Dict, Instance, Set, Unicode
 
 import ipylab._frontend as _fe
+import ipylab.disposable_connection
 from ipylab._compat.enum import StrEnum
+from ipylab._compat.typing import NotRequired, TypedDict
 from ipylab.hasapp import HasApp
 from ipylab.hookspecs import pm
 
@@ -45,30 +48,12 @@ class TransformMode(StrEnum):
     """The transformation to apply to the result of frontend operations prior to sending.
 
     - done: [default] A string '--DONE--'
-    - raw: No conversion. Note: data is serialized when sending, some objects shouldn't be serialized.
-    - attribute: A dotted attribute of the returned object is returned. ['path']='dotted.path.name'
+    - raw: No conversion. Note: data is serialized when sending, some object serialization will fail.
     - function: Use a function to calculate the return value. ['code'] = 'function...'
     - connection: Return a connection to a disposable object in the frontend.
         By default the disposable will be closed when the kernel is shutdown.
-        To leave the disposable open use the setting `onKernelLost=False` when creating the connection.
-
-    `attribute`
-    ---------
-    ```
-    transform = {
-        mode: "attribute",
-        parts: ["dotted.attribute.name", ...],  # default transform is 'raw'
-    }
-    ```
-
-    #### To specify a separate transform per part:
-
-    ```
-    transform = {
-    mode: 'attribute',
-    parts:  [{'path':'model', 'transform':...},, ...]
-    }
-    ```
+        To leave the disposable open use the setting `dispose_on_kernel_lost=False` when creating the connection.
+    - advanced: A mapping of keys to transformations to apply sequentially on the object.
 
     `function`
     --------
@@ -80,13 +65,95 @@ class TransformMode(StrEnum):
     transform = {
         "transform": TransformMode.function,
         "code": "function (obj, options) { return obj.id; }",
-    }"""
+    }
+
+    transform = {
+        "transform": TransformMode.connection,
+        "cid": "ID TO USE FOR CONNECTION",
+        "dispose_on_kernel_lost": True,  # Optional Default is True
+    }
+
+    `advanced`
+    ---------
+    ```
+    transform = {
+    "transform": TransformMode.advanced,
+    "mappings":  {path: TransformType, ...}
+    }
+    ```
+    """
 
     raw = "raw"
     done = "done"
-    attribute = "attribute"
     function = "function"
     connection = "connection"
+    advanced = "advanced"
+
+    @classmethod
+    def validate(cls, transform: TransformType):
+        """Return a valid copy of the transform."""
+        if isinstance(transform, dict):
+            match cls(transform["transform"]):
+                case cls.function:
+                    code = transform.get("code")
+                    if not isinstance(code, str) or not code.startswith("function"):
+                        raise TypeError
+                    return TransformDictFunction(transform=TransformMode.function, code=code)
+                case cls.connection:
+                    cid = transform.get("cid")
+                    if not isinstance(cid, str):
+                        raise TypeError
+                    transform_ = TransformDictConnection(transform=TransformMode.connection, cid=cid)
+                    if transform.get("dispose_on_kernel_lost") is False:
+                        transform_["dispose_on_kernel_lost"] = False
+                    return transform_
+                case cls.advanced:
+                    mappings = {}
+                    transform_ = TransformDictAdvanced(transform=TransformMode.advanced, mappings=mappings)
+                    mappings_ = transform.get("mappings")
+                    if not isinstance(mappings_, dict):
+                        raise TypeError
+                    for pth, tfm in mappings_.items():
+                        mappings[pth] = cls.validate(tfm)
+                    return transform_
+                case _:
+                    raise NotImplementedError
+        transform_ = TransformMode(transform)
+        if transform_ in [TransformMode.function, TransformMode.advanced]:
+            msg = "This type of transform should be passed as a dict to provide the additional arguments"
+            raise ValueError(msg)
+        return transform_
+
+    @classmethod
+    def transform_payload(cls, transform: TransformType, payload: dict):
+        """Transform the payload according to the transform."""
+        transform_ = transform["transform"] if isinstance(transform, dict) else transform
+        match transform_:
+            case TransformMode.advanced:
+                mappings = typing.cast(TransformDictAdvanced, transform)["mappings"]
+                return {key: cls.transform_payload(mappings[key], payload[key]) for key in mappings}
+            case TransformMode.connection:
+                return ipylab.disposable_connection.DisposableConnection(**payload)
+        return payload
+
+
+class TransformDictFunction(TypedDict):
+    transform: Literal[TransformMode.function]
+    code: NotRequired[str]
+
+
+class TransformDictAdvanced(TypedDict):
+    transform: Literal[TransformMode.advanced]
+    mappings: dict[str, TransformDictAdvanced | TransformDictFunction | TransformDictConnection]
+
+
+class TransformDictConnection(TypedDict):
+    transform: Literal[TransformMode.connection]
+    cid: str
+    dispose_on_kernel_lost: NotRequired[Literal[False]]  # By default it will dispose when the kernel is lost.
+
+
+TransformType = TransformMode | TransformDictAdvanced | TransformDictFunction | TransformDictConnection
 
 
 class JavascriptType(StrEnum):
@@ -95,9 +162,6 @@ class JavascriptType(StrEnum):
     boolean = "boolean"
     object = "object"
     function = "function"
-
-
-TransformType = TransformMode | dict[str, str]
 
 
 class Response(asyncio.Event):
@@ -254,11 +318,7 @@ class AsyncWidgetBase(WidgetBase):
 
     async def _wait_response_check_error(self, response: Response, content: dict) -> Any:
         payload = await response.wait()
-        if content["transform"] is TransformMode.connection:
-            from ipylab.disposable_connection import DisposableConnection
-
-            return DisposableConnection(**payload)
-        return payload
+        return TransformMode.transform_payload(content["transform"], payload)
 
     def _on_frontend_msg(self, _, content: dict, buffers: list):
         error = self._check_get_error(content)
@@ -307,9 +367,7 @@ class AsyncWidgetBase(WidgetBase):
                 pm.hook.on_frontend_error(obj=self, error=e, content=content, buffers=buffers)
 
     async def _do_operation_for_frontend(self, operation: str, payload: dict, buffers: list):  # noqa: ARG002
-        """Overload this function as required.
-        or if there is a buffer can return a dict {"payload":dict, "buffers":[]}
-        """
+        """Overload this function as required."""
         pm.hook.unhandled_frontend_operation_message(obj=self, operation=operation)
 
     def schedule_operation(
@@ -326,22 +384,23 @@ class AsyncWidgetBase(WidgetBase):
             Name corresponding to operation in JS frontend.
 
         transform : TransformMode | dict
-            see ipylab.TransformMode
+            The transform to apply to the result of the operation.
+            see: ipylab.TransformMode
 
         toLuminoWidget: Iterable[str] | None
-            Items in kwgs that should be converted to a Lumino widget
+            A list of item name mappings to convert to a Lumino widget in the frontend.
             Each string should correspond to the dotted path/index in kwgs that has
             the packed (json version of the widget or id of a lumino widget)
             Examples:
             --------
-                kwgs = {'widget': 'IPY_MODEL_...', 'options':{'ref':'id...'}}
-                toLuminoWidget = ['widget', 'options.ref']
 
-                kwgs = {'args':['id...',1,2,'id...']}
-                toLuminoWidget = ['args.0', 'args.3']
+            ```python
+            kwgs = {"widget": "IPY_MODEL_...", "options": {"ref": "id..."}}
+            toLuminoWidget = ["widget", "options.ref"]
 
-        **kwgs: Keyword arguments for the frontend operation.
-            kwgs are also available to the transform.
+            kwgs = {"args": ["id...", 1, 2, "id..."]}
+            toLuminoWidget = ["args.0", "args.3"]
+            ```
         """
         # validation
         self._check_closed()
@@ -349,7 +408,12 @@ class AsyncWidgetBase(WidgetBase):
             msg = f"Invalid {operation=}"
             raise ValueError(msg)
         ipylab_BE = str(uuid.uuid4())  # noqa: N806
-        content = {"ipylab_BE": ipylab_BE, "operation": operation, "kwgs": kwgs, "transform": TransformMode(transform)}
+        content = {
+            "ipylab_BE": ipylab_BE,
+            "operation": operation,
+            "kwgs": kwgs,
+            "transform": TransformMode.validate(transform),
+        }
         if toLuminoWidget:
             content["toLuminoWidget"] = list(map(str, toLuminoWidget))
         return self.to_task(self._send_receive(content))
@@ -362,9 +426,9 @@ class AsyncWidgetBase(WidgetBase):
         toLuminoWidget: Iterable[str] | None = None,
         **kwgs,
     ):
-        """Call a method on the corresponding frontend object.
+        """Call a method relative to the `base` object in the Frontend.
 
-        path: 'dotted.access.to.the.method' relative to obj.
+        path: 'dotted.access.to.the.method' relative to base.
 
         *args
         `args` are passed in order so must correspond with the order in the JS method.
@@ -389,7 +453,9 @@ class AsyncWidgetBase(WidgetBase):
         )
 
     def get_attribute(self, path: str, *, transform: TransformType = TransformMode.raw, nullIfMissing=False):
-        """Obtain a serialized version of the attribute relative to this object.
+        """Obtain a serialized version of the attribute of the `base` object in the frontend.
+
+        path: 'dotted.access.to.the.method' relative to base.
 
         Tip: This method will await the attribute in the Frontend prior to returning the result
         where the attribute is an awaitable.
@@ -401,16 +467,19 @@ class AsyncWidgetBase(WidgetBase):
         path: str,
         value,
         *,
-        value_transform: TransformType | dict = TransformMode.raw,
-        value_transform_kwgs: None | dict = None,
+        value_transform: TransformType = TransformMode.raw,
         value_toLuminoWidget=False,
         transform=TransformMode.done,
     ):
-        """Set the attribute at the path in the frontend.
+        """Set the attribute on the `path` of the `base` object in the Frontend.
+
+        The value will be transformed according to `value_transform` & `value_transform_kwgs`
+        as specified prior to setting the attribute.
+
         path: str
             "the.path.to.the.attribute" to be set.
         value: jsonable
-            The value to set, or instructions for the transform to do in the frontend.
+            The value to set, or instructions for the transform to do in the Frontend.
         valueTransform: TransformType
             valueTransform is applied to the value prior to setting the attribute.
             It may be specified as a dict with the mapping: transform:TransformType.<value>
@@ -418,19 +487,20 @@ class AsyncWidgetBase(WidgetBase):
             Whether the value should be converted to a Lumino widget. The value transform
             can be left as raw unless further adanced transformation is required.
         """
-        vt = dict(value_transform_kwgs) if value_transform_kwgs else {}
-        vt["transform"] = TransformMode(value_transform)
         return self.schedule_operation(
             "setAttribute",
             path=path,
             value=pack(value),
-            valueTransform=vt,
+            valueTransform=TransformMode.validate(value_transform),
             toLuminoWidget=["value"] if value_toLuminoWidget else None,
             transform=transform,
         )
 
     def update_values(self, path: str, values: dict, *, toLuminoWidget: Iterable[str] | None = None):
         """Update the values of the object at the path in the frontend.
+
+        This is equivalent to `dict.update` in Python.
+
         path: str
             "the.path.to.the.attribute" to be set.
         toLuminoWidget:

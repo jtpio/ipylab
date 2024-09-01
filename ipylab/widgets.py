@@ -62,9 +62,9 @@ class Panel(Box, HasApp):
         *,
         area: Area = Area.main,
         activate: bool = True,
-        mode: InsertMode = InsertMode.split_right,
+        mode: InsertMode = InsertMode.tab_after,
         rank: int | None = None,
-        ref: DisposableConnection | str = "",
+        ref: DisposableConnection | None = None,
         **options,
     ) -> Task[DisposableConnection]:
         """Add this panel to the shell."""
@@ -99,16 +99,14 @@ class SplitPanel(Panel):
 
         return self.app.to_task(_force_refresh(self.children))
 
-    # ============== End temp fix =============
-
     def add_to_shell(
         self,
         *,
         area: Area = Area.main,
         activate: bool = True,
-        mode: InsertMode = InsertMode.split_right,
+        mode: InsertMode = InsertMode.tab_after,
         rank: int | None = None,
-        ref: DisposableConnection | str = "",
+        ref: DisposableConnection | None = None,
         **options,
     ) -> Task[DisposableConnection]:
         task = super().add_to_shell(area=area, activate=activate, mode=mode, rank=rank, ref=ref, **options)
@@ -119,3 +117,5 @@ class SplitPanel(Panel):
             return result
 
         return self.app.to_task(_add_to_shell())
+
+    # ============== End temp fix =============

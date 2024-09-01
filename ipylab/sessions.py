@@ -3,6 +3,7 @@
 
 from asyncio import Task
 from types import ModuleType
+from typing import Literal
 
 from ipylab.asyncwidget import AsyncWidgetBase, TransformMode, Unicode, pack_code
 from ipylab.disposable_connection import DisposableConnection
@@ -34,21 +35,18 @@ class SessionManager(AsyncWidgetBase):
         kernelId="",
         kernelName="python3",
         code: str | ModuleType = "",
-        type="console",  # noqa: A002
+        type: Literal["console", "notebook"] = "console",  # noqa: A002
     ) -> Task[DisposableConnection]:
         """
-        Create a new sessionContext, potentiall with a new session and kernel.
+        Create a new sessionContext.
+
+        If kernelId is omitted a new kernel will be started.
 
         path: The session path.
         name: The name of the session.
         kernelName: The name of the kernel (only Python kernel implemented).
-        code: A string, module or function.
+        code: A string, module or function to be called in the kernel.
         type: The type of session.
-
-        If passing a function, the function will be executed. It is important
-        that objects that must stay alive outside the function must be kept alive.
-        So it is advised to use a code.
-
         """
         return self.app.schedule_operation(
             "newSessionContext",

@@ -75,33 +75,35 @@ export class CommandRegistryModel extends IpylabModel {
     if (this.hasDisposable(id)) {
       this.getDisposable(id).dispose();
     }
-    const payload = { ...frontendTransform };
-    payload.id = id;
     // Make a new object and define functions so we can dynamically update.
     const config = { ...options };
     delete config.icon;
+    const isToggled = isToggleable ? () => config?.isToggled ?? true : null;
     const options_ = {
       caption: () => config?.caption,
       className: () => config?.className,
       dataset: () => config?.dataset,
       describedBy: () => config?.describedBy,
       execute: async (args: any) => {
-        payload.kwgs = args;
-        const result = await this.scheduleOperation('execute', payload);
-        return await this.transformObject(result, frontendTransform);
+        return await this.scheduleOperation(
+          'execute',
+          { id: id, args: args },
+          frontendTransform
+        );
       },
       icon: icon,
       iconClass: () => config?.iconClass,
       iconLabel: () => config?.iconLabel,
       isEnabled: () => config?.isEnabled ?? true,
       isToggleable,
-      isToggled: isToggleable ? config?.isToggleable ?? true : null,
+      isToggled,
       isVisible: () => config?.isVisible ?? true,
       label: () => config?.label,
       mnemonic: () => config?.mnemonic,
       usage: () => config?.usage
     };
     const command = this.commands.addCommand(id, options_ as any);
+    (command as any).id = id;
     (command as any).config = config;
     return command;
   }

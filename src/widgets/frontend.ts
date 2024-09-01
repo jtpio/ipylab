@@ -170,8 +170,11 @@ export class JupyterFrontEndModel extends IpylabModel {
       );
     }
     const jfem = Private.jupyterFrontEndModels.get(payload.kernelId);
-    const payload_ = { ...payload, ...payload.frontendTransform };
-    return await jfem.scheduleOperation('execEval', payload_);
+    return await jfem.scheduleOperation(
+      'execEval',
+      payload,
+      payload.frontendTransform
+    );
   }
 
   static serializers: ISerializers = {

@@ -55,6 +55,7 @@ class Shell(AsyncWidgetBase):
     ref: https://jupyterlab.readthedocs.io/en/latest/api/interfaces/application.JupyterFrontEnd.IShell.html#add
     """
 
+    SINGLETON = True
     _basename = Unicode("shell").tag(sync=True)
 
     def add(
@@ -63,9 +64,9 @@ class Shell(AsyncWidgetBase):
         *,
         area: Area = Area.main,
         activate: bool = True,
-        mode: InsertMode = InsertMode.split_right,
+        mode: InsertMode = InsertMode.tab_after,
         rank: int | None = None,
-        ref: DisposableConnection | str = "",
+        ref: DisposableConnection | None = None,
         **options,
     ) -> Task[DisposableConnection]:
         """
