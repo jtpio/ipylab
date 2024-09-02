@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING, Any
 
 from traitlets import Dict, Instance, Tuple, Unicode
 
-from ipylab.asyncwidget import AsyncWidgetBase, TransformMode, pack, pack_code, register, widget_serialization
+from ipylab.asyncwidget import AsyncWidgetBase, Transform, pack, pack_code, register, widget_serialization
 from ipylab.commands import CommandRegistry
 from ipylab.dialog import Dialog, FileDialog
 from ipylab.hookspecs import pm
@@ -64,7 +64,7 @@ class JupyterFrontEnd(AsyncWidgetBase):
         self,
         command_id: str | CommandConnection,
         *,
-        transform: TransformType = TransformMode.done,
+        transform: TransformType = Transform.done,
         toLuminoWidget: Iterable[str] | None = None,
         **args,
     ):
@@ -87,7 +87,7 @@ class JupyterFrontEnd(AsyncWidgetBase):
         execute: str | inspect._SourceObjectType,
         evaluate: dict[str, str],
         kernelId="",
-        frontend_transform: TransformType = TransformMode.done,
+        frontend_transform: TransformType = Transform.done,
         **kwgs,
     ):
         """Execute and evaluate code in the Python kernel with the id `kernelId`.
@@ -115,7 +115,7 @@ class JupyterFrontEnd(AsyncWidgetBase):
 
         code = "import ipylab; ipylab.JupyterFrontEnd()"
         task = None if kernelId else self.session_manager.new_sessioncontext(code=code, **kwgs)
-        frontend_transform = TransformMode.validate(frontend_transform)
+        frontend_transform = Transform.validate(frontend_transform)
 
         async def exec_eval_():
             k_id = kernelId
@@ -152,4 +152,4 @@ class JupyterFrontEnd(AsyncWidgetBase):
 
     def checkstart_iyplab_python_backend(self, *, restart=False):
         """Checks backend is running and starts it if it isn't, returning the session model."""
-        return self.schedule_operation("startIyplabPythonBackend", restart=restart, transform=TransformMode.connection)
+        return self.schedule_operation("startIyplabPythonBackend", restart=restart, transform=Transform.connection)

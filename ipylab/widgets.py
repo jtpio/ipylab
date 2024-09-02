@@ -11,21 +11,15 @@ from ipywidgets.widgets.trait_types import InstanceDict
 from traitlets import Dict, Instance, Unicode, observe
 
 import ipylab._frontend as _fe
-from ipylab.asyncwidget import TransformMode, WidgetBase
-from ipylab.disposable_connection import Connection
+from ipylab.asyncwidget import WidgetBase
+from ipylab.common import InsertMode
 from ipylab.hasapp import HasApp
-from ipylab.shell import Area, InsertMode
+from ipylab.shell import Area
 
 if TYPE_CHECKING:
     from asyncio import Task
 
-
-class MainAreaConnection(Connection):
-    CID_PREFIX = "ipylab MainArea"
-
-    def activate(self):
-        self._check_closed()
-        return self.app.shell.execute_method("activateById", self.id)
+    from ipylab.connection import Connection, MainAreaConnection
 
 
 @register
@@ -73,18 +67,9 @@ class Panel(Box, HasApp):
         rank: int | None = None,
         ref: Connection | None = None,
         **options,
-    ) -> Task[Connection]:
+    ):
         """Add this panel to the shell."""
-        return self.app.shell.add(
-            self,
-            area=area,
-            mode=mode,
-            activate=activate,
-            rank=rank,
-            ref=ref,
-            transform={"transform": TransformMode.connection, "cid": MainAreaConnection.new_cid()},
-            **options,
-        )
+        return self.app.shell.add(self, area=area, mode=mode, activate=activate, rank=rank, ref=ref, **options)
 
 
 @register
@@ -124,7 +109,7 @@ class SplitPanel(Panel):
         rank: int | None = None,
         ref: Connection | None = None,
         **options,
-    ) -> Task[Connection]:
+    ) -> Task[MainAreaConnection]:
         task = super().add_to_shell(area=area, activate=activate, mode=mode, rank=rank, ref=ref, **options)
 
         async def _add_to_shell():

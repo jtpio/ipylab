@@ -9,25 +9,26 @@ __all__ = [
     "HasApp",
     "JupyterFrontEnd",
     "Connection",
+    "MainAreaConnection",
     "Panel",
     "SplitPanel",
     "Icon",
     "Area",
     "InsertMode",
     "hookimpl",
-    "TransformMode",
+    "Transform",
     "pack",
     "pack_code",
     "commands",
 ]
 
-from ipylab.disposable_connection import Connection  # noqa: I001
 from ipylab import commands
-from ipylab.asyncwidget import TransformMode, pack, pack_code
+from ipylab.asyncwidget import pack, pack_code
+from ipylab.common import Area, InsertMode, Transform
+from ipylab.connection import Connection, MainAreaConnection
 from ipylab.hasapp import HasApp
 from ipylab.hookspecs import hookimpl
 from ipylab.jupyterfrontend import JupyterFrontEnd
-from ipylab.shell import Area, InsertMode
 from ipylab.widgets import Icon, Panel, SplitPanel
 
 

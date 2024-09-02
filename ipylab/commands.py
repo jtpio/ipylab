@@ -10,8 +10,8 @@ from traitlets import Callable as CallableTrait
 from traitlets import Container, Instance, Tuple, Unicode, observe
 
 from ipylab._compat.typing import Any, NotRequired, TypedDict, Unpack
-from ipylab.asyncwidget import AsyncWidgetBase, TransformMode, pack, register
-from ipylab.disposable_connection import Connection
+from ipylab.asyncwidget import AsyncWidgetBase, Transform, pack, register
+from ipylab.connection import Connection
 
 if TYPE_CHECKING:
     from asyncio import Task
@@ -62,13 +62,6 @@ class CommandConnection(Connection):
             return config
 
         return self.to_task(configure_())
-
-    def get_config(self) -> Task[CommandOptions]:
-        async def get_config_():
-            config = await self.get_attribute("config", nullIfMissing=True)
-            return config or {}
-
-        return self.to_task(get_config_())
 
     def add_launcher(self, category: str, rank=None, **args):
         """Add a launcher for this command.
@@ -162,7 +155,7 @@ class CommandPalette(AsyncWidgetBase):
                 "rank": rank,
             },
             transform={
-                "transform": TransformMode.connection,
+                "transform": Transform.connection,
                 "cid": CommandPalletConnection.to_cid(str(command), category),
             },
         )
@@ -195,7 +188,7 @@ class Launcher(AsyncWidgetBase):
                 "args": args,
             },
             transform={
-                "transform": TransformMode.connection,
+                "transform": Transform.connection,
                 "cid": LauncherConnection.to_cid(str(command), category),
             },
         )
@@ -240,7 +233,7 @@ class CommandRegistry(AsyncWidgetBase):
         label="",
         icon_class: str | None = None,
         icon: Icon | None = None,
-        frontend_transform: TransformType = TransformMode.done,
+        frontend_transform: TransformType = Transform.done,
         **kwgs,
     ) -> Task[CommandConnection]:
         """Add a python command that can be executed by Jupyterlab.
@@ -261,9 +254,9 @@ class CommandRegistry(AsyncWidgetBase):
             caption=caption,
             label=label,
             iconClass=icon_class,
-            transform={"transform": TransformMode.connection, "cid": cid},
+            transform={"transform": Transform.connection, "cid": cid},
             icon=pack(icon),
-            frontendTransform=TransformMode.validate(frontend_transform),
+            frontendTransform=Transform.validate(frontend_transform),
             **kwgs,
         )
 

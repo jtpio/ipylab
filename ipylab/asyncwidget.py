@@ -5,7 +5,6 @@ from __future__ import annotations
 import asyncio
 import inspect
 import traceback
-import typing
 import uuid
 from typing import TYPE_CHECKING, Any
 
@@ -13,9 +12,7 @@ from ipywidgets import Widget, register, widget_serialization
 from traitlets import Container, Dict, Instance, Set, Unicode
 
 import ipylab._frontend as _fe
-import ipylab.disposable_connection
-from ipylab._compat.enum import StrEnum
-from ipylab._compat.typing import NotRequired, TypedDict
+from ipylab.common import JavascriptType, Transform, TransformType
 from ipylab.hasapp import HasApp
 from ipylab.hookspecs import pm
 
@@ -42,126 +39,6 @@ def pack_code(code: str | inspect._SourceObjectType) -> str:
     if not isinstance(code, str):
         code = inspect.getsource(code)
     return code
-
-
-class TransformMode(StrEnum):
-    """The transformation to apply to the result of frontend operations prior to sending.
-
-    - done: [default] A string '--DONE--'
-    - raw: No conversion. Note: data is serialized when sending, some object serialization will fail.
-    - function: Use a function to calculate the return value. ['code'] = 'function...'
-    - connection: Return a connection to a disposable object in the frontend.
-        By default the disposable will be closed when the kernel is shutdown.
-        To leave the disposable open use the setting `dispose_on_kernel_lost=False` when creating the connection.
-    - advanced: A mapping of keys to transformations to apply sequentially on the object.
-
-    `function`
-    --------
-    JS code defining a function and the data to return.
-
-    The function must accept two args: obj, options.
-
-    ```
-    transform = {
-        "transform": TransformMode.function,
-        "code": "function (obj, options) { return obj.id; }",
-    }
-
-    transform = {
-        "transform": TransformMode.connection,
-        "cid": "ID TO USE FOR CONNECTION",
-        "dispose_on_kernel_lost": True,  # Optional Default is True
-    }
-
-    `advanced`
-    ---------
-    ```
-    transform = {
-    "transform": TransformMode.advanced,
-    "mappings":  {path: TransformType, ...}
-    }
-    ```
-    """
-
-    raw = "raw"
-    done = "done"
-    function = "function"
-    connection = "connection"
-    advanced = "advanced"
-
-    @classmethod
-    def validate(cls, transform: TransformType):
-        """Return a valid copy of the transform."""
-        if isinstance(transform, dict):
-            match cls(transform["transform"]):
-                case cls.function:
-                    code = transform.get("code")
-                    if not isinstance(code, str) or not code.startswith("function"):
-                        raise TypeError
-                    return TransformDictFunction(transform=TransformMode.function, code=code)
-                case cls.connection:
-                    cid = transform.get("cid")
-                    if not isinstance(cid, str):
-                        raise TypeError
-                    transform_ = TransformDictConnection(transform=TransformMode.connection, cid=cid)
-                    if transform.get("dispose_on_kernel_lost") is False:
-                        transform_["dispose_on_kernel_lost"] = False
-                    return transform_
-                case cls.advanced:
-                    mappings = {}
-                    transform_ = TransformDictAdvanced(transform=TransformMode.advanced, mappings=mappings)
-                    mappings_ = transform.get("mappings")
-                    if not isinstance(mappings_, dict):
-                        raise TypeError
-                    for pth, tfm in mappings_.items():
-                        mappings[pth] = cls.validate(tfm)
-                    return transform_
-                case _:
-                    raise NotImplementedError
-        transform_ = TransformMode(transform)
-        if transform_ in [TransformMode.function, TransformMode.advanced]:
-            msg = "This type of transform should be passed as a dict to provide the additional arguments"
-            raise ValueError(msg)
-        return transform_
-
-    @classmethod
-    def transform_payload(cls, transform: TransformType, payload: dict):
-        """Transform the payload according to the transform."""
-        transform_ = transform["transform"] if isinstance(transform, dict) else transform
-        match transform_:
-            case TransformMode.advanced:
-                mappings = typing.cast(TransformDictAdvanced, transform)["mappings"]
-                return {key: cls.transform_payload(mappings[key], payload[key]) for key in mappings}
-            case TransformMode.connection:
-                return ipylab.disposable_connection.Connection(**payload)
-        return payload
-
-
-class TransformDictFunction(TypedDict):
-    transform: Literal[TransformMode.function]
-    code: NotRequired[str]
-
-
-class TransformDictAdvanced(TypedDict):
-    transform: Literal[TransformMode.advanced]
-    mappings: dict[str, TransformDictAdvanced | TransformDictFunction | TransformDictConnection]
-
-
-class TransformDictConnection(TypedDict):
-    transform: Literal[TransformMode.connection]
-    cid: str
-    dispose_on_kernel_lost: NotRequired[Literal[False]]  # By default it will dispose when the kernel is lost.
-
-
-TransformType = TransformMode | TransformDictAdvanced | TransformDictFunction | TransformDictConnection
-
-
-class JavascriptType(StrEnum):
-    string = "string"
-    number = "number"
-    boolean = "boolean"
-    object = "object"
-    function = "function"
 
 
 class Response(asyncio.Event):
@@ -286,7 +163,7 @@ class AsyncWidgetBase(WidgetBase):
                 if "cyclic" in error:
                     msg += (
                         "\nNote: A cyclic error may be due a return value that cannot be converted to JSON. "
-                        "Try changing the transform (eg: transform=ipylab.TransformMode.done)."
+                        "Try changing the transform (eg: transform=ipylab.Transform.done)."
                     )
                 else:
                     msg += "\nNote: Additional information may be available in the browser console (press `F12`)"
@@ -318,7 +195,7 @@ class AsyncWidgetBase(WidgetBase):
 
     async def _wait_response_check_error(self, response: Response, content: dict) -> Any:
         payload = await response.wait()
-        return TransformMode.transform_payload(content["transform"], payload)
+        return Transform.transform_payload(content["transform"], payload)
 
     def _on_frontend_msg(self, _, content: dict, buffers: list):
         error = self._check_get_error(content)
@@ -374,7 +251,7 @@ class AsyncWidgetBase(WidgetBase):
         self,
         operation: str,
         *,
-        transform: TransformType = TransformMode.raw,
+        transform: TransformType = Transform.raw,
         toLuminoWidget: Iterable[str] | None = None,
         **kwgs,
     ):
@@ -383,9 +260,9 @@ class AsyncWidgetBase(WidgetBase):
         operation: str
             Name corresponding to operation in JS frontend.
 
-        transform : TransformMode | dict
+        transform : Transform | dict
             The transform to apply to the result of the operation.
-            see: ipylab.TransformMode
+            see: ipylab.Transform
 
         toLuminoWidget: Iterable[str] | None
             A list of item name mappings to convert to a Lumino widget in the frontend.
@@ -412,7 +289,7 @@ class AsyncWidgetBase(WidgetBase):
             "ipylab_BE": ipylab_BE,
             "operation": operation,
             "kwgs": kwgs,
-            "transform": TransformMode.validate(transform),
+            "transform": Transform.validate(transform),
         }
         if toLuminoWidget:
             content["toLuminoWidget"] = list(map(str, toLuminoWidget))
@@ -422,7 +299,7 @@ class AsyncWidgetBase(WidgetBase):
         self,
         path: str,
         *args,
-        transform: TransformType = TransformMode.raw,
+        transform: TransformType = Transform.raw,
         toLuminoWidget: Iterable[str] | None = None,
         **kwgs,
     ):
@@ -452,7 +329,7 @@ class AsyncWidgetBase(WidgetBase):
             **kwgs,
         )
 
-    def get_attribute(self, path: str, *, transform: TransformType = TransformMode.raw, nullIfMissing=False):
+    def get_attribute(self, path: str, *, transform: TransformType = Transform.raw, nullIfMissing=False):
         """Obtain a serialized version of the attribute of the `base` object in the frontend.
 
         path: 'dotted.access.to.the.method' relative to base.
@@ -467,9 +344,9 @@ class AsyncWidgetBase(WidgetBase):
         path: str,
         value,
         *,
-        value_transform: TransformType = TransformMode.raw,
+        value_transform: TransformType = Transform.raw,
         value_toLuminoWidget=False,
-        transform=TransformMode.done,
+        transform=Transform.done,
     ):
         """Set the attribute on the `path` of the `base` object in the Frontend.
 
@@ -491,7 +368,7 @@ class AsyncWidgetBase(WidgetBase):
             "setAttribute",
             path=path,
             value=pack(value),
-            valueTransform=TransformMode.validate(value_transform),
+            valueTransform=Transform.validate(value_transform),
             toLuminoWidget=["value"] if value_toLuminoWidget else None,
             transform=transform,
         )
@@ -508,7 +385,7 @@ class AsyncWidgetBase(WidgetBase):
             eg. ["values.value_toLuminoWidget"]
         """
         return self.schedule_operation(
-            "updateValues", path=path, values=values, transform=TransformMode.raw, toLuminoWidget=toLuminoWidget
+            "updateValues", path=path, values=values, transform=Transform.raw, toLuminoWidget=toLuminoWidget
         )
 
     def list_attributes(
@@ -518,7 +395,7 @@ class AsyncWidgetBase(WidgetBase):
         depth=2,
         *,
         how: Literal["names", "group", "raw"] = "group",
-        transform: TransformType = TransformMode.raw,
+        transform: TransformType = Transform.raw,
         skip_hidden=True,
     ) -> Task[dict | list]:
         """Get a mapping of attributes of the object at 'path' of the Frontend instance.

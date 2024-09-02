@@ -18,9 +18,26 @@ T = TypeVar("T", bound="Connection")
 class Connection(AsyncWidgetBase, Generic[T]):
     """A connection to an object in the Frontend.
 
-    This defines the 'base' as the object meaning the frontend attribute methods
-    are associated directly with the object on the frontend.
+    Instances of `Connections` are created automatically when the transform is set as
+    `Transform.connection`.
 
+    When the `cid` *prefix* matches a subclass `CID_PREFIX`, a new subclass instance will
+    be created in place of the Connection.
+
+    If a specific subclass of Connection is required, the transform should be
+    specified using:
+
+    ```python
+    transform = {
+        "transform": Transform.connection,
+        "cid": CONNECTION_SUBCLASS.new_cid(),
+    }
+    # or
+    transform = {
+        "transform": Transform.connection,
+        "cid": CONNECTION_SUBCLASS.to_cid(DETAILS),
+    }
+    ```
     The 'dispose' method will call the dispose method on the frontend object and
     close this object.
 
@@ -35,7 +52,7 @@ class Connection(AsyncWidgetBase, Generic[T]):
     will generate an appropriate id.
     """
 
-    CID_PREFIX = ""
+    CID_PREFIX = ""  # Required in subclassess to discriminate when creating.
     _CLASS_DEFINITIONS: dict[str, type[T]] = {}  # noqa RUF012
     _connections: dict[str, T] = {}  # noqa RUF012
     _model_name = Unicode("ConnectionModel").tag(sync=True)
@@ -108,3 +125,11 @@ class Connection(AsyncWidgetBase, Generic[T]):
             msg = f"A connection does not exist with id='{cid}'"
             raise ValueError(msg)
         return conn
+
+
+class MainAreaConnection(Connection):
+    CID_PREFIX = "ipylab MainArea"
+
+    def activate(self):
+        self._check_closed()
+        return self.app.shell.execute_method("activateById", self.id)
