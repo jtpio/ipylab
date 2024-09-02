@@ -12,7 +12,7 @@ from traitlets import Dict, Instance, Unicode, observe
 
 import ipylab._frontend as _fe
 from ipylab.asyncwidget import TransformMode, WidgetBase
-from ipylab.disposable_connection import DisposableConnection
+from ipylab.disposable_connection import Connection
 from ipylab.hasapp import HasApp
 from ipylab.shell import Area, InsertMode
 
@@ -20,7 +20,7 @@ if TYPE_CHECKING:
     from asyncio import Task
 
 
-class MainAreaConnection(DisposableConnection):
+class MainAreaConnection(Connection):
     CID_PREFIX = "ipylab MainArea"
 
     def activate(self):
@@ -71,9 +71,9 @@ class Panel(Box, HasApp):
         activate: bool = True,
         mode: InsertMode = InsertMode.tab_after,
         rank: int | None = None,
-        ref: DisposableConnection | None = None,
+        ref: Connection | None = None,
         **options,
-    ) -> Task[DisposableConnection]:
+    ) -> Task[Connection]:
         """Add this panel to the shell."""
         return self.app.shell.add(
             self,
@@ -122,9 +122,9 @@ class SplitPanel(Panel):
         activate: bool = True,
         mode: InsertMode = InsertMode.tab_after,
         rank: int | None = None,
-        ref: DisposableConnection | None = None,
+        ref: Connection | None = None,
         **options,
-    ) -> Task[DisposableConnection]:
+    ) -> Task[Connection]:
         task = super().add_to_shell(area=area, activate=activate, mode=mode, rank=rank, ref=ref, **options)
 
         async def _add_to_shell():

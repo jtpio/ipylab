@@ -133,7 +133,7 @@ class TransformMode(StrEnum):
                 mappings = typing.cast(TransformDictAdvanced, transform)["mappings"]
                 return {key: cls.transform_payload(mappings[key], payload[key]) for key in mappings}
             case TransformMode.connection:
-                return ipylab.disposable_connection.DisposableConnection(**payload)
+                return ipylab.disposable_connection.Connection(**payload)
         return payload
 
 

@@ -72,9 +72,6 @@ export class CommandRegistryModel extends IpylabModel {
       const model = await unpack_models(options.icon, this.widget_manager);
       icon = () => model.labIcon;
     }
-    if (this.hasDisposable(id)) {
-      this.getDisposable(id).dispose();
-    }
     // Make a new object and define functions so we can dynamically update.
     const config = { ...options };
     delete config.icon;

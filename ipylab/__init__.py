@@ -8,7 +8,7 @@ __all__ = [
     "__version__",
     "HasApp",
     "JupyterFrontEnd",
-    "DisposableConnection",
+    "Connection",
     "Panel",
     "SplitPanel",
     "Icon",
@@ -21,7 +21,7 @@ __all__ = [
     "commands",
 ]
 
-from ipylab.disposable_connection import DisposableConnection  # noqa: I001
+from ipylab.disposable_connection import Connection  # noqa: I001
 from ipylab import commands
 from ipylab.asyncwidget import TransformMode, pack, pack_code
 from ipylab.hasapp import HasApp

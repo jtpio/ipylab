@@ -13,7 +13,7 @@ if t.TYPE_CHECKING:
 
     from ipywidgets import Widget
 
-    from ipylab.disposable_connection import DisposableConnection
+    from ipylab.disposable_connection import Connection
 
 __all__ = ["Area", "InsertMode", "Shell"]
 
@@ -66,10 +66,10 @@ class Shell(AsyncWidgetBase):
         activate: bool = True,
         mode: InsertMode = InsertMode.tab_after,
         rank: int | None = None,
-        ref: DisposableConnection | None = None,
+        ref: Connection | None = None,
         transform: TransformType = TransformMode.connection,
         **options,
-    ) -> Task[DisposableConnection]:
+    ) -> Task[Connection]:
         """
         Add the widget to the shell.
 

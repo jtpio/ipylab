@@ -6,7 +6,7 @@ from types import ModuleType
 from typing import Literal
 
 from ipylab.asyncwidget import AsyncWidgetBase, TransformMode, Unicode, pack_code
-from ipylab.disposable_connection import DisposableConnection
+from ipylab.disposable_connection import Connection
 
 
 class SessionManager(AsyncWidgetBase):
@@ -36,7 +36,7 @@ class SessionManager(AsyncWidgetBase):
         kernelName="python3",
         code: str | ModuleType = "",
         type: Literal["console", "notebook"] = "console",  # noqa: A002
-    ) -> Task[DisposableConnection]:
+    ) -> Task[Connection]:
         """
         Create a new sessionContext.
 

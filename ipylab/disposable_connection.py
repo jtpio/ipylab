@@ -11,17 +11,20 @@ from traitlets import Bool, Unicode
 
 from ipylab.asyncwidget import AsyncWidgetBase
 
-T = TypeVar("T", bound="DisposableConnection")
+T = TypeVar("T", bound="Connection")
 
 
 @register
-class DisposableConnection(AsyncWidgetBase, Generic[T]):
-    """A connection to a disposable object in the Frontend.
+class Connection(AsyncWidgetBase, Generic[T]):
+    """A connection to an object in the Frontend.
 
-    This defines the 'base' as the disposable object meaning the frontend attribute methods
+    This defines the 'base' as the object meaning the frontend attribute methods
     are associated directly with the object on the frontend.
 
-    The 'dispose' method will call the dispose method on the frontend object and close
+    The 'dispose' method will call the dispose method on the frontend object and
+    close this object.
+
+    Non-disposable objects are patched with a blank `dispose` method.
 
     see: https://lumino.readthedocs.io/en/latest/api/modules/disposable.html
 
@@ -35,10 +38,11 @@ class DisposableConnection(AsyncWidgetBase, Generic[T]):
     CID_PREFIX = ""
     _CLASS_DEFINITIONS: dict[str, type[T]] = {}  # noqa RUF012
     _connections: dict[str, T] = {}  # noqa RUF012
-    _model_name = Unicode("DisposableConnectionModel").tag(sync=True)
+    _model_name = Unicode("ConnectionModel").tag(sync=True)
     cid = Unicode(read_only=True, help="connection id").tag(sync=True)
     id = Unicode(allow_none=True, read_only=True, help="id of the disposable if it has one")
     _dispose = Bool(read_only=True).tag(sync=True)
+    _basename = None
 
     def __init_subclass__(cls, **kwargs) -> None:
         if cls.CID_PREFIX:

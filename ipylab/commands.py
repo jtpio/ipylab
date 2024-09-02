@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import inspect
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, ClassVar
 
 from ipywidgets import TypedTuple
 from traitlets import Callable as CallableTrait
@@ -11,7 +11,7 @@ from traitlets import Container, Instance, Tuple, Unicode, observe
 
 from ipylab._compat.typing import Any, NotRequired, TypedDict, Unpack
 from ipylab.asyncwidget import AsyncWidgetBase, TransformMode, pack, register
-from ipylab.disposable_connection import DisposableConnection
+from ipylab.disposable_connection import Connection
 
 if TYPE_CHECKING:
     from asyncio import Task
@@ -38,17 +38,23 @@ class CommandOptions(TypedDict):
     usage: NotRequired[str]
 
 
-class CommandConnection(DisposableConnection):
+class CommandConnection(Connection):
     """A Disposable Ipylab command registered in the command pallet."""
 
     CID_PREFIX = "ipylab command"
     python_command = CallableTrait(allow_none=False)
+
+    _config_options: ClassVar = set(CommandOptions.__annotations__)
 
     @observe("comm")
     def _ipylab_observe_comm(self, _):
         self.app.commands.set_trait("items", self.get_instances())
 
     def configure(self, *, emit=True, **kwgs: Unpack[CommandOptions]) -> Task[CommandOptions]:
+        if diff := set(kwgs).difference(self._config_options):
+            msg = f"The following useless configuration options were detected for {diff} in {self}"
+            raise KeyError(msg)
+
         async def configure_():
             config = await self.update_values("config", kwgs)  # type: ignore
             if emit:
@@ -95,7 +101,7 @@ class CommandConnection(DisposableConnection):
         return self.to_task(add_to_command_pallet_())
 
 
-class CommandPalletConnection(DisposableConnection):
+class CommandPalletConnection(Connection):
     """A connection to an ipylab command in the Jupyter command pallet."""
 
     CID_PREFIX = "ipylab command pallet"

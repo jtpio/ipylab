@@ -3,14 +3,13 @@
 
 // SessionManager exposes `JupyterLab.serviceManager.sessions` to user python kernel
 import {
-  IBackboneModelOptions,
   ISerializers,
   IWidgetRegistryData,
   WidgetModel,
   unpack_models
 } from '@jupyter-widgets/base';
 import { ILabShell, JupyterFrontEnd, LabShell } from '@jupyterlab/application';
-import { DOMUtils, ICommandPalette } from '@jupyterlab/apputils';
+import { ICommandPalette } from '@jupyterlab/apputils';
 import { IDefaultFileBrowser } from '@jupyterlab/filebrowser';
 import { ILauncher } from '@jupyterlab/launcher';
 import { ObservableMap } from '@jupyterlab/observables';
@@ -37,9 +36,9 @@ import {
   setNestedAttribute,
   toFunction
 } from './utils';
+import { uuid } from '@jupyter-widgets/base';
 export {
   CommandRegistry,
-  IBackboneModelOptions,
   IDisposable,
   ILabShell,
   ILauncher,
@@ -55,7 +54,7 @@ export {
  * Base model for common features
  */
 export class IpylabModel extends WidgetModel {
-  initialize(attributes: ObjectHash, options: IBackboneModelOptions): void {
+  initialize(attributes: ObjectHash, options: any): void {
     super.initialize(attributes, options);
     this.set('kernelId', this.kernelId);
     this.on('msg:custom', this._onCustomMessage.bind(this));
@@ -63,17 +62,22 @@ export class IpylabModel extends WidgetModel {
     const msg = `ipylab ${this.get('_model_name')} ready for operations`;
     this.send({ init: msg });
     onKernelLost(this.kernel, this.close, this);
-    const basename = this.get('_basename');
-    this._base = basename
-      ? getNestedObject({
-          base: this,
-          path: basename,
-          basename: `model_name= '${this.defaults()._model_name}`
-        })
-      : this;
+    if (typeof options.base === 'object') {
+      this._base = options.base;
+      delete options.base;
+    } else {
+      const basename = this.get('_basename');
+      this._base = basename
+        ? getNestedObject({
+            base: this,
+            path: basename,
+            basename: `model_name= '${this.defaults()._model_name}`
+          })
+        : this;
+    }
   }
 
-  get base(): object {
+  get base(): any {
     return this._base;
   }
 
@@ -235,8 +239,8 @@ export class IpylabModel extends WidgetModel {
   async toLuminoWidget(value: string): Promise<Widget> {
     if (value.slice(0, 10) === 'IPY_MODEL_') {
       const model = await unpack_models(value, this.widget_manager);
-      if (model.model_name === IpylabModel.disposable_model_name) {
-        const widget = this.getDisposable(model.id);
+      if (model.model_name === IpylabModel.connection_model_name) {
+        const widget = this.getConnection(model.cid);
         if (!(widget instanceof Widget)) {
           throw new Error(`Failed to get a lumio widget for: ${value}`);
         }
@@ -246,7 +250,7 @@ export class IpylabModel extends WidgetModel {
       onKernelLost(this.kernel, lw.dispose, lw);
       return lw;
     }
-    return this.getDisposable(value);
+    return this.getConnection(value);
   }
 
   /**
@@ -362,12 +366,16 @@ export class IpylabModel extends WidgetModel {
   }
 
   close(comm_closed?: boolean): Promise<void> {
+    if (!this._base) {
+      return;
+    }
     this._pendingBackendOperations.forEach(opDone => opDone.reject('Closed'));
     this._pendingBackendOperations.clear();
     comm_closed = comm_closed || !this.kernelLive;
     if (!comm_closed) {
       this.send({ closed: true });
     }
+    delete this._base;
     return super.close(comm_closed);
   }
 
@@ -379,20 +387,20 @@ export class IpylabModel extends WidgetModel {
 
   /**
    *
-   * @param id Get a lumino widget using its id.
+   * @param cid Get an object that has been registered as a connection.
    * @returns
    */
-  getDisposable(id: string): any {
-    if (Private.disposables.has(id)) {
-      return Private.disposables.get(id);
+  getConnection(cid: string): any {
+    if (Private.connection.has(cid)) {
+      return Private.connection.get(cid);
     }
-    const disposable = this._getLuminoWidgetFromShell(id);
-    IpylabModel.trackDisposable(disposable, id);
-    return disposable;
+    const obj = this._getLuminoWidgetFromShell(cid);
+    IpylabModel.registerConnection(obj, cid);
+    return obj;
   }
 
-  hasDisposable(id: string) {
-    return Private.disposables.has(id);
+  hasConnection(cid: string) {
+    return Private.connection.has(cid);
   }
 
   /**
@@ -414,8 +422,8 @@ export class IpylabModel extends WidgetModel {
       case 'null':
         return null;
       case 'connection':
-        cid = args?.cid || obj.id || DOMUtils.createDomID();
-        IpylabModel.trackDisposable(obj, cid);
+        cid = args?.cid ?? uuid();
+        IpylabModel.registerConnection(obj, cid);
         if (this.kernel && args?.dispose_on_kernel_lost !== false) {
           onKernelLost(this.kernel, obj.dispose, obj, true);
         }
@@ -443,34 +451,42 @@ export class IpylabModel extends WidgetModel {
   }
 
   /**
-   *Keep a reference to a Disposable so it can be found from the backend.
-   * @param disposable
+   *Keep a reference to an object so it can be found from the backend.
+   * @param obj
    */
-  static trackDisposable(disposable: any, cid: string) {
-    if (typeof disposable.dispose !== 'function') {
-      throw new Error(`Not disposable: ${disposable}`);
+  static registerConnection(obj: any, cid: string) {
+    if (typeof obj !== 'object') {
+      throw new Error(`An object is required but got a '${typeof obj}'`);
     }
     if (!cid) {
-      throw new Error('Cannot track without an id');
+      throw new Error('`cid` not provided!');
     }
-    if (!Private.disposables.has(cid)) {
-      Private.disposables.set(cid, disposable);
-      if (!disposable.disposed) {
-        // Convert a Disposable into an ObservableDisposable
-        disposable.disposed = new Signal<any, null>(disposable);
-        const dispose_ = disposable.dispose.bind(disposable);
-        const dispose = () => {
-          if (disposable.isDisposed) {
-            return;
-          }
-          dispose_();
-          disposable.disposed.emit(null);
-          Signal.clearData(disposable);
-        };
-        disposable['dispose'] = dispose.bind(disposable);
-      }
-      disposable.disposed.connect(() => Private.disposables.delete(cid));
+    const obj_ = Private.connection.get(cid);
+    if (obj_ && obj_ !== obj) {
+      throw new Error(
+        `Another object with cid='${cid}' is already registered!`
+      );
     }
+    if (!obj.dispose) {
+      obj.dispose = () => '';
+      obj.ipylabDisposeOnClose = true;
+    }
+    Private.connection.set(cid, obj);
+    if (!obj.disposed) {
+      // Make equivalent to an ObservableDisposable
+      obj.disposed = new Signal<any, null>(obj);
+      const dispose_ = obj.dispose.bind(obj);
+      const dispose = () => {
+        if (obj.isDisposed) {
+          return;
+        }
+        dispose_();
+        obj.disposed.emit(null);
+        Signal.clearData(obj);
+      };
+      obj['dispose'] = dispose.bind(obj);
+    }
+    obj.disposed.connect(() => Private.connection.delete(cid));
   }
 
   /**
@@ -538,12 +554,12 @@ export class IpylabModel extends WidgetModel {
   static launcher: ILauncher;
   static exports: IWidgetRegistryData;
   static OPERATION_DONE = '--DONE--';
-  static disposable_model_name = 'DisposableConnectionModel';
+  static connection_model_name = 'ConnectionModel';
 }
 
 /**
  * A namespace for private data
  */
 namespace Private {
-  export const disposables = new ObservableMap<IDisposable>();
+  export const connection = new ObservableMap<IDisposable>();
 }
