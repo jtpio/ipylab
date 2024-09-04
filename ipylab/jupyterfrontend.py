@@ -7,6 +7,7 @@ from typing import TYPE_CHECKING, Any
 
 from traitlets import Dict, Instance, Tuple, Unicode
 
+from ipylab import MainAreaConnection
 from ipylab.asyncwidget import AsyncWidgetBase, Transform, pack, pack_code, register, widget_serialization
 from ipylab.commands import CommandRegistry
 from ipylab.dialog import Dialog, FileDialog
@@ -37,6 +38,12 @@ class JupyterFrontEnd(AsyncWidgetBase):
     file_dialog = Instance(FileDialog, (), read_only=True)
     shell = Instance(Shell, (), read_only=True)
     session_manager = Instance(SessionManager, (), read_only=True)
+
+    @property
+    def current_widget(self):
+        """A connection to the current widget in the shell."""
+        id_ = self.current_widget_id
+        return MainAreaConnection(cid=MainAreaConnection.to_cid(id_), id=id_)
 
     def _init_python_backend(self):
         "Run by the Ipylab python backend."

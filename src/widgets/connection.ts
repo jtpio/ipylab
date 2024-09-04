@@ -6,28 +6,44 @@ import { ObjectHash } from 'backbone';
 import { IpylabModel } from './ipylab';
 
 /**
- * Maintain a connection to any object by using a cid.
+ * Provides a connection from any object reachable here to one or more Python backends.
+ *
+ * Typically the object is registered first via the method `registerConnection` with a cid
+ * In Python The `cid` is passed when creating a new Connection.
+ *
+ * The object is set as the base. If the object is disposable, the ConnectionModel will
+ * also close when the object is disposed.
  */
 export class ConnectionModel extends IpylabModel {
   async initialize(attributes: ObjectHash, options: any): Promise<void> {
-    super.initialize(attributes, {
-      ...options,
-      base: this.getConnection(this.get('cid'))
-    });
-    this.base.disposed.connect(() => {
-      if (!this.get('_dispose')) {
-        this.close();
-      }
-    });
-    this.listenTo(this, 'change:_dispose', () => this.base.dispose());
+    let base;
+    const cid = this.get('cid');
+    const id = this.get('id');
+    try {
+      base = this.getConnection(cid, id);
+    } catch {}
+    super.initialize(attributes, { ...options, base });
+    if (base) {
+      this.base.disposed.connect(() => this.close());
+      this.on('change:_dispose', this.dispose, this);
+    } else {
+      console.log(
+        `Failed to get connection for cid='${cid}' id='${id}' so closing...`
+      );
+      this.close();
+    }
   }
 
   close(comm_closed?: boolean): Promise<void> {
     if (this.base?.ipylabDisposeOnClose) {
       delete this.base.ipylabDisposeOnClose;
-      this.base.dispose();
+      this.dispose();
     }
-    return super.close(comm_closed);
+    return super.close((comm_closed || this.get('_dispose')) ?? false);
+  }
+
+  dispose() {
+    this.base?.dispose();
   }
 
   /**

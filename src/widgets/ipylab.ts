@@ -57,14 +57,13 @@ export class IpylabModel extends WidgetModel {
   initialize(attributes: ObjectHash, options: any): void {
     super.initialize(attributes, options);
     this.set('kernelId', this.kernelId);
-    this.on('msg:custom', this._onCustomMessage.bind(this));
+    this.on('msg:custom', this._onCustomMessage, this);
     this.save_changes();
     const msg = `ipylab ${this.get('_model_name')} ready for operations`;
     this.send({ init: msg });
     onKernelLost(this.kernel, this.close, this);
     if (typeof options.base === 'object') {
       this._base = options.base;
-      delete options.base;
     } else {
       const basename = this.get('_basename');
       this._base = basename
@@ -240,7 +239,7 @@ export class IpylabModel extends WidgetModel {
     if (value.slice(0, 10) === 'IPY_MODEL_') {
       const model = await unpack_models(value, this.widget_manager);
       if (model.model_name === IpylabModel.connection_model_name) {
-        const widget = this.getConnection(model.cid);
+        const widget = this.getConnection(model.get('cid'), model.get('id'));
         if (!(widget instanceof Widget)) {
           throw new Error(`Failed to get a lumio widget for: ${value}`);
         }
@@ -390,11 +389,11 @@ export class IpylabModel extends WidgetModel {
    * @param cid Get an object that has been registered as a connection.
    * @returns
    */
-  getConnection(cid: string): any {
+  getConnection(cid: string, id: string | null = null): any {
     if (Private.connection.has(cid)) {
       return Private.connection.get(cid);
     }
-    const obj = this._getLuminoWidgetFromShell(cid);
+    const obj = this._getLuminoWidgetFromShell(id || cid);
     IpylabModel.registerConnection(obj, cid);
     return obj;
   }

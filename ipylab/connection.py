@@ -4,12 +4,17 @@
 from __future__ import annotations
 
 import uuid
-from typing import Generic, TypeVar
+from typing import TYPE_CHECKING, Generic, TypeVar
 
 from ipywidgets import register
 from traitlets import Bool, Unicode
 
 from ipylab.asyncwidget import AsyncWidgetBase
+
+if TYPE_CHECKING:
+    from asyncio import Task
+
+    from ipylab._compat.typing import Self
 
 T = TypeVar("T", bound="Connection")
 
@@ -57,7 +62,7 @@ class Connection(AsyncWidgetBase, Generic[T]):
     _connections: dict[str, T] = {}  # noqa RUF012
     _model_name = Unicode("ConnectionModel").tag(sync=True)
     cid = Unicode(read_only=True, help="connection id").tag(sync=True)
-    id = Unicode(allow_none=True, read_only=True, help="id of the disposable if it has one")
+    id = Unicode("", read_only=True, help="id of the object if it has one").tag(sync=True)
     _dispose = Bool(read_only=True).tag(sync=True)
     _basename = None
 
@@ -80,7 +85,7 @@ class Connection(AsyncWidgetBase, Generic[T]):
         if self._async_widget_base_init_complete:
             return
         self.set_trait("cid", cid)
-        self.set_trait("id", id)
+        self.set_trait("id", id or "")
         super().__init__(model_id=model_id, **kwgs)
 
     def __str__(self):
@@ -130,6 +135,11 @@ class Connection(AsyncWidgetBase, Generic[T]):
 class MainAreaConnection(Connection):
     CID_PREFIX = "ipylab MainArea"
 
-    def activate(self):
+    def activate(self) -> Task[Self]:
         self._check_closed()
-        return self.app.shell.execute_method("activateById", self.id)
+
+        async def activate_():
+            self.app.shell.execute_method("activateById", self.id)
+            return self
+
+        return self.to_task(activate_())
