@@ -15,7 +15,7 @@ from ipylab.connection import Connection
 
 if TYPE_CHECKING:
     from asyncio import Task
-    from collections.abc import Callable, Coroutine
+    from collections.abc import Callable, Coroutine, Iterable
 
     from ipylab.asyncwidget import TransformType
     from ipylab.widgets import Icon
@@ -99,10 +99,6 @@ class CommandPalletConnection(Connection):
 
     CID_PREFIX = "ipylab command pallet"
 
-    @observe("comm")
-    def _ipylab_observe_comm(self, _):
-        self.app.commands.pallet.set_trait("items", self.get_instances())
-
     @classmethod
     def to_cid(cls, command: str | CommandConnection, category: str):
         return super().to_cid(str(command), category)
@@ -116,15 +112,6 @@ class CommandPalletConnection(Connection):
         return super().new_cid(str(command), category)
 
 
-class LauncherConnection(CommandPalletConnection):
-    """A connection to an ipylab launcher.
-
-    ref: https://jupyterlab.readthedocs.io/en/latest/api/interfaces/launcher.ILauncher-1.html
-    """
-
-    CID_PREFIX = "ipylab launcher"
-
-
 class CommandPalette(AsyncWidgetBase):
     # https://jupyterlab.readthedocs.io/en/latest/api/interfaces/apputils.ICommandPalette.html
     _basename = Unicode("pallet").tag(sync=True)
@@ -132,12 +119,7 @@ class CommandPalette(AsyncWidgetBase):
     items: Container[tuple[CommandPalletConnection, ...]] = TypedTuple(trait=Instance(CommandPalletConnection))
 
     def add(
-        self,
-        command: str | CommandConnection,
-        category: str,
-        *,
-        rank=None,
-        args: dict | None = None,
+        self, command: str | CommandConnection, category: str, *, rank=None, args: dict | None = None
     ) -> Task[CommandPalletConnection]:
         """Add a command to the command pallet (must be registered in this kernel).
 
@@ -146,19 +128,17 @@ class CommandPalette(AsyncWidgetBase):
         conn = CommandPalletConnection.get_existing_connection(command, category, quiet=True)
         if conn:
             conn.dispose()
-        return self.execute_method(
+        info = {"args": args, "category": category, "command": str(command), "rank": rank}
+        task = self.execute_method(
             "addItem",
-            {
-                "args": args,
-                "category": category,
-                "command": str(command),
-                "rank": rank,
-            },
+            info,
             transform={
                 "transform": Transform.connection,
                 "cid": CommandPalletConnection.to_cid(str(command), category),
+                "info": info,
             },
         )
+        return self.to_task(self._add_to_tuple_trait("items", task))
 
     def remove(self, command: str | CommandConnection, category: str):
         conn = CommandPalletConnection.get_existing_connection(str(command), category, quiet=True)
@@ -166,7 +146,16 @@ class CommandPalette(AsyncWidgetBase):
             conn.dispose()
 
 
+class LauncherConnection(CommandPalletConnection):
+    """A connection to an disposable launcher item."""
+
+    CID_PREFIX = "ipylab launcher"
+
+
 class Launcher(AsyncWidgetBase):
+    """
+    ref: https://jupyterlab.readthedocs.io/en/latest/api/interfaces/launcher.ILauncher-1.html"""
+
     _basename = Unicode("launcher").tag(sync=True)
     SINGLETON = True
     items: Container[tuple[LauncherConnection, ...]] = TypedTuple(trait=Instance(LauncherConnection))
@@ -179,19 +168,17 @@ class Launcher(AsyncWidgetBase):
         conn = LauncherConnection.get_existing_connection(command, category, quiet=True)
         if conn:
             conn.dispose()
-        return self.execute_method(
+        info = {"command": str(command), "category": category, "rank": rank, "args": args}
+        task = self.execute_method(
             "add",
-            {
-                "command": str(command),
-                "category": category,
-                "rank": rank,
-                "args": args,
-            },
+            info,
             transform={
                 "transform": Transform.connection,
                 "cid": LauncherConnection.to_cid(str(command), category),
+                "info": info,
             },
         )
+        return self.to_task(self._add_to_tuple_trait("items", task))
 
     def remove(self, command_id: str | CommandConnection, category: str):
         conn = LauncherConnection.get_existing_connection(str(command_id), category)
@@ -203,11 +190,9 @@ class Launcher(AsyncWidgetBase):
 class CommandRegistry(AsyncWidgetBase):
     _model_name = Unicode("CommandRegistryModel").tag(sync=True)
     _basename = Unicode("commands").tag(sync=True)
-    SINGLETON = True
     all_commands = Tuple(read_only=True).tag(sync=True)
     pallet = Instance(CommandPalette, (), read_only=True)
     launcher = Instance(Launcher, (), read_only=True)
-
     items: Container[tuple[CommandConnection, ...]] = TypedTuple(trait=Instance(CommandConnection))
 
     async def _do_operation_for_frontend(self, operation: str, payload: dict, buffers: list) -> Any:
@@ -223,6 +208,34 @@ class CommandRegistry(AsyncWidgetBase):
                     return await result
                 return result
         return await super()._do_operation_for_frontend(operation, payload, buffers)
+
+    def execute(
+        self,
+        command_id: str | CommandConnection,
+        *,
+        transform: TransformType = Transform.done,
+        toLuminoWidget: Iterable[str] | None = None,
+        asObject: Iterable[str] | None = None,
+        **args,
+    ):
+        """Execute a command registered with `id` in Jupyterlab.
+
+        `args` are passed to the command.
+
+        execute_kwgs: dict | None
+            Passed to execute_method (we use a dict to avoid any potential of argument clash).
+
+        see: https://github.com/jtpio/ipylab/issues/128#issuecomment-1683097383 for hints
+        about what args can be used.
+        """
+        return self.execute_method(
+            "execute",
+            str(command_id),
+            args,
+            transform=transform,
+            toLuminoWidget=toLuminoWidget,
+            asObject=asObject,
+        )
 
     def add(
         self,
@@ -248,6 +261,7 @@ class CommandRegistry(AsyncWidgetBase):
         ref: https://lumino.readthedocs.io/en/latest/api/interfaces/commands.CommandRegistry.ICommandOptions.html
         """
         cid = CommandConnection.to_cid(name)
+        self.remove_command(cid)
         task = self.schedule_operation(
             "addCommand",
             id=cid,
@@ -272,6 +286,6 @@ class CommandRegistry(AsyncWidgetBase):
         if conn:
             conn.dispose()
 
-    def get_existing_command_connection(self, name_or_id: str) -> CommandConnection:
+    def get_existing_command_connection(self, name_or_id: str) -> CommandConnection | None:
         "Will return a CommandConnection if it was added in this kernel."
-        return CommandConnection.get_existing_connection(name_or_id)  # type: ignore
+        return CommandConnection.get_existing_connection(name_or_id, quiet=True)

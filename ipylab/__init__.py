@@ -20,9 +20,10 @@ __all__ = [
     "pack",
     "pack_code",
     "commands",
+    "menu",
 ]
 
-from ipylab import commands
+from ipylab import commands, menu
 from ipylab.asyncwidget import pack, pack_code
 from ipylab.common import Area, InsertMode, Transform
 from ipylab.connection import Connection, MainAreaConnection

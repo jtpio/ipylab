@@ -10,6 +10,7 @@ import {
   showErrorMessage
 } from '@jupyterlab/apputils';
 import { FileDialog } from '@jupyterlab/filebrowser';
+import { MainMenu, IMainMenu } from '@jupyterlab/mainmenu';
 import {
   IDisposable,
   ISerializers,
@@ -18,9 +19,6 @@ import {
   Widget
 } from './ipylab';
 import { newSessionContext } from './utils';
-/**
- * The model for a JupyterFrontEnd.
- */
 export class JupyterFrontEndModel extends IpylabModel {
   /**
    * The default attributes.
@@ -115,6 +113,8 @@ export class JupyterFrontEndModel extends IpylabModel {
         return await FileDialog.getExistingDirectory(payload).then(_get_result);
       case 'newSessionContext':
         return await newSessionContext(payload);
+      case 'generateMenu':
+        return this._generateMenu(payload.options);
       case 'execEval':
         return await this._execEval(payload);
       case 'startIyplabPythonBackend':
@@ -175,6 +175,15 @@ export class JupyterFrontEndModel extends IpylabModel {
       payload,
       payload.frontendTransform
     );
+  }
+
+  private _generateMenu(options: IMainMenu.IMenuOptions) {
+    const menu = MainMenu.generateMenu(
+      this.commands,
+      options,
+      this.translator.load('jupyterlab')
+    );
+    return menu;
   }
 
   static serializers: ISerializers = {

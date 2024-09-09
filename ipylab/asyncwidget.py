@@ -19,7 +19,7 @@ from ipylab.hookspecs import pm
 if TYPE_CHECKING:
     import logging
     from asyncio import Task
-    from collections.abc import Coroutine, Iterable
+    from collections.abc import Awaitable, Coroutine, Iterable
     from typing import ClassVar, Literal
 
 
@@ -172,6 +172,18 @@ class AsyncWidgetBase(WidgetBase):
             return IpylabFrontendError(f'{self.__class__.__name__} failed with message "{error}"')
         return None
 
+    async def _add_to_tuple_trait(self, name: str, item: Awaitable[Widget] | Widget):
+        """Add the item to the tuple and observe its comm."""
+        if inspect.isawaitable(item):
+            value = await item
+        else:
+            value = item
+        items = getattr(self, name)
+        if value not in items:
+            value.observe(lambda _: self.set_trait(name, tuple(i for i in getattr(self, name) if i.comm)), "comm")
+            self.set_trait(name, (*items, value))
+        return value
+
     async def wait_ready(self) -> None:
         await self._ready_response.wait()
 
@@ -253,6 +265,7 @@ class AsyncWidgetBase(WidgetBase):
         *,
         transform: TransformType = Transform.raw,
         toLuminoWidget: Iterable[str] | None = None,
+        asObject: Iterable[str] | None = None,
         **kwgs,
     ):
         """Create a new task requesting an operation to be performed in the frontend.
@@ -268,17 +281,28 @@ class AsyncWidgetBase(WidgetBase):
             A list of item name mappings to convert to a Lumino widget in the frontend.
             Each string should correspond to the dotted path/index in kwgs that has
             the packed (json version of the widget or id of a lumino widget)
+
+        asObject:  Iterable[str] | None
+            A list of item name mappings in the .
+
+            ```
             Examples:
             --------
 
             ```python
-            kwgs = {"widget": "IPY_MODEL_...", "options": {"ref": "id..."}}
+            kwgs = {"widget": "IPY_MODEL_<UUID>", "options": {"ref": "IPY_MODEL_<UUID>"}}
             toLuminoWidget = ["widget", "options.ref"]
 
-            kwgs = {"args": ["id...", 1, 2, "id..."]}
-            toLuminoWidget = ["args.0", "args.3"]
-            ```
-        """
+            kwgs = {
+                "args": [
+                    "IPY_MODEL_<UUID>",
+                    1,
+                    "dotted.attribute.name",
+                    "IPY_MODEL_<UUID>.value",
+                ]
+            }
+            toLuminoWidget = ["args.0", "kwgs.options.ref"]
+            asObject = ["args.2", "args.3"]"""
         # validation
         self._check_closed()
         if not operation or not isinstance(operation, str):
@@ -293,6 +317,9 @@ class AsyncWidgetBase(WidgetBase):
         }
         if toLuminoWidget:
             content["toLuminoWidget"] = list(map(str, toLuminoWidget))
+        if asObject:
+            content["asObject"] = list(map(str, asObject))
+
         return self.to_task(self._send_receive(content))
 
     def execute_method(
@@ -301,6 +328,7 @@ class AsyncWidgetBase(WidgetBase):
         *args,
         transform: TransformType = Transform.raw,
         toLuminoWidget: Iterable[str] | None = None,
+        asObject: Iterable[str] | None = None,
         **kwgs,
     ):
         """Call a method relative to the `base` object in the Frontend.
@@ -318,7 +346,6 @@ class AsyncWidgetBase(WidgetBase):
         app.execute_method(widget=app.current_widget_id, method="close")
         ```
         """
-
         # This operation is sent to the frontend function _fe_execute in 'ipylab/src/widgets/ipylab.ts'
         return self.schedule_operation(
             operation="executeMethod",
@@ -326,6 +353,7 @@ class AsyncWidgetBase(WidgetBase):
             args=args,
             transform=transform,
             toLuminoWidget=toLuminoWidget,
+            asObject=asObject,
             **kwgs,
         )
 
@@ -373,26 +401,35 @@ class AsyncWidgetBase(WidgetBase):
             transform=transform,
         )
 
-    def update_values(self, path: str, values: dict, *, toLuminoWidget: Iterable[str] | None = None):
+    def update_values(
+        self,
+        path: str,
+        values: dict,
+        *,
+        toLuminoWidget: Iterable[str] | None = None,
+        asObject: Iterable[str] | None = None,
+    ):
         """Update the values of the object at the path in the frontend.
 
         This is equivalent to `dict.update` in Python.
 
         path: str
             "the.path.to.the.attribute" to be set.
-        toLuminoWidget:
-            Dotted attribute names to convert to LuminoWidgets in the frontend.
-            eg. ["values.value_toLuminoWidget"]
         """
         return self.schedule_operation(
-            "updateValues", path=path, values=values, transform=Transform.raw, toLuminoWidget=toLuminoWidget
+            "updateValues",
+            path=path,
+            values=values,
+            transform=Transform.raw,
+            toLuminoWidget=toLuminoWidget,
+            asObject=asObject,
         )
 
     def list_attributes(
         self,
         path: str = "",
         type: JavascriptType = JavascriptType.function,  # noqa: A002
-        depth=2,
+        depth=3,
         *,
         how: Literal["names", "group", "raw"] = "group",
         transform: TransformType = Transform.raw,
@@ -401,6 +438,7 @@ class AsyncWidgetBase(WidgetBase):
         """Get a mapping of attributes of the object at 'path' of the Frontend instance.
 
         depth: The depth in the object inheritance to search for attributes.
+            Searching deeper will reveal more lower level attributes.
         how: ['names', 'group', 'raw']
         """
         task = self.schedule_operation("listAttributes", path=path, type=type, depth=depth, transform=transform)

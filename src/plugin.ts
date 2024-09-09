@@ -10,6 +10,7 @@ import {
 import { ICommandPalette } from '@jupyterlab/apputils';
 import { IDefaultFileBrowser } from '@jupyterlab/filebrowser';
 import { ILauncher } from '@jupyterlab/launcher';
+import { IMainMenu } from '@jupyterlab/mainmenu';
 import { IRenderMimeRegistry } from '@jupyterlab/rendermime';
 import { ITranslator } from '@jupyterlab/translation';
 import { MODULE_NAME, MODULE_VERSION } from './version';
@@ -28,7 +29,8 @@ const extension: JupyterFrontEndPlugin<void> = {
     ILabShell,
     IDefaultFileBrowser,
     ILauncher,
-    ITranslator
+    ITranslator,
+    IMainMenu
   ],
   activate: activate
 };
@@ -52,7 +54,8 @@ async function activate(
   labShell: ILabShell | null,
   defaultBrowser: IDefaultFileBrowser | null,
   launcher: ILauncher | null,
-  translator: ITranslator | null
+  translator: ITranslator | null,
+  menu: IMainMenu | null
 ): Promise<void> {
   const widgetExports = await import('./widget');
   if (!widgetExports.JupyterFrontEndModel.app) {
@@ -64,6 +67,7 @@ async function activate(
     widgetExports.IpylabModel.palette = palette;
     widgetExports.IpylabModel.translator = translator;
     widgetExports.IpylabModel.launcher = launcher;
+    widgetExports.IpylabModel.menu = menu;
     widgetExports.IpylabModel.exports = {
       name: MODULE_NAME,
       version: MODULE_VERSION,

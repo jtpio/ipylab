@@ -12,14 +12,12 @@ from ipylab.asyncwidget import AsyncWidgetBase, Transform, pack, pack_code, regi
 from ipylab.commands import CommandRegistry
 from ipylab.dialog import Dialog, FileDialog
 from ipylab.hookspecs import pm
+from ipylab.menu import MainMenu
 from ipylab.sessions import SessionManager
 from ipylab.shell import Shell
 
 if TYPE_CHECKING:
-    from collections.abc import Iterable
-
     from ipylab.asyncwidget import TransformType
-    from ipylab.commands import CommandConnection
 
 
 @register
@@ -38,6 +36,7 @@ class JupyterFrontEnd(AsyncWidgetBase):
     file_dialog = Instance(FileDialog, (), read_only=True)
     shell = Instance(Shell, (), read_only=True)
     session_manager = Instance(SessionManager, (), read_only=True)
+    main_menu = Instance(MainMenu, ())
 
     @property
     def current_widget(self):
@@ -66,28 +65,6 @@ class JupyterFrontEnd(AsyncWidgetBase):
     def shutdown_kernel(self, kernelId: str | None = None):
         """Shutdown the kernel"""
         return self.schedule_operation("shutdownKernel", kernelId=kernelId)
-
-    def execute_command(
-        self,
-        command_id: str | CommandConnection,
-        *,
-        transform: TransformType = Transform.done,
-        toLuminoWidget: Iterable[str] | None = None,
-        **args,
-    ):
-        """Execute a command registered with `id` in Jupyterlab.
-
-        `args` are passed to the command.
-
-        execute_kwgs: dict | None
-            Passed to execute_method (we use a dict to avoid any potential of argument clash).
-
-        see: https://github.com/jtpio/ipylab/issues/128#issuecomment-1683097383 for hints
-        about what args can be used.
-        """
-        return self.execute_method(
-            "commands.execute", str(command_id), args, transform=transform, toLuminoWidget=toLuminoWidget
-        )
 
     def exec_eval(
         self,

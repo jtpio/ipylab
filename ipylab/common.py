@@ -101,7 +101,8 @@ class Transform(StrEnum):
                     cid = transform.get("cid")
                     if not isinstance(cid, str):
                         raise TypeError
-                    transform_ = TransformDictConnection(transform=Transform.connection, cid=cid)
+                    info = transform.get("info")
+                    transform_ = TransformDictConnection(transform=Transform.connection, cid=cid, info=info)
                     if transform.get("dispose_on_kernel_lost") is False:
                         transform_["dispose_on_kernel_lost"] = False
                     return transform_
@@ -142,13 +143,14 @@ class TransformDictFunction(TypedDict):
 
 class TransformDictAdvanced(TypedDict):
     transform: Literal[Transform.advanced]
-    mappings: dict[str, TransformDictAdvanced | TransformDictFunction | TransformDictConnection]
+    mappings: dict[str, TransformType]
 
 
 class TransformDictConnection(TypedDict):
     transform: Literal[Transform.connection]
     cid: str
     dispose_on_kernel_lost: NotRequired[Literal[False]]  # By default it will dispose when the kernel is lost.
+    info: NotRequired[dict]
 
 
 TransformType = Transform | TransformDictAdvanced | TransformDictFunction | TransformDictConnection

@@ -974,18 +974,18 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@jupyterlab/mainmenu@npm:^3.0.0 || ^4.0.0":
-  version: 4.2.1
-  resolution: "@jupyterlab/mainmenu@npm:4.2.1"
+"@jupyterlab/mainmenu@npm:^3.0.0 || ^4.0.0, @jupyterlab/mainmenu@npm:^4.2.5":
+  version: 4.2.5
+  resolution: "@jupyterlab/mainmenu@npm:4.2.5"
   dependencies:
-    "@jupyterlab/apputils": ^4.3.1
-    "@jupyterlab/translation": ^4.2.1
-    "@jupyterlab/ui-components": ^4.2.1
+    "@jupyterlab/apputils": ^4.3.5
+    "@jupyterlab/translation": ^4.2.5
+    "@jupyterlab/ui-components": ^4.2.5
     "@lumino/algorithm": ^2.0.1
     "@lumino/commands": ^2.3.0
     "@lumino/coreutils": ^2.1.2
     "@lumino/widgets": ^2.3.2
-  checksum: 299b5595ff394f06f7687c6e4499c88bb560f9737675b8bc79a6bf9aaa338022f901255ce701c686eed8c520fbab82d08a4671d4c5618cc3a7ea6f6a812b6064
+  checksum: 7da87425108d707d14d3d29fdd5b4d9334eb61a2b38ec98ee790a8436c780959742c09bb1047fe3c7cb2408e29d0e89dcdd979baa0f71d6a6b240480baa4650d
   languageName: node
   linkType: hard
 
@@ -3970,6 +3970,7 @@ __metadata:
     "@jupyterlab/coreutils": ^6.2.5
     "@jupyterlab/filebrowser": ^4.2.5
     "@jupyterlab/launcher": ^4.2.5
+    "@jupyterlab/mainmenu": ^4.2.5
     "@jupyterlab/observables": ^5.2.5
     "@jupyterlab/rendermime": ^4.2.5
     "@lumino/commands": ^2.3.1
@@ -5191,9 +5192,9 @@ __metadata:
   linkType: hard
 
 "picocolors@npm:^1.0.1":
-  version: 1.0.1
-  resolution: "picocolors@npm:1.0.1"
-  checksum: fa68166d1f56009fc02a34cdfd112b0dd3cf1ef57667ac57281f714065558c01828cdf4f18600ad6851cbe0093952ed0660b1e0156bddf2184b6aaf5817553a5
+  version: 1.1.0
+  resolution: "picocolors@npm:1.1.0"
+  checksum: a64d653d3a188119ff45781dfcdaeedd7625583f45280aea33fcb032c7a0d3959f2368f9b192ad5e8aade75b74dbd954ffe3106c158509a45e4c18ab379a2acd
   languageName: node
   linkType: hard
 
@@ -5307,13 +5308,13 @@ __metadata:
   linkType: hard
 
 "postcss@npm:^8.3.11, postcss@npm:^8.4.33":
-  version: 8.4.41
-  resolution: "postcss@npm:8.4.41"
+  version: 8.4.45
+  resolution: "postcss@npm:8.4.45"
   dependencies:
     nanoid: ^3.3.7
     picocolors: ^1.0.1
     source-map-js: ^1.2.0
-  checksum: f865894929eb0f7fc2263811cc853c13b1c75103028b3f4f26df777e27b201f1abe21cb4aa4c2e901c80a04f6fb325ee22979688fe55a70e2ea82b0a517d3b6f
+  checksum: 3223cdad4a9392c0b334ee3ee7e4e8041c631cb6160609cef83c18d2b2580e931dd8068ab13cc6000c1a254d57492ac6c38717efc397c5dcc9756d06bc9c44f3
   languageName: node
   linkType: hard
 

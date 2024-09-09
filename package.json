@@ -93,6 +93,7 @@
         "@jupyterlab/coreutils": "^6.2.5",
         "@jupyterlab/filebrowser": "^4.2.5",
         "@jupyterlab/launcher": "^4.2.5",
+        "@jupyterlab/mainmenu": "^4.2.5",
         "@jupyterlab/observables": "^5.2.5",
         "@jupyterlab/rendermime": "^4.2.5",
         "@lumino/commands": "^2.3.1",

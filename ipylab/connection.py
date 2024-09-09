@@ -7,7 +7,7 @@ import uuid
 from typing import TYPE_CHECKING, Generic, TypeVar
 
 from ipywidgets import register
-from traitlets import Bool, Unicode
+from traitlets import Bool, Dict, Unicode
 
 from ipylab.asyncwidget import AsyncWidgetBase
 
@@ -63,6 +63,7 @@ class Connection(AsyncWidgetBase, Generic[T]):
     _model_name = Unicode("ConnectionModel").tag(sync=True)
     cid = Unicode(read_only=True, help="connection id").tag(sync=True)
     id = Unicode("", read_only=True, help="id of the object if it has one").tag(sync=True)
+    info = Dict(help="Info to store in the connection")
     _dispose = Bool(read_only=True).tag(sync=True)
     _basename = None
 
@@ -78,6 +79,7 @@ class Connection(AsyncWidgetBase, Generic[T]):
                 raise ValueError(msg)
             # Check if a subclass is registered with 'CID_PREFIX'
             cls_ = cls._CLASS_DEFINITIONS.get(cid.split(":")[0], cls) if ":" in cid else cls
+            kwgs.pop("info", None)
             cls._connections[cid] = super().__new__(cls_, **kwgs)  # type: ignore
         return cls._connections[cid]
 
@@ -86,6 +88,9 @@ class Connection(AsyncWidgetBase, Generic[T]):
             return
         self.set_trait("cid", cid)
         self.set_trait("id", id or "")
+        info = kwgs.pop("info", None)
+        if info:
+            self.set_trait("info", info)
         super().__init__(model_id=model_id, **kwgs)
 
     def __str__(self):

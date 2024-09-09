@@ -6,17 +6,20 @@ import {
   ISerializers,
   IWidgetRegistryData,
   WidgetModel,
-  unpack_models
+  unpack_models,
+  uuid
 } from '@jupyter-widgets/base';
 import { ILabShell, JupyterFrontEnd, LabShell } from '@jupyterlab/application';
 import { ICommandPalette } from '@jupyterlab/apputils';
 import { IDefaultFileBrowser } from '@jupyterlab/filebrowser';
 import { ILauncher } from '@jupyterlab/launcher';
+import { IMainMenu } from '@jupyterlab/mainmenu';
 import { ObservableMap } from '@jupyterlab/observables';
 import { IRenderMimeRegistry } from '@jupyterlab/rendermime';
 import { Kernel, Session } from '@jupyterlab/services';
 import { ITranslator } from '@jupyterlab/translation';
 import { CommandRegistry } from '@lumino/commands';
+
 import {
   JSONObject,
   JSONValue,
@@ -36,7 +39,6 @@ import {
   setNestedAttribute,
   toFunction
 } from './utils';
-import { uuid } from '@jupyter-widgets/base';
 export {
   CommandRegistry,
   IDisposable,
@@ -106,6 +108,10 @@ export class IpylabModel extends WidgetModel {
 
   get launcher() {
     return IpylabModel.launcher;
+  }
+
+  get menu() {
+    return IpylabModel.menu;
   }
 
   get commands() {
@@ -199,6 +205,20 @@ export class IpylabModel extends WidgetModel {
           }
         }
       }
+      if (msg.asObject instanceof Array) {
+        // Replace values in kwgs with attributes
+        for (const path of msg.asObject) {
+          const value = getNestedObject({
+            base: msg.kwgs,
+            path: path,
+            nullIfMissing: false
+          });
+          if (value && typeof value === 'string') {
+            const value_ = await this.asObject(value);
+            setNestedAttribute(msg.kwgs, path, value_);
+          }
+        }
+      }
       result = await this.operation(operation, msg.kwgs);
       let buffers = null;
       if ((result as any)?.buffers) {
@@ -238,11 +258,11 @@ export class IpylabModel extends WidgetModel {
   async toLuminoWidget(value: string): Promise<Widget> {
     if (value.slice(0, 10) === 'IPY_MODEL_') {
       const model = await unpack_models(value, this.widget_manager);
-      if (model.model_name === IpylabModel.connection_model_name) {
-        const widget = this.getConnection(model.get('cid'), model.get('id'));
-        if (!(widget instanceof Widget)) {
-          throw new Error(`Failed to get a lumio widget for: ${value}`);
+      if (model.get('_model_name') === IpylabModel.connection_model_name) {
+        if (!(model.base instanceof Widget)) {
+          throw new Error(`${value} is not a connection to a lumino widget`);
         }
+        return model.base;
       }
       const view = await this.widget_manager.create_view(model, {});
       const lw = view.luminoWidget;
@@ -250,6 +270,30 @@ export class IpylabModel extends WidgetModel {
       return lw;
     }
     return this.getConnection(value);
+  }
+  /**
+   * Get an attribute.
+   * 1. If value starts with IPY_MODEL_ it will unpack the model and return the widget for that view.
+   * 2. If a widget exists that has and id=value the widget will be returned.
+   * 3. An errow will be thrown if the widget isn't found.
+   *
+   * @param value
+   * @param as
+   * @param string
+   * @returns
+   */
+  async asObject(value: string, nullIfMissing = false): Promise<any> {
+    let path = value;
+    let base = this;
+    if (value.slice(0, 10) === 'IPY_MODEL_') {
+      const parts = value.split('.', 1);
+      base = await unpack_models(parts[0], this.widget_manager);
+      if (base.get('_model_name') === IpylabModel.connection_model_name) {
+        base = base.base;
+      }
+      path = parts[1] ?? '';
+    }
+    return getNestedObject({ base, path, nullIfMissing });
   }
 
   /**
@@ -426,7 +470,7 @@ export class IpylabModel extends WidgetModel {
         if (this.kernel && args?.dispose_on_kernel_lost !== false) {
           onKernelLost(this.kernel, obj.dispose, obj, true);
         }
-        return { cid: cid, id: obj.id };
+        return { cid: cid, id: obj.id, info: args.info };
       case 'advanced':
         // expects args.mappings = {key:transform}
         result = new Object();
@@ -551,6 +595,7 @@ export class IpylabModel extends WidgetModel {
   static palette: ICommandPalette;
   static translator: ITranslator;
   static launcher: ILauncher;
+  static menu: IMainMenu;
   static exports: IWidgetRegistryData;
   static OPERATION_DONE = '--DONE--';
   static connection_model_name = 'ConnectionModel';
