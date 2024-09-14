@@ -49,8 +49,7 @@ class Transform(StrEnum):
     - raw: No conversion. Note: data is serialized when sending, some object serialization will fail.
     - function: Use a function to calculate the return value. ['code'] = 'function...'
     - connection: Return a connection to a disposable object in the frontend.
-        By default the disposable will be closed when the kernel is shutdown.
-        To leave the disposable open use the setting `dispose_on_kernel_lost=False` when creating the connection.
+        Use `auto_dispose=True` to dispose of the object when the kernel is dead or restarted.
     - advanced: A mapping of keys to transformations to apply sequentially on the object.
 
     `function`
@@ -68,7 +67,8 @@ class Transform(StrEnum):
     transform = {
         "transform": Transform.connection,
         "cid": "ID TO USE FOR CONNECTION",
-        "dispose_on_kernel_lost": True,  # Optional Default is True
+        "auto_dispose": True,  # Optional Default is False.
+        "info": {} # Optional Dict of info.
     }
 
     `advanced`
@@ -101,10 +101,11 @@ class Transform(StrEnum):
                     cid = transform.get("cid")
                     if not isinstance(cid, str):
                         raise TypeError
-                    info = transform.get("info")
-                    transform_ = TransformDictConnection(transform=Transform.connection, cid=cid, info=info)
-                    if transform.get("dispose_on_kernel_lost") is False:
-                        transform_["dispose_on_kernel_lost"] = False
+                    transform_ = TransformDictConnection(transform=Transform.connection, cid=cid)
+                    if info := transform.get("info"):
+                        transform_["info"] = dict(info)
+                    if auto_dispose := transform.get("auto_dispose"):
+                        transform_["auto_dispose"] = bool(auto_dispose)
                     return transform_
                 case cls.advanced:
                     mappings = {}
@@ -149,7 +150,7 @@ class TransformDictAdvanced(TypedDict):
 class TransformDictConnection(TypedDict):
     transform: Literal[Transform.connection]
     cid: str
-    dispose_on_kernel_lost: NotRequired[Literal[False]]  # By default it will dispose when the kernel is lost.
+    auto_dispose: NotRequired[bool]
     info: NotRequired[dict]
 
 

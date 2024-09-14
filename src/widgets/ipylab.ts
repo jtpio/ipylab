@@ -469,7 +469,7 @@ export class IpylabModel extends WidgetModel {
       case 'connection':
         cid = args?.cid ?? uuid();
         IpylabModel.registerConnection(obj, cid);
-        if (this.kernel && args?.dispose_on_kernel_lost !== false) {
+        if (args.auto_dispose) {
           onKernelLost(this.kernel, obj.dispose, obj, true);
         }
         return { cid: cid, id: obj.id, info: args.info };

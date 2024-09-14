@@ -136,4 +136,4 @@ class JupyterFrontEnd(AsyncWidgetBase):
 
     def checkstart_iyplab_python_backend(self, *, restart=False):
         """Checks backend is running and starts it if it isn't, returning the session model."""
-        return self.schedule_operation("startIyplabPythonBackend", restart=restart, transform=Transform.connection)
+        return self.schedule_operation("startIyplabPythonBackend", restart=restart, transform=Transform.done)

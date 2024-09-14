@@ -135,6 +135,7 @@ class CommandPalette(AsyncWidgetBase):
             transform={
                 "transform": Transform.connection,
                 "cid": CommandPalletConnection.to_cid(str(command), category),
+                "auto_dispose": True,
                 "info": info,
             },
         )
@@ -176,6 +177,7 @@ class Launcher(AsyncWidgetBase):
                 "transform": Transform.connection,
                 "cid": LauncherConnection.to_cid(str(command), category),
                 "info": info,
+                "auto_dispose": True,
             },
         )
         return self.to_task(self._add_to_tuple_trait("items", task))
@@ -273,7 +275,7 @@ class CommandRegistry(AsyncWidgetBase):
             caption=caption,
             label=label,
             iconClass=icon_class,
-            transform={"transform": Transform.connection, "cid": cid},
+            transform={"transform": Transform.connection, "cid": cid, "auto_dispose": True},
             icon=icon_,
             toObject=to_object,
             frontendTransform=Transform.validate(frontend_transform),

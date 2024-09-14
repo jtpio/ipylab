@@ -7,13 +7,13 @@ import typing as t
 from ipylab import Area, MainAreaConnection, Transform, pack
 from ipylab.asyncwidget import AsyncWidgetBase, Unicode
 from ipylab.common import InsertMode
+from ipylab.connection import Connection
 
 if t.TYPE_CHECKING:
     from asyncio import Task
 
     from ipywidgets import Widget
 
-    from ipylab.connection import Connection
 
 __all__ = ["Shell"]
 
@@ -62,7 +62,11 @@ class Shell(AsyncWidgetBase):
             "addToShell",
             widget=pack(widget),
             area=Area(area),
-            transform={"transform": Transform.connection, "cid": MainAreaConnection.new_cid()},
+            transform={
+                "transform": Transform.connection,
+                "cid": MainAreaConnection.new_cid(),
+                "auto_dispose": not isinstance(widget, Connection),
+            },
             options=options_ | options,
             toLuminoWidget=["widget", "options.ref"],
         )

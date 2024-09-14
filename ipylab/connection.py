@@ -21,28 +21,17 @@ T = TypeVar("T", bound="Connection")
 
 @register
 class Connection(AsyncWidgetBase, Generic[T]):
-    """A connection to an object in the Frontend.
+    """A connection to a single object in the Frontend.
 
-    Instances of `Connections` are created automatically when the transform is set as
-    `Transform.connection`.
+    Connection and subclasses of connection are used extensiviely in ipylab to
+    provide a connection between an object in the frontend (Javascript) and the
+    backend (Python). Instances of `Connections` are created automatically when
+    the transform is set as `Transform.connection`. This option is available whenever
+    a transform argument is available in a method call that goes to `schedule_operation`.
 
     When the `cid` *prefix* matches a subclass `CID_PREFIX`, a new subclass instance will
-    be created in place of the Connection.
+    be created in place of Connection (on the python side).
 
-    If a specific subclass of Connection is required, the transform should be
-    specified using:
-
-    ```python
-    transform = {
-        "transform": Transform.connection,
-        "cid": CONNECTION_SUBCLASS.new_cid(),
-    }
-    # or
-    transform = {
-        "transform": Transform.connection,
-        "cid": CONNECTION_SUBCLASS.to_cid(DETAILS),
-    }
-    ```
     The 'dispose' method will call the dispose method on the frontend object and
     close this object.
 
@@ -52,9 +41,12 @@ class Connection(AsyncWidgetBase, Generic[T]):
 
     Subclasses that are inherited with and CID_PREFIX.
 
-    In some cases it may be necessary use the keyword argument `cid` to ensure
+    If a specific subclass of Connection is required, the transform should be
+    specified with the cid from the subclass. Use the keyword argument `cid` to ensure
     the subclass instance is returned. The class methods `to_cid` and `new_cid`
     will generate an appropriate id.
+
+    See also `Transform.connection` for further detail about transforms.
     """
 
     CID_PREFIX = ""  # Required in subclassess to discriminate when creating.

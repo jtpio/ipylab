@@ -96,7 +96,12 @@ class RankedMenu(AsyncWidgetBase):
         task = self.execute_method(
             "addItem",
             info,
-            transform={"transform": Transform.connection, "cid": MenuItemConnection.new_cid(), "info": info},
+            transform={
+                "transform": Transform.connection,
+                "cid": MenuItemConnection.new_cid(),
+                "auto_dispose": True,
+                "info": info,
+            },
             toObject=as_object,
         )
         return self.to_task(self._add_to_tuple_trait("items", task))
@@ -126,6 +131,7 @@ class MainMenu(AsyncWidgetBase):
     tabs_menu = Instance(RankedMenu, kw={"basename": "menu.tabsMenu"})
 
     menus: Container[tuple[MenuConnection, ...]] = TypedTuple(trait=Instance(MenuConnection))
+    _all_menus: Container[tuple[MenuConnection, ...]] = TypedTuple(trait=Instance(MenuConnection))
 
     def add_menu(self, label: str, *, update=True, rank: int = 500) -> Task[MenuConnection]:
         """Add a top level menu.
@@ -142,7 +148,7 @@ class MainMenu(AsyncWidgetBase):
         return self.to_task(self._add_to_tuple_trait("menus", add_menu()))
 
     def create_menu(self, label: str, *, rank: int = 500) -> Task[MenuConnection]:
-        cid = MenuConnection.to_cid(label)
+        cid = MenuConnection.new_cid(label)
         return self._generate_menu(id=cid, label=label, cid=cid, rank=rank)
 
     def _generate_menu(self, *, id: str, label: str, cid: str, rank: int = 500) -> Task[MenuConnection]:  # noqa: A002
@@ -150,9 +156,12 @@ class MainMenu(AsyncWidgetBase):
         if existing := MenuConnection.get_existing_connection(cid, quiet=True):
             existing.dispose()
         info = {"id": id, "label": label, "rank": int(rank)}
-        return self.app.schedule_operation(
-            "generateMenu", options=info, transform={"transform": Transform.connection, "cid": cid, "info": info}
+        coro = self.app.schedule_operation(
+            "generateMenu",
+            options=info,
+            transform={"transform": Transform.connection, "cid": cid, "auto_dispose": True, "info": info},
         )
+        return self.to_task(self._add_to_tuple_trait("_all_menus", coro))
 
     def get_menu(self, label: str, *, quiet=True) -> MenuConnection | None:
         """Get a menu that was added using `add_menu`."""
