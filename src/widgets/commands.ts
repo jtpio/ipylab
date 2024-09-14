@@ -1,7 +1,6 @@
 // Copyright (c) ipylab contributors
 // Distributed under the terms of the Modified BSD License.
 
-import { unpack_models } from '@jupyter-widgets/base';
 import { CommandRegistry } from '@lumino/commands';
 import { IDisposable, ISerializers, IpylabModel, JSONValue } from './ipylab';
 /**
@@ -66,12 +65,8 @@ export class CommandRegistryModel extends IpylabModel {
       frontendTransform: any;
     }
   ): Promise<IDisposable> {
-    const { id, frontendTransform, isToggleable } = options;
-    let icon = options.icon;
-    if (options.icon) {
-      const model = await unpack_models(options.icon, this.widget_manager);
-      icon = () => model.labIcon;
-    }
+    const { id, frontendTransform, isToggleable, icon } = options;
+
     // Make a new object and define functions so we can dynamically update.
     delete options.frontendTransform;
     const config = { ...options };

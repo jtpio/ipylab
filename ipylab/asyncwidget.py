@@ -265,7 +265,7 @@ class AsyncWidgetBase(WidgetBase):
         *,
         transform: TransformType = Transform.raw,
         toLuminoWidget: Iterable[str] | None = None,
-        asObject: Iterable[str] | None = None,
+        toObject: Iterable[str] | None = None,
         **kwgs,
     ):
         """Create a new task requesting an operation to be performed in the frontend.
@@ -282,7 +282,7 @@ class AsyncWidgetBase(WidgetBase):
             Each string should correspond to the dotted path/index in kwgs that has
             the packed (json version of the widget or id of a lumino widget)
 
-        asObject:  Iterable[str] | None
+        toObject:  Iterable[str] | None
             A list of item name mappings in the .
 
             ```
@@ -302,7 +302,7 @@ class AsyncWidgetBase(WidgetBase):
                 ]
             }
             toLuminoWidget = ["args.0", "kwgs.options.ref"]
-            asObject = ["args.2", "args.3"]"""
+            toObject = ["args.2", "args.3"]"""
         # validation
         self._check_closed()
         if not operation or not isinstance(operation, str):
@@ -317,8 +317,8 @@ class AsyncWidgetBase(WidgetBase):
         }
         if toLuminoWidget:
             content["toLuminoWidget"] = list(map(str, toLuminoWidget))
-        if asObject:
-            content["asObject"] = list(map(str, asObject))
+        if toObject:
+            content["toObject"] = list(map(str, toObject))
 
         return self.to_task(self._send_receive(content))
 
@@ -328,7 +328,7 @@ class AsyncWidgetBase(WidgetBase):
         *args,
         transform: TransformType = Transform.raw,
         toLuminoWidget: Iterable[str] | None = None,
-        asObject: Iterable[str] | None = None,
+        toObject: Iterable[str] | None = None,
         **kwgs,
     ):
         """Call a method relative to the `base` object in the Frontend.
@@ -353,7 +353,7 @@ class AsyncWidgetBase(WidgetBase):
             args=args,
             transform=transform,
             toLuminoWidget=toLuminoWidget,
-            asObject=asObject,
+            toObject=toObject,
             **kwgs,
         )
 
@@ -407,7 +407,7 @@ class AsyncWidgetBase(WidgetBase):
         values: dict,
         *,
         toLuminoWidget: Iterable[str] | None = None,
-        asObject: Iterable[str] | None = None,
+        toObject: Iterable[str] | None = None,
     ):
         """Update the values of the object at the path in the frontend.
 
@@ -422,7 +422,7 @@ class AsyncWidgetBase(WidgetBase):
             values=values,
             transform=Transform.raw,
             toLuminoWidget=toLuminoWidget,
-            asObject=asObject,
+            toObject=toObject,
         )
 
     def list_attributes(

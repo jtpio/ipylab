@@ -136,9 +136,9 @@ export class IpylabModel extends WidgetModel {
     return (this.widget_manager as any).kernel;
   }
 
-  get kernelLive() {
+  get _kernelLive() {
     const status = this.kernel?.status;
-    return status ? !['dead'].includes(status) : false;
+    return status ? !['dead', 'restarting'].includes(status) : false;
   }
 
   /**
@@ -205,16 +205,16 @@ export class IpylabModel extends WidgetModel {
           }
         }
       }
-      if (msg.asObject instanceof Array) {
+      if (msg.toObject instanceof Array) {
         // Replace values in kwgs with attributes
-        for (const path of msg.asObject) {
+        for (const path of msg.toObject) {
           const value = getNestedObject({
             base: msg.kwgs,
             path: path,
             nullIfMissing: false
           });
           if (value && typeof value === 'string') {
-            const value_ = await this.asObject(value);
+            const value_ = await this.toObject(value);
             setNestedAttribute(msg.kwgs, path, value_);
           }
         }
@@ -272,28 +272,30 @@ export class IpylabModel extends WidgetModel {
     return this.getConnection(value);
   }
   /**
-   * Get an attribute.
-   * 1. If value starts with IPY_MODEL_ it will unpack the model and return the widget for that view.
-   * 2. If a widget exists that has and id=value the widget will be returned.
-   * 3. An errow will be thrown if the widget isn't found.
+   * Returns the object for the dotted path 'value'.
+   * 1. If value starts with IPY_MODEL_ it will unpack the model and return
+   *    the object relative to dotted path after the model name. If there is no
+   *    path after the model id it will be the model.
+   * 2. Otherwise the object as specified by the dotted path relate to the base will be returned.
+   * 3. An error will be thrown if the value doesn't point an existing attribute.
    *
    * @param value
    * @param as
    * @param string
    * @returns
    */
-  async asObject(value: string, nullIfMissing = false): Promise<any> {
+  async toObject(value: string, nullIfMissing = false): Promise<any> {
     let path = value;
     let base = this;
     if (value.slice(0, 10) === 'IPY_MODEL_') {
-      const parts = value.split('.', 1);
+      const parts = value.split('.', 2);
       base = await unpack_models(parts[0], this.widget_manager);
       if (base.get('_model_name') === IpylabModel.connection_model_name) {
         base = base.base;
       }
       path = parts[1] ?? '';
     }
-    return getNestedObject({ base, path, nullIfMissing });
+    return await getNestedObject({ base, path, nullIfMissing });
   }
 
   /**
@@ -414,7 +416,7 @@ export class IpylabModel extends WidgetModel {
     }
     this._pendingBackendOperations.forEach(opDone => opDone.reject('Closed'));
     this._pendingBackendOperations.clear();
-    comm_closed = comm_closed || !this.kernelLive;
+    comm_closed = comm_closed || !this._kernelLive;
     if (!comm_closed) {
       this.send({ closed: true });
     }
@@ -423,7 +425,7 @@ export class IpylabModel extends WidgetModel {
   }
 
   save_changes(callbacks?: unknown): void {
-    if (this.comm_live && this.kernelLive) {
+    if (this.comm_live && this._kernelLive) {
       super.save_changes(callbacks);
     }
   }

@@ -97,7 +97,7 @@ class RankedMenu(AsyncWidgetBase):
             "addItem",
             info,
             transform={"transform": Transform.connection, "cid": MenuItemConnection.new_cid(), "info": info},
-            asObject=as_object,
+            toObject=as_object,
         )
         return self.to_task(self._add_to_tuple_trait("items", task))
 
@@ -136,7 +136,7 @@ class MainMenu(AsyncWidgetBase):
 
         async def add_menu():
             menu = await task
-            await self.execute_method("addMenu", pack(menu), update, {"rank": rank}, asObject=["args.0"])
+            await self.execute_method("addMenu", pack(menu), update, {"rank": rank}, toObject=["args.0"])
             return menu
 
         return self.to_task(self._add_to_tuple_trait("menus", add_menu()))

@@ -12,13 +12,13 @@ from traitlets import Container, Instance, Tuple, Unicode, observe
 from ipylab._compat.typing import Any, NotRequired, TypedDict, Unpack
 from ipylab.asyncwidget import AsyncWidgetBase, Transform, pack, register
 from ipylab.connection import Connection
+from ipylab.widgets import Icon
 
 if TYPE_CHECKING:
     from asyncio import Task
     from collections.abc import Callable, Coroutine, Iterable
 
     from ipylab.asyncwidget import TransformType
-    from ipylab.widgets import Icon
 
 __all__ = ["CommandConnection", "CommandPalletConnection", "LauncherConnection"]
 
@@ -199,6 +199,9 @@ class CommandRegistry(AsyncWidgetBase):
         match operation:
             case "execute":
                 conn = self.get_existing_command_connection(payload["id"])
+                if not conn:
+                    msg = f'Command not found: "{payload["id"]}"'
+                    raise RuntimeError(msg)
                 cmd = conn.python_command
                 kwgs = (payload.get("args") or {}) | {"buffers": buffers}
                 for k in set(kwgs).difference(inspect.signature(cmd).parameters):
@@ -215,7 +218,7 @@ class CommandRegistry(AsyncWidgetBase):
         *,
         transform: TransformType = Transform.done,
         toLuminoWidget: Iterable[str] | None = None,
-        asObject: Iterable[str] | None = None,
+        toObject: Iterable[str] | None = None,
         **args,
     ):
         """Execute a command registered with `id` in Jupyterlab.
@@ -234,7 +237,7 @@ class CommandRegistry(AsyncWidgetBase):
             args,
             transform=transform,
             toLuminoWidget=toLuminoWidget,
-            asObject=asObject,
+            toObject=toObject,
         )
 
     def add(
@@ -262,6 +265,8 @@ class CommandRegistry(AsyncWidgetBase):
         """
         cid = CommandConnection.to_cid(name)
         self.remove_command(cid)
+        icon_, to_object = (f"{pack(icon)}.labIcon", ["icon"]) if isinstance(icon, Icon) else (icon, None)
+
         task = self.schedule_operation(
             "addCommand",
             id=cid,
@@ -269,7 +274,8 @@ class CommandRegistry(AsyncWidgetBase):
             label=label,
             iconClass=icon_class,
             transform={"transform": Transform.connection, "cid": cid},
-            icon=pack(icon),
+            icon=icon_,
+            toObject=to_object,
             frontendTransform=Transform.validate(frontend_transform),
             **kwgs,
         )

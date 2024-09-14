@@ -12,9 +12,8 @@ from traitlets import Dict, Instance, Unicode, observe
 
 import ipylab._frontend as _fe
 from ipylab.asyncwidget import WidgetBase
-from ipylab.common import InsertMode
+from ipylab.common import Area, InsertMode
 from ipylab.hasapp import HasApp
-from ipylab.shell import Area
 
 if TYPE_CHECKING:
     from asyncio import Task
