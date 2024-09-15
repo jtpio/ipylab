@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING, ClassVar
 
 from ipywidgets import TypedTuple
 from traitlets import Callable as CallableTrait
-from traitlets import Container, Instance, Tuple, Unicode, observe
+from traitlets import Container, Instance, Tuple, Unicode
 
 from ipylab._compat.typing import Any, NotRequired, TypedDict, Unpack
 from ipylab.asyncwidget import AsyncWidgetBase, Transform, pack, register
@@ -45,10 +45,6 @@ class CommandConnection(Connection):
     python_command = CallableTrait(allow_none=False)
 
     _config_options: ClassVar = set(CommandOptions.__annotations__)
-
-    @observe("comm")
-    def _ipylab_observe_comm(self, _):
-        self.app.commands.set_trait("items", self.get_instances())
 
     def configure(self, *, emit=True, **kwgs: Unpack[CommandOptions]) -> Task[CommandOptions]:
         if diff := set(kwgs).difference(self._config_options):
@@ -282,18 +278,19 @@ class CommandRegistry(AsyncWidgetBase):
             **kwgs,
         )
 
-        async def add_command_():
+        async def add_command():
             conn: CommandConnection = await task
             conn.set_trait("python_command", execute)
+            await self._add_to_tuple_trait("items", conn)
             return conn
 
-        return self.to_task(add_command_())
+        return self.to_task(add_command())
 
     def remove_command(self, name_or_id: str):
         conn = self.get_existing_command_connection(name_or_id)
         if conn:
             conn.dispose()
 
-    def get_existing_command_connection(self, name_or_id: str) -> CommandConnection | None:
+    def get_existing_command_connection(self, name_or_id: str):
         "Will return a CommandConnection if it was added in this kernel."
         return CommandConnection.get_existing_connection(name_or_id, quiet=True)

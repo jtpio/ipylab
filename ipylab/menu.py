@@ -63,7 +63,7 @@ class RankedMenu(AsyncWidgetBase):
         self,
         *,
         command: str | CommandConnection = "",
-        submenu: MenuItemConnection | None = None,
+        submenu: MenuConnection | None = None,
         rank=None,
         type: Literal["command", "submenu", "separator"] = "command",  # noqa: A002
         **args,
@@ -162,7 +162,3 @@ class MainMenu(AsyncWidgetBase):
             transform={"transform": Transform.connection, "cid": cid, "auto_dispose": True, "info": info},
         )
         return self.to_task(self._add_to_tuple_trait("_all_menus", coro))
-
-    def get_menu(self, label: str, *, quiet=True) -> MenuConnection | None:
-        """Get a menu that was added using `add_menu`."""
-        return MenuConnection.get_existing_connection(label, quiet=quiet)

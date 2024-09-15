@@ -4,7 +4,7 @@
 from __future__ import annotations
 
 import uuid
-from typing import TYPE_CHECKING, Generic, TypeVar
+from typing import TYPE_CHECKING, Any, ClassVar
 
 from ipywidgets import register
 from traitlets import Bool, Dict, Unicode
@@ -13,15 +13,14 @@ from ipylab.asyncwidget import AsyncWidgetBase
 
 if TYPE_CHECKING:
     from asyncio import Task
+    from collections.abc import Generator
     from typing import Literal, overload
 
     from ipylab._compat.typing import Self
 
-T = TypeVar("T", bound="Connection")
-
 
 @register
-class Connection(AsyncWidgetBase, Generic[T]):
+class Connection(AsyncWidgetBase):
     """A connection to a single object in the Frontend.
 
     Connection and subclasses of connection are used extensiviely in ipylab to
@@ -51,8 +50,8 @@ class Connection(AsyncWidgetBase, Generic[T]):
     """
 
     CID_PREFIX = ""  # Required in subclassess to discriminate when creating.
-    _CLASS_DEFINITIONS: dict[str, type[T]] = {}  # noqa RUF012
-    _connections: dict[str, T] = {}  # noqa RUF012
+    _CLASS_DEFINITIONS: ClassVar[dict[str, type[Connection]]] = {}
+    _connections: dict[str, Connection] = {}  # noqa RUF012
     _model_name = Unicode("ConnectionModel").tag(sync=True)
     cid = Unicode(read_only=True, help="connection id").tag(sync=True)
     id = Unicode("", read_only=True, help="id of the object if it has one").tag(sync=True)
@@ -65,7 +64,7 @@ class Connection(AsyncWidgetBase, Generic[T]):
             cls._CLASS_DEFINITIONS[cls.CID_PREFIX] = cls  # type: ignore
         super().__init_subclass__(**kwargs)
 
-    def __new__(cls, *, cid: str, id: str | None = None, **kwgs):  # noqa: A002, ARG003
+    def __new__(cls, *, cid: str, id: str | None = None, **kwgs) -> Self:  # noqa: A002, ARG003
         if cid not in cls._connections:
             if cls.CID_PREFIX and not cid.startswith(cls.CID_PREFIX):
                 msg = f"Expected prefix '{cls.CID_PREFIX}' not found for {cid=}"
@@ -74,7 +73,7 @@ class Connection(AsyncWidgetBase, Generic[T]):
             cls_ = cls._CLASS_DEFINITIONS.get(cid.split(":")[0], cls) if ":" in cid else cls
             kwgs.pop("info", None)
             cls._connections[cid] = super().__new__(cls_, **kwgs)  # type: ignore
-        return cls._connections[cid]
+        return cls._connections[cid]  # type: ignore
 
     def __init__(self, *, cid: str, model_id=None, id: str | None = None, **kwgs):  # noqa: A002
         if self._async_widget_base_init_complete:
@@ -101,8 +100,10 @@ class Connection(AsyncWidgetBase, Generic[T]):
         return cls.to_cid(str(uuid.uuid4()), *args)
 
     @classmethod
-    def get_instances(cls) -> tuple[T]:
-        return tuple(item for item in cls._connections.values() if item.__class__ is cls)  # type: ignore
+    def get_instances(cls) -> Generator[Self, Any, None]:
+        for item in cls._connections.values():
+            if item.__class__ is cls:
+                yield item  # type: ignore
 
     def close(self):
         self._connections.pop(self.cid, None)
@@ -117,13 +118,13 @@ class Connection(AsyncWidgetBase, Generic[T]):
 
         @overload
         @classmethod
-        def get_existing_connection(cls, *name_or_id: str, quiet: Literal[True]) -> T | None: ...
+        def get_existing_connection(cls, *name_or_id: str, quiet: Literal[False]) -> Self: ...
         @overload
         @classmethod
-        def get_existing_connection(cls, *name_or_id: str, quiet: Literal[False]) -> T: ...
+        def get_existing_connection(cls, *name_or_id: str, quiet: bool) -> Self | None: ...
         @overload
         @classmethod
-        def get_existing_connection(cls, *name_or_id: str) -> T: ...
+        def get_existing_connection(cls, *name_or_id: str) -> Self: ...
 
     @classmethod
     def get_existing_connection(cls, *name_or_id: str, quiet=False):

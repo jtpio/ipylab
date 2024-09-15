@@ -32,7 +32,7 @@ class NotifyAction(TypedDict):
 
 class NotifyOptions(TypedDict):
     autoClose: float | Literal[False]  # noqa: N815
-    actions: Iterable[NotifyAction | ActionConnection]
+    actions: NotRequired[Iterable[NotifyAction | ActionConnection]]
 
 
 class ActionConnection(Connection):
@@ -88,13 +88,13 @@ class NotificationManager(AsyncWidgetBase):
         """Overload this function as required."""
         match operation:
             case "action callback":
-                ActionConnection.get_existing_connection(payload["cid"]).callback()  # type: ignore
+                ActionConnection.get_existing_connection(payload["cid"]).callback()
         await super()._do_operation_for_frontend(operation, payload, buffers)
 
     async def _ensure_action(self, value: ActionConnection | NotifyAction) -> ActionConnection:
         "Create a new action."
         if not isinstance(value, dict):
-            action: ActionConnection = ActionConnection.get_existing_connection(str(value))
+            action = ActionConnection.get_existing_connection(str(value))
             value = action.info | {"callback": action.callback}  # type: ignore
         return await self.new_action(**value)  # type: ignore
 
