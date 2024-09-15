@@ -13,6 +13,7 @@ from ipylab.asyncwidget import AsyncWidgetBase
 
 if TYPE_CHECKING:
     from asyncio import Task
+    from typing import Literal, overload
 
     from ipylab._compat.typing import Self
 
@@ -111,6 +112,18 @@ class Connection(AsyncWidgetBase, Generic[T]):
         "Dispose of the disposable on the frontend and close."
         self.set_trait("_dispose", True)
         self.close()
+
+    if TYPE_CHECKING:
+
+        @overload
+        @classmethod
+        def get_existing_connection(cls, *name_or_id: str, quiet: Literal[True]) -> T | None: ...
+        @overload
+        @classmethod
+        def get_existing_connection(cls, *name_or_id: str, quiet: Literal[False]) -> T: ...
+        @overload
+        @classmethod
+        def get_existing_connection(cls, *name_or_id: str) -> T: ...
 
     @classmethod
     def get_existing_connection(cls, *name_or_id: str, quiet=False):

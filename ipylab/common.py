@@ -137,6 +137,15 @@ class Transform(StrEnum):
         return payload
 
 
+class NotificationType(StrEnum):
+    info = "info"
+    progress = "in-progress"
+    success = "success"
+    warning = "warning"
+    error = "error"
+    default = "default"
+
+
 class TransformDictFunction(TypedDict):
     transform: Literal[Transform.function]
     code: NotRequired[str]

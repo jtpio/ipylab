@@ -14,6 +14,7 @@ __all__ = [
     "SplitPanel",
     "Icon",
     "Area",
+    "NotificationType",
     "InsertMode",
     "hookimpl",
     "Transform",
@@ -25,7 +26,7 @@ __all__ = [
 
 from ipylab import commands, menu
 from ipylab.asyncwidget import pack, pack_code
-from ipylab.common import Area, InsertMode, Transform
+from ipylab.common import Area, InsertMode, NotificationType, Transform
 from ipylab.connection import Connection, MainAreaConnection
 from ipylab.hasapp import HasApp
 from ipylab.hookspecs import hookimpl

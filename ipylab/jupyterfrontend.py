@@ -13,6 +13,7 @@ from ipylab.commands import CommandRegistry
 from ipylab.dialog import Dialog, FileDialog
 from ipylab.hookspecs import pm
 from ipylab.menu import MainMenu
+from ipylab.notification import NotificationManager
 from ipylab.sessions import SessionManager
 from ipylab.shell import Shell
 
@@ -37,6 +38,7 @@ class JupyterFrontEnd(AsyncWidgetBase):
     shell = Instance(Shell, (), read_only=True)
     session_manager = Instance(SessionManager, (), read_only=True)
     main_menu = Instance(MainMenu, ())
+    notification = Instance(NotificationManager, ())
 
     @property
     def current_widget(self):

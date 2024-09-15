@@ -10,7 +10,7 @@ import {
   uuid
 } from '@jupyter-widgets/base';
 import { ILabShell, JupyterFrontEnd, LabShell } from '@jupyterlab/application';
-import { ICommandPalette } from '@jupyterlab/apputils';
+import { ICommandPalette, Notification } from '@jupyterlab/apputils';
 import { IDefaultFileBrowser } from '@jupyterlab/filebrowser';
 import { ILauncher } from '@jupyterlab/launcher';
 import { IMainMenu } from '@jupyterlab/mainmenu';
@@ -19,7 +19,6 @@ import { IRenderMimeRegistry } from '@jupyterlab/rendermime';
 import { Kernel, Session } from '@jupyterlab/services';
 import { ITranslator } from '@jupyterlab/translation';
 import { CommandRegistry } from '@lumino/commands';
-
 import {
   JSONObject,
   JSONValue,
@@ -134,6 +133,10 @@ export class IpylabModel extends WidgetModel {
 
   get kernel(): Kernel.IKernelConnection {
     return (this.widget_manager as any).kernel;
+  }
+
+  get notificationManager() {
+    return Notification.manager;
   }
 
   get _kernelLive() {
