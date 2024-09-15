@@ -12,7 +12,6 @@ from traitlets import Bool, Dict, Unicode
 from ipylab.asyncwidget import AsyncWidgetBase
 
 if TYPE_CHECKING:
-    from asyncio import Task
     from collections.abc import Generator
     from typing import Literal, overload
 
@@ -146,7 +145,7 @@ class Connection(AsyncWidgetBase):
 class MainAreaConnection(Connection):
     CID_PREFIX = "ipylab MainArea"
 
-    def activate(self) -> Task[Self]:
+    def activate(self):
         self._check_closed()
 
         async def activate_():

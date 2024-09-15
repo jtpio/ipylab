@@ -6,10 +6,10 @@ import asyncio
 import inspect
 import traceback
 import uuid
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, TypeVar
 
 from ipywidgets import Widget, register, widget_serialization
-from traitlets import Container, Dict, Instance, Set, Unicode
+from traitlets import Container, Dict, HasTraits, Instance, Set, Unicode
 
 import ipylab._frontend as _fe
 from ipylab.common import JavascriptType, Transform, TransformType
@@ -24,6 +24,8 @@ if TYPE_CHECKING:
 
 
 __all__ = ["AsyncWidgetBase", "WidgetBase", "register", "pack", "Widget"]
+
+T = TypeVar("T")
 
 
 def pack(obj: Widget | Any):
@@ -128,8 +130,7 @@ class AsyncWidgetBase(WidgetBase):
             msg = f"This widget is closed {self!r}"
             raise RuntimeError(msg)
 
-    # TODO: Add better type hints (pass the result of the coro)
-    def to_task(self, coro: Coroutine):
+    def to_task(self, coro: Coroutine[None, None, T]) -> Task[T]:
         """Run the coro in a task."""
 
         self._check_closed()
@@ -138,8 +139,7 @@ class AsyncWidgetBase(WidgetBase):
         task.add_done_callback(self._tasks.discard)
         return task
 
-    # TODO: Add better type hints (pass the result of the coro)
-    async def _wrap_coro(self, coro: Coroutine):
+    async def _wrap_coro(self, coro: Coroutine[None, None, T]) -> T:
         try:
             return await coro
         except asyncio.CancelledError:
@@ -172,14 +172,14 @@ class AsyncWidgetBase(WidgetBase):
             return IpylabFrontendError(f'{self.__class__.__name__} failed with message "{error}"')
         return None
 
-    async def _add_to_tuple_trait(self, name: str, item: Awaitable[Widget] | Widget):
+    async def _add_to_tuple_trait(self, name: str, item: Awaitable[T] | T) -> T:
         """Add the item to the tuple and observe its comm."""
         if inspect.isawaitable(item):
-            value = await item
+            value: T = await item
         else:
-            value = item
+            value: T = item
         items = getattr(self, name)
-        if value not in items:
+        if isinstance(value, HasTraits) and value not in items:
             value.observe(lambda _: self.set_trait(name, tuple(i for i in getattr(self, name) if i.comm)), "comm")
             self.set_trait(name, (*items, value))
         return value

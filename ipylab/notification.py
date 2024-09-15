@@ -88,8 +88,8 @@ class NotificationManager(AsyncWidgetBase):
         """Overload this function as required."""
         match operation:
             case "action callback":
-                ActionConnection.get_existing_connection(payload["cid"]).callback()
-        await super()._do_operation_for_frontend(operation, payload, buffers)
+                return ActionConnection.get_existing_connection(payload["cid"]).callback()
+        return await super()._do_operation_for_frontend(operation, payload, buffers)
 
     async def _ensure_action(self, value: ActionConnection | NotifyAction) -> ActionConnection:
         "Create a new action."
@@ -130,9 +130,10 @@ class NotificationManager(AsyncWidgetBase):
             )
             for action in actions:
                 await notification._add_to_tuple_trait("actions", action)  # noqa: SLF001
+            await self._add_to_tuple_trait("notifications", notification)
             return notification
 
-        return self.to_task(self._add_to_tuple_trait("notifications", notify()))
+        return self.to_task(notify())
 
     def new_action(
         self,
