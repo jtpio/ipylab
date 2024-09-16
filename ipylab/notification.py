@@ -8,7 +8,7 @@ import traitlets
 from ipywidgets import TypedTuple
 from traitlets import Container, Instance, Unicode
 
-from ipylab._compat.typing import NotRequired, TypedDict, Unpack
+from ipylab._compat.typing import NotRequired, TypedDict
 from ipylab.asyncwidget import AsyncWidgetBase, Transform, pack, register
 from ipylab.common import NotificationType
 from ipylab.connection import Connection
@@ -30,11 +30,6 @@ class NotifyAction(TypedDict):
     caption: NotRequired[str]
 
 
-class NotifyOptions(TypedDict):
-    autoClose: float | Literal[False]  # noqa: N815
-    actions: NotRequired[Iterable[NotifyAction | ActionConnection]]
-
-
 class ActionConnection(Connection):
     CID_PREFIX = "ipylab action"
     callback = traitlets.Callable()
@@ -53,19 +48,26 @@ class NotificationConnection(Connection):
         self,
         message: str,
         type: NotificationType | None = None,  # noqa: A002
-        **options: Unpack[NotifyOptions],
+        *,
+        auto_close: float | Literal[False] | None = None,
+        actions: Iterable[NotifyAction | ActionConnection] = (),
     ) -> Task[bool]:
-        args = {"id": self.id, "message": message, "type": NotificationType(type) if type else None}
+        args = {
+            "id": self.id,
+            "message": message,
+            "type": NotificationType(type) if type else None,
+            "autoClose": auto_close,
+        }
 
         async def update():
-            actions = [await self.app.notification._ensure_action(v) for v in options.get("actions", ())]  # noqa: SLF001
-            if actions:
-                options["actions"] = list(map(pack, actions))  # type: ignore
-                to_object = [f"options.actions.{i}" for i in range(len(actions))]
+            actions_ = [await self.app.notification._ensure_action(v) for v in actions]  # noqa: SLF001
+            if actions_:
+                args["actions"] = list(map(pack, actions_))  # type: ignore
+                to_object = [f"options.actions.{i}" for i in range(len(actions_))]
             else:
                 to_object = None
-            result = await self.app.notification.execute_method("update", args | options, toObject=to_object)
-            for action in actions:
+            result = await self.app.notification.execute_method("update", args, toObject=to_object)
+            for action in actions_:
                 await self._add_to_tuple_trait("actions", action)
             return result
 
@@ -102,20 +104,32 @@ class NotificationManager(AsyncWidgetBase):
         self,
         message: str,
         type: NotificationType = NotificationType.default,  # noqa: A002
-        **options: Unpack[NotifyOptions],
+        *,
+        auto_close: float | Literal[False] | None = None,
+        actions: Iterable[NotifyAction | ActionConnection] = (),
     ) -> Task[NotificationConnection]:
         """Create a new notification.
 
         To update a notification use the update method of the returned `NotificationConnection`.
+
+        NotifyAction:
+            label: str
+            display_type: Literal["default", "accent", "warn", "link"]
+            callback: Callable[[], Any]
+            keep_open: NotRequired[bool]
+            caption: NotRequired[str]
         """
 
+        options = {
+            "message": message,
+            "type": NotificationType(type) if type else None,
+            "autoClose": auto_close,
+        }
+
         async def notify():
-            actions = [await self._ensure_action(v) for v in options.get("actions", ())]
-            if actions:
-                options["actions"] = list(map(pack, actions))  # type: ignore
-                to_object = [f"options.actions.{i}" for i in range(len(actions))]
-            else:
-                to_object = None
+            actions_ = [await self._ensure_action(v) for v in actions]
+            if actions_:
+                options["actions"] = list(map(pack, actions_))  # type: ignore
             notification: NotificationConnection = await self.schedule_operation(
                 "notification",
                 type=NotificationType(type),
@@ -126,9 +140,9 @@ class NotificationManager(AsyncWidgetBase):
                     "cid": NotificationConnection.new_cid(),
                     "auto_dispose": True,
                 },
-                toObject=to_object,
+                toObject=[f"options.actions.{i}" for i in range(len(actions_))] if actions_ else None,
             )
-            for action in actions:
+            for action in actions_:
                 await notification._add_to_tuple_trait("actions", action)  # noqa: SLF001
             await self._add_to_tuple_trait("notifications", notification)
             return notification
