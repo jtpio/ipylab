@@ -70,7 +70,6 @@ class Connection(AsyncWidgetBase):
                 raise ValueError(msg)
             # Check if a subclass is registered with 'CID_PREFIX'
             cls_ = cls._CLASS_DEFINITIONS.get(cid.split(":")[0], cls) if ":" in cid else cls
-            kwgs.pop("info", None)
             cls._connections[cid] = inst = super().__new__(cls_, **kwgs)
             inst.set_trait("cid", cid)
             inst.set_trait("id", id)

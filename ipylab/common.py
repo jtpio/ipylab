@@ -42,7 +42,7 @@ class Transform(StrEnum):
     Data sent between the kernel and Frontend is serialized using JSON. The transform is used
     to specify how that data should be transformed either prior to sending and/or once received.
 
-    Transformations that require parameters should be specified in a dict with the the key 'transform' specifying
+    Transformations that require parameters should be specified in a dict with the key 'transform' specifying
     the transform, and other keys providing the parameters accordingly.
 
     - done: [default] A string '--DONE--'
