@@ -16,22 +16,9 @@ import { IpylabModel } from './ipylab';
  */
 export class ConnectionModel extends IpylabModel {
   async initialize(attributes: ObjectHash, options: any): Promise<void> {
-    let base;
-    const cid = this.get('cid');
-    const id = this.get('id');
-    try {
-      base = this.getConnection(cid, id);
-    } catch {}
-    super.initialize(attributes, { ...options, base });
-    if (base) {
-      this.base.disposed.connect(() => this.close());
-      this.on('change:_dispose', this.dispose, this);
-    } else {
-      console.log(
-        `Failed to get connection for cid='${cid}' id='${id}' so closing...`
-      );
-      this.close();
-    }
+    await super.initialize(attributes, options);
+    this.base.disposed.connect(() => this.close());
+    this.on('change:_dispose', this.dispose, this);
   }
 
   close(comm_closed?: boolean): Promise<void> {

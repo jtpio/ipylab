@@ -52,10 +52,10 @@ class RankedMenu(AsyncWidgetBase):
         kwgs.pop("basename", None)
         return super().__new__(cls, model_id=model_id, **kwgs)
 
-    def __init__(self, *, model_id=None, **kwgs):
+    def __init__(self, *, model_id=None, basename="", **kwgs):
         if self._async_widget_base_init_complete:
             return
-        if basename := kwgs.pop("basename", None):
+        if basename:
             self.set_trait("_basename", basename)
         super().__init__(model_id=model_id, **kwgs)
 
@@ -105,6 +105,9 @@ class RankedMenu(AsyncWidgetBase):
             toObject=as_object,
         )
         return self.to_task(self._add_to_tuple_trait("items", task))
+
+    def activate(self):
+        return self.execute_method("open")
 
 
 class MenuConnection(RankedMenu, Connection):

@@ -55,26 +55,31 @@ export {
  * Base model for common features
  */
 export class IpylabModel extends WidgetModel {
-  initialize(attributes: ObjectHash, options: any): void {
+  async initialize(attributes: ObjectHash, options: any): Promise<void> {
     super.initialize(attributes, options);
+    try {
+      if (this.get('cid')) {
+        this._base = await this.getConnection(this.get('cid'), this.get('id'));
+      } else {
+        const basename = this.get('_basename');
+        this._base = basename
+          ? getNestedObject({
+              base: this,
+              path: basename,
+              basename: `model_name= '${this.defaults()._model_name}`
+            })
+          : this;
+      }
+    } catch {
+      this.close();
+      throw new Error(`Failed to set the base so closing...`);
+    }
     this.set('kernelId', this.kernelId);
     this.on('msg:custom', this._onCustomMessage, this);
     this.save_changes();
     const msg = `ipylab ${this.get('_model_name')} ready for operations`;
     this.send({ init: msg });
     onKernelLost(this.kernel, this.close, this);
-    if (typeof options.base === 'object') {
-      this._base = options.base;
-    } else {
-      const basename = this.get('_basename');
-      this._base = basename
-        ? getNestedObject({
-            base: this,
-            path: basename,
-            basename: `model_name= '${this.defaults()._model_name}`
-          })
-        : this;
-    }
   }
 
   get base(): any {
@@ -272,7 +277,11 @@ export class IpylabModel extends WidgetModel {
       onKernelLost(this.kernel, lw.dispose, lw);
       return lw;
     }
-    return this.getConnection(value);
+    const obj = await this.getConnection(value);
+    if (!(obj instanceof Widget)) {
+      throw new Error(`Not a widget '${value}'`);
+    }
+    return obj;
   }
   /**
    * Returns the object for the dotted path 'value'.
@@ -438,11 +447,19 @@ export class IpylabModel extends WidgetModel {
    * @param cid Get an object that has been registered as a connection.
    * @returns
    */
-  getConnection(cid: string, id: string | null = null): any {
+  async getConnection(cid: string, id: string | null = null): Promise<object> {
     if (Private.connection.has(cid)) {
       return Private.connection.get(cid);
     }
-    const obj = this._getLuminoWidgetFromShell(id || cid);
+    let obj;
+    if (id.slice(0, 10) === 'IPY_MODEL_') {
+      obj = await unpack_models(id, this.widget_manager);
+      if (!(obj instanceof WidgetModel)) {
+        throw new Error(`Failed to get model ${id}`);
+      }
+    } else {
+      obj = this._getLuminoWidgetFromShell(id || cid);
+    }
     IpylabModel.registerConnection(obj, cid);
     return obj;
   }

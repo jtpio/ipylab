@@ -36,8 +36,8 @@ export class JupyterFrontEndModel extends IpylabModel {
    * @param attributes The base attributes.
    * @param options The initialization options.
    */
-  initialize(attributes: any, options: any): void {
-    super.initialize(attributes, options);
+  async initialize(attributes: any, options: any): Promise<void> {
+    await super.initialize(attributes, options);
     this.set('version', this.app.version);
     Private.jupyterFrontEndModels.set(this.kernelId, this);
 

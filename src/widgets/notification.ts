@@ -3,13 +3,14 @@
 
 import { Notification } from '@jupyterlab/apputils';
 import { ObservableDisposableDelegate } from '@lumino/disposable';
+import { ObjectHash } from 'backbone';
 import { IpylabModel } from './ipylab';
 /**
  * The model for a notification.
  */
 export class NotificationManagerModel extends IpylabModel {
-  initialize(attributes: Backbone.ObjectHash, options: any): void {
-    super.initialize(attributes, options);
+  async initialize(attributes: ObjectHash, options: any): Promise<void> {
+    await super.initialize(attributes, options);
     Notification.manager.changed.connect(this.update, this);
   }
 

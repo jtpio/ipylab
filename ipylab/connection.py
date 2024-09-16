@@ -6,10 +6,10 @@ from __future__ import annotations
 import uuid
 from typing import TYPE_CHECKING, Any, ClassVar
 
-from ipywidgets import register
+from ipywidgets import Widget, register
 from traitlets import Bool, Dict, Unicode
 
-from ipylab.asyncwidget import AsyncWidgetBase
+from ipylab.asyncwidget import AsyncWidgetBase, pack
 
 if TYPE_CHECKING:
     from collections.abc import Generator
@@ -49,7 +49,7 @@ class Connection(AsyncWidgetBase):
     """
 
     CID_PREFIX = ""  # Required in subclassess to discriminate when creating.
-    _CLASS_DEFINITIONS: ClassVar[dict[str, type[Connection]]] = {}
+    _CLASS_DEFINITIONS: ClassVar[dict[str, type[Self]]] = {}
     _connections: dict[str, Connection] = {}  # noqa RUF012
     _model_name = Unicode("ConnectionModel").tag(sync=True)
     cid = Unicode(read_only=True, help="connection id").tag(sync=True)
@@ -63,7 +63,7 @@ class Connection(AsyncWidgetBase):
             cls._CLASS_DEFINITIONS[cls.CID_PREFIX] = cls  # type: ignore
         super().__init_subclass__(**kwargs)
 
-    def __new__(cls, *, cid: str, id: str | None = None, **kwgs) -> Self:  # noqa: A002, ARG003
+    def __new__(cls, *, cid: str, id: str = "", info: dict | None = None, **kwgs) -> Self:  # noqa: A002
         if cid not in cls._connections:
             if cls.CID_PREFIX and not cid.startswith(cls.CID_PREFIX):
                 msg = f"Expected prefix '{cls.CID_PREFIX}' not found for {cid=}"
@@ -71,18 +71,17 @@ class Connection(AsyncWidgetBase):
             # Check if a subclass is registered with 'CID_PREFIX'
             cls_ = cls._CLASS_DEFINITIONS.get(cid.split(":")[0], cls) if ":" in cid else cls
             kwgs.pop("info", None)
-            cls._connections[cid] = super().__new__(cls_, **kwgs)  # type: ignore
+            cls._connections[cid] = inst = super().__new__(cls_, **kwgs)
+            inst.set_trait("cid", cid)
+            inst.set_trait("id", id)
+            inst.set_trait("info", info or {})
+
         return cls._connections[cid]  # type: ignore
 
-    def __init__(self, *, cid: str, model_id=None, id: str | None = None, **kwgs):  # noqa: A002
+    def __init__(self, cid: str, id: str = "", info: dict | None = None, **kwgs):  # noqa: A002, ARG002
         if self._async_widget_base_init_complete:
             return
-        self.set_trait("cid", cid)
-        self.set_trait("id", id or "")
-        info = kwgs.pop("info", None)
-        if info:
-            self.set_trait("info", info)
-        super().__init__(model_id=model_id, **kwgs)
+        super().__init__(**kwgs)
 
     def __str__(self):
         return self.cid
@@ -153,3 +152,12 @@ class MainAreaConnection(Connection):
             return self
 
         return self.to_task(activate_())
+
+
+class ModelConnection(Connection):
+    """A connection to the model of a widget."""
+
+    CID_PREFIX = "ipylab widget connection"
+
+    def __new__(cls, widget: Widget, **kwgs) -> Self:
+        return super().__new__(cls, cid=cls.new_cid(), id=pack(widget), **kwgs)  # type: ignore
