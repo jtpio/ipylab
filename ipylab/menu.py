@@ -134,11 +134,12 @@ class MainMenu(AsyncWidgetBase):
     _all_menus: Container[tuple[MenuConnection, ...]] = TypedTuple(trait=Instance(MenuConnection))
 
     def add_menu(self, label: str, *, update=True, rank: int = 500) -> Task[MenuConnection]:
-        """Add a top level menu.
+        """Add a top level menu to the shell.
 
         ref: https://jupyterlab.readthedocs.io/en/4.0.x/api/classes/mainmenu.MainMenu.html#addMenu
         """
-        task = self.create_menu(label=label, rank=rank)
+        cid = MenuConnection.to_cid(label)
+        task = self._generate_menu(id=cid, label=label, cid=cid, rank=rank)
 
         async def add_menu():
             menu = await task
@@ -148,6 +149,7 @@ class MainMenu(AsyncWidgetBase):
         return self.to_task(self._add_to_tuple_trait("menus", add_menu()))
 
     def create_menu(self, label: str, *, rank: int = 500) -> Task[MenuConnection]:
+        """Make a new unique menu, likely to be used as a submenu."""
         cid = MenuConnection.new_cid(label)
         return self._generate_menu(id=cid, label=label, cid=cid, rank=rank)
 

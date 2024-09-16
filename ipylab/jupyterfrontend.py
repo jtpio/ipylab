@@ -37,7 +37,7 @@ class JupyterFrontEnd(AsyncWidgetBase):
     file_dialog = Instance(FileDialog, (), read_only=True)
     shell = Instance(Shell, (), read_only=True)
     session_manager = Instance(SessionManager, (), read_only=True)
-    main_menu = Instance(MainMenu, ())
+    menu = Instance(MainMenu, ())
     notification = Instance(NotificationManager, ())
 
     @property
