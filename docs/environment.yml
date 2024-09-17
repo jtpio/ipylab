@@ -2,7 +2,6 @@ name: ipylab-lite
 channels:
   - conda-forge
 dependencies:
-  - build
   - python=3.11
   - mamba
   - pydata-sphinx-theme
@@ -12,6 +11,6 @@ dependencies:
   - jupyterlite-core
   - jupyterlite-pyodide-kernel
   - jupyterlite-sphinx
-  - nodejs=18
+  - nodejs=20
   - pip:
       - ..
