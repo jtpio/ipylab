@@ -65,6 +65,7 @@ Or with `mamba` / `conda`:
 mamba install -c conda-forge ipylab
 ```
 
+
 ## Running the examples locally
 
 To try out the examples locally, the recommended way is to create a new environment with the dependencies:
@@ -88,10 +89,15 @@ jupyter lab
 
 ```bash
 # create a new conda environment
-mamba create -n ipylab -c conda-forge jupyter-packaging nodejs python=3.10 -y
+mamba create -n ipylab -c conda-forge nodejs python=3.10 -y
 
 # activate the environment
 conda activate ipylab
+
+ # Install a patched version of ipwidgets & jupyterlab_widgets from local wheels to provide 'per-kernel-widget-manager'.
+# combines: https://github.com/jupyter-widgets/ipywidgets/pull/3922 & https://github.com/jupyter-widgets/ipywidgets/pull/3921
+
+pip install pkg/*.whl --force-reinstall
 
 # install the Python package
 pip install -e ".[dev]"
@@ -101,7 +107,7 @@ jupyter labextension develop . --overwrite
 
 # compile the extension
 jlpm clean
-jlpm && jlpm build
+jlpm build
 
 # pre-commit (optional)
 pip install pre-commit
