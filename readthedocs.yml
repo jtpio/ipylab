@@ -7,7 +7,7 @@ build:
     pre_build:
       - jlpm
       - jlpm build
-      - python -m build --wheel
+      - hatch build
 python:
   install:
     - method: pip
