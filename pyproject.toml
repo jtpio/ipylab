@@ -1,30 +1,46 @@
 [build-system]
-requires = ["hatchling>=1.5.0", "jupyterlab>=4.0.0,<5", "hatch-nodejs-version"]
+requires = [
+  "hatchling>=1.5.0",
+  "jupyterlab>=4.1.0,<5",
+  "hatch-nodejs-version>=0.3.2",
+]
 build-backend = "hatchling.build"
 
 [project]
 name = "ipylab"
 readme = "README.md"
 license = { file = "LICENSE" }
-requires-python = ">=3.8"
+requires-python = ">=3.10"
 classifiers = [
-    "Framework :: Jupyter",
-    "Framework :: Jupyter :: JupyterLab",
-    "Framework :: Jupyter :: JupyterLab :: 4",
-    "Framework :: Jupyter :: JupyterLab :: Extensions",
-    "Framework :: Jupyter :: JupyterLab :: Extensions :: Prebuilt",
-    "License :: OSI Approved :: BSD License",
-    "Programming Language :: Python",
-    "Programming Language :: Python :: 3",
-    "Programming Language :: Python :: 3.8",
-    "Programming Language :: Python :: 3.9",
-    "Programming Language :: Python :: 3.10",
-    "Programming Language :: Python :: 3.11",
-]
-dependencies = [
-    "ipywidgets>=7.6.0,<9"
+  "Framework :: Jupyter",
+  "Framework :: Jupyter :: JupyterLab",
+  "Framework :: Jupyter :: JupyterLab :: 4",
+  "Framework :: Jupyter :: JupyterLab :: Extensions",
+  "Framework :: Jupyter :: JupyterLab :: Extensions :: Prebuilt",
+  "License :: OSI Approved :: BSD License",
+  "Programming Language :: Python",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
 ]
 dynamic = ["version", "description", "authors", "urls", "keywords"]
+
+dependencies = [
+  "jupyterlab>=4.1",
+  "ipywidgets>=8.1.5",
+  "jupyterlab_widgets>=3.0.11",
+  "pluggy~=1.1",
+  "backports.strenum; python_version < '3.11'",
+  "typing_extensions; python_version < '3.11'",
+]
+
+[project.optional-dependencies]
+dev = ["hatch", "ruff", "pre-commit"]
+test = ["pytest"]
+
+[project.scripts]
+ipylab = "ipylab:scripts.launch_jupyterlab"
 
 [tool.hatch.version]
 source = "nodejs"
@@ -40,6 +56,9 @@ exclude = [".github", "binder"]
 "ipylab/labextension" = "share/jupyter/labextensions/ipylab"
 "install.json" = "share/jupyter/labextensions/ipylab/install.json"
 
+[tool.hatch.build.targets.wheel.force-include]
+"ipylab/labextension/package.json" = "ipylab/labextension/package.json"
+
 [tool.hatch.build.hooks.version]
 path = "ipylab/_version.py"
 
@@ -47,9 +66,10 @@ path = "ipylab/_version.py"
 dependencies = ["hatch-jupyter-builder>=0.5"]
 build-function = "hatch_jupyter_builder.npm_builder"
 ensured-targets = [
-    "ipylab/labextension/static/style.js",
-    "ipylab/labextension/package.json",
+  "ipylab/labextension/static/style.js",
+  "ipylab/labextension/package.json",
 ]
+install-pre-commit-hook = true
 skip-if-exists = ["ipylab/labextension/static/style.js"]
 
 [tool.hatch.build.hooks.jupyter-builder.build-kwargs]
@@ -62,16 +82,30 @@ npm = ["jlpm"]
 source_dir = "src"
 build_dir = "ipylab/labextension"
 
+[tool.hatch.envs.hatch-static-analysis]
+config-path = "ruff_defaults.toml"
+
 [tool.jupyter-releaser.options]
 version_cmd = "hatch version"
 
 [tool.jupyter-releaser.hooks]
-before-build-npm = [
-    "python -m pip install 'jupyterlab>=4.0.0,<5'",
-    "jlpm",
-    "jlpm build:prod"
-]
+before-build-npm = ["pip install jupyterlab~=4.1", "jlpm", "jlpm build:prod"]
 before-build-python = ["jlpm clean:all"]
 
 [tool.check-wheel-contents]
 ignore = ["W002"]
+
+[tool.ruff]
+extend = "ruff_defaults.toml"
+target-version = "py310"
+
+
+[tool.codespell]
+skip = 'yarn.lock,node_modules*,lib,.yarn*,./ipylab*'
+ignore-words-list = 'statics'
+write = true
+
+[tool.ruff.lint]
+ignore = ["BLE001", "N803"]
+[tool.ruff.format]
+docstring-code-format = true

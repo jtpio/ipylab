@@ -65,6 +65,7 @@ Or with `mamba` / `conda`:
 mamba install -c conda-forge ipylab
 ```
 
+
 ## Running the examples locally
 
 To try out the examples locally, the recommended way is to create a new environment with the dependencies:
@@ -88,19 +89,38 @@ jupyter lab
 
 ```bash
 # create a new conda environment
-mamba create -n ipylab -c conda-forge jupyter-packaging nodejs python -y
+mamba create -n ipylab -c conda-forge nodejs python=3.10 -y
 
 # activate the environment
 conda activate ipylab
 
+ # Install a patched version of ipwidgets & jupyterlab_widgets from local wheels to provide 'per-kernel-widget-manager'.
+# combines: https://github.com/jupyter-widgets/ipywidgets/pull/3922 & https://github.com/jupyter-widgets/ipywidgets/pull/3921
+
+pip install pkg/*.whl --force-reinstall
+
 # install the Python package
-python -m pip install -e ".[dev]"
+pip install -e ".[dev]"
 
 # link the extension files
 jupyter labextension develop . --overwrite
 
 # compile the extension
-jlpm && jlpm run build
+jlpm clean
+jlpm build
+
+# pre-commit (optional)
+pip install pre-commit
+pre-commit install
+
+# Use jlpm script to lint the JS
+jlpm lint
+#or
+jlpm lint:check
+
+
+- Sometimes, it helps to clear cached files too by running `git clean -dfx`
+  from the root of the cloned repository. You will also need to redo `pip install -e ".[dev]`
 ```
 
 ## Related projects

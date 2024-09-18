@@ -1,50 +1,141 @@
-#!/usr/bin/env python
-# coding: utf-8
-
 # Copyright (c) ipylab contributors.
 # Distributed under the terms of the Modified BSD License.
+from __future__ import annotations
 
-import asyncio
+import inspect
+from typing import TYPE_CHECKING, Any
 
-from ipywidgets import CallbackDispatcher, Widget, register, widget_serialization
-from traitlets import Instance, Unicode
-from ._frontend import module_name, module_version
+from traitlets import Dict, Instance, Tuple, Unicode
 
-from .commands import CommandRegistry
-from .shell import Shell
-from .sessions import SessionManager
+from ipylab import MainAreaConnection
+from ipylab.asyncwidget import AsyncWidgetBase, Transform, pack, pack_code, register, widget_serialization
+from ipylab.commands import CommandRegistry
+from ipylab.dialog import Dialog, FileDialog
+from ipylab.hookspecs import pm
+from ipylab.menu import MainMenu
+from ipylab.notification import NotificationManager
+from ipylab.sessions import SessionManager
+from ipylab.shell import Shell
+
+if TYPE_CHECKING:
+    from ipylab.asyncwidget import TransformType
 
 
 @register
-class JupyterFrontEnd(Widget):
+class JupyterFrontEnd(AsyncWidgetBase):
     _model_name = Unicode("JupyterFrontEndModel").tag(sync=True)
-    _model_module = Unicode(module_name).tag(sync=True)
-    _model_module_version = Unicode(module_version).tag(sync=True)
+    _basename = Unicode("app", read_only=True).tag(sync=True)
+    SINGLETON = True
 
     version = Unicode(read_only=True).tag(sync=True)
-    shell = Instance(Shell).tag(sync=True, **widget_serialization)
-    commands = Instance(CommandRegistry).tag(sync=True, **widget_serialization)
-    sessions = Instance(SessionManager).tag(sync=True, **widget_serialization)
+    commands = Instance(CommandRegistry, (), read_only=True).tag(sync=True, **widget_serialization)
 
-    def __init__(self, *args, **kwargs):
-        super().__init__(
-            *args,
-            shell=Shell(),
-            commands=CommandRegistry(),
-            sessions=SessionManager(),
-            **kwargs,
-        )
-        self._ready_event = asyncio.Event()
-        self._on_ready_callbacks = CallbackDispatcher()
-        self.on_msg(self._on_frontend_msg)
+    current_widget_id = Unicode(read_only=True).tag(sync=True)
+    current_session = Dict(read_only=True).tag(sync=True)
+    all_sessions = Tuple(read_only=True).tag(sync=True)
+    dialog = Instance(Dialog, (), read_only=True)
+    file_dialog = Instance(FileDialog, (), read_only=True)
+    shell = Instance(Shell, (), read_only=True)
+    session_manager = Instance(SessionManager, (), read_only=True)
+    menu = Instance(MainMenu, ())
+    notification = Instance(NotificationManager, ())
 
-    def _on_frontend_msg(self, _, content, buffers):
-        if content.get("event", "") == "lab_ready":
-            self._ready_event.set()
-            self._on_ready_callbacks()
+    @property
+    def current_widget(self):
+        """A connection to the current widget in the shell."""
+        id_ = self.current_widget_id
+        return MainAreaConnection(cid=MainAreaConnection.to_cid(id_), id=id_)
 
-    async def ready(self):
-        await self._ready_event.wait()
+    def _init_python_backend(self):
+        "Run by the Ipylab python backend."
+        # This is called in a separate kernel started by the JavaScript frontend
+        # the first time the ipylab plugin is activated.
 
-    def on_ready(self, callback, remove=False):
-        self._on_ready_callbacks.register_callback(callback, remove)
+        try:
+            count = pm.load_setuptools_entrypoints("ipylab_backend")
+            self.log.info("Ipylab python backend found {%} plugin entry points.", count)
+        except Exception as e:
+            self.log.exception("An exception occurred when loading plugins")
+            self.dialog.show_error_message("Plugin failure", str(e))
+
+    async def _do_operation_for_frontend(self, operation: str, payload: dict, buffers: list) -> Any:
+        match operation:
+            case "execEval":
+                return await self._exec_eval(payload, buffers)
+        return await super()._do_operation_for_frontend(operation, payload, buffers)
+
+    def shutdown_kernel(self, kernelId: str | None = None):
+        """Shutdown the kernel"""
+        return self.schedule_operation("shutdownKernel", kernelId=kernelId)
+
+    def exec_eval(
+        self,
+        execute: str | inspect._SourceObjectType,
+        evaluate: dict[str, str],
+        kernelId="",
+        frontend_transform: TransformType = Transform.done,
+        **kwgs,
+    ):
+        """Execute and evaluate code in the Python kernel with the id `kernelId`.
+
+        If `kernelId` isn't provided a new kernel will be created. kwgs are provided to the new session.
+
+        execute:
+            The code as text or function to executed.
+            ref: https://docs.python.org/3/library/functions.html#exec
+        eval:
+            A dictionary of `symbol name` to `expression` mappings to be evaluated in the kernel.
+            Each expression is evaluated in turn adding the symbol to the namespace. The evaluation
+            of the expression will also be called and or awaited until the returned symbol is no
+            longer callable or awaitable.
+
+            ref: https://docs.python.org/3/library/functions.html#eval
+
+            Once evaluation is complete, the symbols named `payload` and `buffers` will be sent
+            back (if they were defined).
+        kernelId:
+            The Id allocated to the kernel in the frontend.
+        frontend_transform: TransformType
+            The transform to use in the frontend on the payload returned from evaluation.
+        """
+
+        code = "import ipylab; ipylab.JupyterFrontEnd()"
+        task = None if kernelId else self.session_manager.new_sessioncontext(code=code, **kwgs)
+        frontend_transform = Transform.validate(frontend_transform)
+
+        async def exec_eval_():
+            k_id = kernelId
+            if task:
+                connection = await task
+                k_id = await connection.get_attribute("session.kernel.id")
+            return await self.app.schedule_operation(
+                "execEval",
+                code=pack_code(execute),
+                evaluate=dict(evaluate),
+                kernelId=k_id,
+                frontendTransform=frontend_transform,
+            )
+
+        return self.to_task(exec_eval_())
+
+    async def _exec_eval(self, payload: dict, buffers: list) -> Any:
+        """exec/eval code corresponding to a call from execEval, likely from
+        another kernel."""
+        # TODO: consider if globals / locals / async scope should be supported.
+        code = payload.get("code")
+        glbls = payload | {"buffers": buffers}
+        if code:
+            exec(code, glbls)  # noqa: S102
+        for name, expression in payload.get("evaluate", {}).items():
+            result = eval(expression, glbls)  # noqa: S307
+            while callable(result) or inspect.isawaitable(result):
+                if callable(result):
+                    result = result()
+                if inspect.isawaitable(result):
+                    result = await result
+            glbls[name] = result
+        return {"payload": pack(glbls.get("payload")), "buffers": glbls.get("buffers", [])}
+
+    def checkstart_iyplab_python_backend(self, *, restart=False):
+        """Checks backend is running and starts it if it isn't, returning the session model."""
+        return self.schedule_operation("startIyplabPythonBackend", restart=restart, transform=Transform.done)

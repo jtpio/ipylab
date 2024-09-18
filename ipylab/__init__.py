@@ -1,14 +1,37 @@
-#!/usr/bin/env python
-# coding: utf-8
-
 # Copyright (c) ipylab contributors.
 # Distributed under the terms of the Modified BSD License.
+from __future__ import annotations
 
-from ._version import __version__
+from ipylab._version import __version__
 
-from .jupyterfrontend import JupyterFrontEnd
-from .widgets import Panel, SplitPanel, Icon
-from .icon import Icon
+__all__ = [
+    "__version__",
+    "HasApp",
+    "JupyterFrontEnd",
+    "Connection",
+    "MainAreaConnection",
+    "Panel",
+    "SplitPanel",
+    "Icon",
+    "Area",
+    "NotificationType",
+    "InsertMode",
+    "hookimpl",
+    "Transform",
+    "pack",
+    "pack_code",
+    "commands",
+    "menu",
+]
+
+from ipylab import commands, menu
+from ipylab.asyncwidget import pack, pack_code
+from ipylab.common import Area, InsertMode, NotificationType, Transform
+from ipylab.connection import Connection, MainAreaConnection
+from ipylab.hasapp import HasApp
+from ipylab.hookspecs import hookimpl
+from ipylab.jupyterfrontend import JupyterFrontEnd
+from ipylab.widgets import Icon, Panel, SplitPanel
 
 
 def _jupyter_labextension_paths():

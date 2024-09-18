@@ -1,0 +1,58 @@
+ci:
+  autoupdate_schedule: monthly
+  skip:
+    - prettier
+default_language_version:
+  node: system
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.6.0
+    hooks:
+      - id: check-case-conflict
+      - id: check-ast
+      - id: check-docstring-first
+      - id: check-executables-have-shebangs
+      - id: check-added-large-files
+      - id: check-case-conflict
+      - id: check-merge-conflict
+      - id: check-toml
+      - id: check-yaml
+      - id: debug-statements
+      - id: end-of-file-fixer
+      - id: trailing-whitespace
+      - id: forbid-new-submodules
+      - id: end-of-file-fixer
+        exclude: galata/.*-snapshots
+      - id: requirements-txt-fixer
+      - id: check-builtin-literals
+  - repo: https://gitlab.com/bmares/check-json5
+    rev: 'v1.0.0'
+    hooks:
+      - id: check-json5
+  - repo: https://github.com/python-jsonschema/check-jsonschema
+    rev: 0.29.2
+    hooks:
+      - id: check-github-workflows
+  - repo: https://github.com/ComPWA/taplo-pre-commit
+    rev: v0.9.3
+    hooks:
+      - id: taplo-format
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.6.3
+    hooks:
+      - id: ruff
+        types_or: [python, jupyter]
+        args: ['--fix']
+      - id: ruff-format
+        types_or: [python, jupyter]
+  - repo: https://github.com/codespell-project/codespell
+    rev: 'v2.3.0'
+    hooks:
+      - id: codespell
+        additional_dependencies:
+          - tomli
+
+  - repo: https://github.com/kynan/nbstripout
+    rev: '0.7.1'
+    hooks:
+      - id: nbstripout

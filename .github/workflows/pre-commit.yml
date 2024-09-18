@@ -1,0 +1,14 @@
+name: Pre-Commit Check
+on:
+  push:
+    branches: ['main']
+  pull_request:
+    branches:
+      - '*'
+jobs:
+  pre_commit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: jupyterlab/maintainer-tools/.github/actions/base-setup@v1
+      - uses: jupyterlab/maintainer-tools/.github/actions/pre-commit@v1

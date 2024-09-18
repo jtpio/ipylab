@@ -1,0 +1,17 @@
+{
+  "spellright.language": ["en"],
+  "spellright.documentTypes": ["markdown", "latex"],
+  "[toml]": {
+    "editor.defaultFormatter": "tamasfe.even-better-toml"
+  },
+  "[python]": {
+    "editor.defaultFormatter": "charliermarsh.ruff"
+  },
+  "[typescript]": {
+    "editor.defaultFormatter": "esbenp.prettier-vscode"
+  },
+  "editor.formatOnSave": true,
+  "python.terminal.activateEnvInCurrentTerminal": true,
+  "python.createEnvironment.trigger": "prompt",
+  "python.analysis.typeCheckingMode": "basic"
+}
