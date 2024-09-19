@@ -46,18 +46,6 @@ class JupyterFrontEnd(AsyncWidgetBase):
         id_ = self.current_widget_id
         return MainAreaConnection(cid=MainAreaConnection.to_cid(id_), id=id_)
 
-    def _init_python_backend(self):
-        "Run by the Ipylab python backend."
-        # This is called in a separate kernel started by the JavaScript frontend
-        # the first time the ipylab plugin is activated.
-
-        try:
-            count = pm.load_setuptools_entrypoints("ipylab_backend")
-            self.log.info("Ipylab python backend found {%} plugin entry points.", count)
-        except Exception as e:
-            self.log.exception("An exception occurred when loading plugins")
-            self.dialog.show_error_message("Plugin failure", str(e))
-
     async def _do_operation_for_frontend(self, operation: str, payload: dict, buffers: list) -> Any:
         match operation:
             case "execEval":

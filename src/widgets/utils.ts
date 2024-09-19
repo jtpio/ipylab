@@ -45,7 +45,7 @@ export async function newSessionContext({
   await sessionContext.ready;
 
   // Create a manager for the kernel to support widgets.
-  // The pull request at this link enables widgets to work without needing a document of console to remain open:
+  // The pull request at this link enables widgets to work without requiring a document or console to remain open:
   //  https://github.com/jupyter-widgets/ipywidgets/pull/3922
 
   new KernelWidgetManager(sessionContext.session.kernel, rendermime as any);

@@ -118,7 +118,7 @@ export class JupyterFrontEndModel extends IpylabModel {
       case 'execEval':
         return await this._execEval(payload);
       case 'startIyplabPythonBackend':
-        return (await IpylabModel.pythonBackend.checkStart(
+        return (await IpylabModel.ipylabKernel.checkStart(
           payload.restart ?? false
         )) as any;
       case 'shutdownKernel':

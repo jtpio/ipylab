@@ -5,14 +5,14 @@ import { newSessionContext } from './utils';
  *  The Python backend that auto loads python side plugins using `pluggy` module.
  *
  */
-export class PythonBackendModel {
+export class IpylabPythonKernel {
   async checkStart(restart?: false) {
     if (!this._backendSession || this._backendSession.disposed) {
       const context = await newSessionContext({
         path: 'Ipylab backend',
         name: 'Ipylab backend',
         language: 'python3',
-        code: 'import ipylab.scripts; ipylab.scripts.init_ipylab_backend()'
+        code: 'import ipylab.ipylab_backend; ipylab.ipylab_backend.IpylabBackEnd()'
       });
       this._backendSession = context.session;
     }
@@ -22,23 +22,23 @@ export class PythonBackendModel {
     // Add a command
     if (!this._command || this._command.isDisposed) {
       this._command = IpylabModel.app.commands.addCommand(
-        PythonBackendModel.checkstart,
+        IpylabPythonKernel.checkstart,
         {
           label: 'Ipylab check start Python backend',
           caption:
             'Start the Ipylab Python backend that will run registered autostart plugins.\n ' +
             ' in "pyproject.toml"  added entry for: \n' +
-            '[project.entry-points.ipylab_backend] \n' +
+            '[project.entry-points.ipylab_autostart] \n' +
             '\tmyproject = "myproject.pluginmodule"',
 
-          execute: () => IpylabModel.pythonBackend.checkStart()
+          execute: () => IpylabModel.ipylabKernel.checkStart()
         }
       );
       if (this._palletItem) {
         this._palletItem.dispose();
       }
       this._palletItem = IpylabModel.palette.addItem({
-        command: PythonBackendModel.checkstart,
+        command: IpylabPythonKernel.checkstart,
         category: 'ipylab',
         rank: 500
       });

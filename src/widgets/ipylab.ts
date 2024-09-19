@@ -30,7 +30,7 @@ import { Signal } from '@lumino/signaling';
 import { Widget } from '@lumino/widgets';
 import { ObjectHash } from 'backbone';
 import { MODULE_NAME, MODULE_VERSION } from '../version';
-import { PythonBackendModel } from './python_backend';
+import { IpylabPythonKernel } from './ipylab_kernel';
 import {
   getNestedObject,
   listAttributes,
@@ -602,7 +602,7 @@ export class IpylabModel extends WidgetModel {
 
   private _pendingBackendOperations = new Map<string, PromiseDelegate<any>>();
   private _base: object | null;
-  static pythonBackend = new PythonBackendModel();
+  static ipylabKernel = new IpylabPythonKernel();
   static model_name: string = 'IpylabModel';
   static model_module = MODULE_NAME;
   static model_module_version = MODULE_VERSION;

@@ -84,7 +84,7 @@ class AsyncWidgetBase(WidgetBase):
     _ipylab_model_register: ClassVar[dict[str, Any]] = {}
     _singleton_register: ClassVar[dict[str, str]] = {}
     SINGLETON = False
-    _ready_response = Instance(Response, ())
+    _ready_event = Instance(asyncio.Event, ())
     _pending_operations: Dict[str, Response] = Dict()
     _tasks: Container[set[asyncio.Task]] = Set()
     _comm = None
@@ -111,7 +111,7 @@ class AsyncWidgetBase(WidgetBase):
         self._async_widget_base_init_complete = True
 
     async def __aenter__(self):
-        await self.wait_ready()
+        await self._ready_event.wait()
         self._check_closed()
 
     async def __aexit__(self, exc_type, exc, tb):
@@ -152,11 +152,9 @@ class AsyncWidgetBase(WidgetBase):
             finally:
                 raise e
 
-    def _check_get_error(self, content: dict | None = None) -> IpylabFrontendError | None:
-        if content is None:
-            content = {}
-        error = content.get("error")
-        if error:
+    def _check_get_error(self, content: dict) -> IpylabFrontendError | None:
+        if "error" in content:
+            error = content["error"]
             operation = content.get("operation")
             if operation:
                 msg = f'{self.__class__.__name__} operation "{operation}" failed with message "{error}"'
@@ -184,8 +182,6 @@ class AsyncWidgetBase(WidgetBase):
             self.set_trait(name, (*items, value))
         return value
 
-    async def wait_ready(self) -> None:
-        await self._ready_response.wait()
 
     def send(self, content, buffers=None):
         try:
@@ -214,16 +210,22 @@ class AsyncWidgetBase(WidgetBase):
         if error:
             pm.hook.on_frontend_error(obj=self, error=error, content=content, buffers=buffers)
         if operation := content.get("operation"):
-            ipylab_backend = content.get("ipylab_BE", "")
+            ipylab_autostart = content.get("ipylab_BE", "")
             payload = content.get("payload", {})
-            if ipylab_backend:
-                self._pending_operations.pop(ipylab_backend).set(payload, error)
+            if ipylab_autostart:
+                self._pending_operations.pop(ipylab_autostart).set(payload, error)
             if "ipylab_FE" in content:
                 self.to_task(self._handle_frontend_operation(content["ipylab_FE"], operation, payload, buffers))
         elif "init" in content:
-            self._ready_response.set(content)
+            self._ready_event.set()
+            self.on_frontend_init(content)
         elif "closed" in content:
             self.close()
+
+    def on_frontend_init(self, content: dict):
+        """Called when the frontend is initialized.
+
+        This will occur on initial connection and whenever the model is restored from the kernel."""
 
     async def _handle_frontend_operation(self, ipylab_FE: str, operation: str, payload: dict, buffers: list):
         """Handle operation requests from the frontend and reply with a result."""
