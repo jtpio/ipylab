@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import uuid
+import weakref
 from typing import TYPE_CHECKING, Any, ClassVar
 
 from ipywidgets import Widget, register
@@ -48,9 +49,9 @@ class Connection(AsyncWidgetBase):
     See also `Transform.connection` for further detail about transforms.
     """
 
-    CID_PREFIX = ""  # Required in subclassess to discriminate when creating.
     _CLASS_DEFINITIONS: ClassVar[dict[str, type[Self]]] = {}
-    _connections: dict[str, Connection] = {}  # noqa RUF012
+    _cid_prefix: ClassVar = "ipylab-connection"
+    _connections: weakref.WeakValueDictionary[str, Self] = weakref.WeakValueDictionary()
     _model_name = Unicode("ConnectionModel").tag(sync=True)
     cid = Unicode(read_only=True, help="connection id").tag(sync=True)
     id = Unicode("", read_only=True, help="id of the object if it has one").tag(sync=True)
@@ -59,25 +60,20 @@ class Connection(AsyncWidgetBase):
     _basename = None
 
     def __init_subclass__(cls, **kwargs) -> None:
-        if cls.CID_PREFIX:
-            cls._CLASS_DEFINITIONS[cls.CID_PREFIX] = cls  # type: ignore
+        cls._cid_prefix = "ipylab" + "".join(f"-{c.lower()}" if c.isupper() else c for c in cls.__name__)
+        cls._CLASS_DEFINITIONS[cls._cid_prefix] = cls
         super().__init_subclass__(**kwargs)
 
-    def __new__(cls, *, cid: str, id: str = "", info: dict | None = None, **kwgs) -> Self:  # noqa: A002
+    def __new__(cls, *, cid: str, id: str = "", **kwgs):  # noqa: A002
         if cid not in cls._connections:
-            if cls.CID_PREFIX and not cid.startswith(cls.CID_PREFIX):
-                msg = f"Expected prefix '{cls.CID_PREFIX}' not found for {cid=}"
-                raise ValueError(msg)
-            # Check if a subclass is registered with 'CID_PREFIX'
-            cls_ = cls._CLASS_DEFINITIONS.get(cid.split(":")[0], cls) if ":" in cid else cls
-            cls._connections[cid] = inst = super().__new__(cls_, **kwgs)
+            cls = cls._CLASS_DEFINITIONS[cid.split(":", maxsplit=1)[0]]
+            cls._connections[cid] = inst = super().__new__(cls, **kwgs)
             inst.set_trait("cid", cid)
             inst.set_trait("id", id)
-            inst.set_trait("info", info or {})
+        return cls._connections[cid]
 
-        return cls._connections[cid]  # type: ignore
-
-    def __init__(self, cid: str, id: str = "", info: dict | None = None, **kwgs):  # noqa: A002, ARG002
+    def __init__(self, *, cid: str, id: str = "", info: dict | None = None, **kwgs):  # noqa: A002, ARG002
+        self.set_trait("info", info or self.info)
         if self._async_widget_base_init_complete:
             return
         super().__init__(**kwgs)
@@ -88,7 +84,7 @@ class Connection(AsyncWidgetBase):
     @classmethod
     def to_cid(cls, *args: str) -> str:
         """Generate an id for the args"""
-        return " | ".join([f"{cls.CID_PREFIX}:{args[0].removeprefix(cls.CID_PREFIX).strip(':')}", *args[1:]]).strip(
+        return " | ".join([f"{cls._cid_prefix}:{args[0].removeprefix(cls._cid_prefix).strip(':')}", *args[1:]]).strip(
             ": "
         )
 
@@ -102,14 +98,15 @@ class Connection(AsyncWidgetBase):
             if item.__class__ is cls:
                 yield item  # type: ignore
 
-    def close(self):
+    def close(self, *, dispose=False):
+        """Permanently close the widget.
+
+        dispose: bool
+            Whether to dispose of the object at the frontend."""
+        if dispose:
+            self.set_trait("_dispose", True)
         self._connections.pop(self.cid, None)
         super().close()
-
-    def dispose(self):
-        "Dispose of the disposable on the frontend and close."
-        self.set_trait("_dispose", True)
-        self.close()
 
     if TYPE_CHECKING:
 
@@ -140,23 +137,33 @@ class Connection(AsyncWidgetBase):
         return conn
 
 
-class MainAreaConnection(Connection):
-    CID_PREFIX = "ipylab MainArea"
+Connection._CLASS_DEFINITIONS[Connection._cid_prefix] = Connection  # noqa: SLF001
+
+
+class ShellConnection(Connection):
+    "Provides a connection to a widget loaded in the shell"
+
+    def close(self, *, dispose=None):
+        """Permanently close the widget.
+
+        dispose: bool
+            Whether to dispose of the object at the frontend.
+            If None, dispose will be True if the widget originated from ipylab.
+        """
+        super().close(dispose="IPY_MODEL_" in self.cid if dispose is None else dispose)
 
     def activate(self):
-        self._check_closed()
+        task = self.app.shell.execute_method("activateById", self.id)
 
-        async def activate_():
-            self.app.shell.execute_method("activateById", self.id)
+        async def activate():
+            await task
             return self
 
-        return self.to_task(activate_())
+        return self.to_task(activate())
 
 
 class ModelConnection(Connection):
-    """A connection to the model of a widget."""
-
-    CID_PREFIX = "ipylab widget connection"
+    """A connection to the model of an Ipywidget."""
 
     def __new__(cls, widget: Widget, **kwgs) -> Self:
-        return super().__new__(cls, cid=cls.new_cid(), id=pack(widget), **kwgs)  # type: ignore
+        return super().__new__(cls, cid=cls.new_cid(), id=pack(widget), **kwgs)

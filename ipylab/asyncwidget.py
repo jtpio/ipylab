@@ -20,7 +20,9 @@ if TYPE_CHECKING:
     import logging
     from asyncio import Task
     from collections.abc import Awaitable, Coroutine, Iterable
-    from typing import ClassVar, Literal
+    from typing import ClassVar, Literal, overload
+
+    from ipylab.commands import CommandConnection
 
 
 __all__ = ["AsyncWidgetBase", "WidgetBase", "register", "pack", "Widget"]
@@ -28,7 +30,15 @@ __all__ = ["AsyncWidgetBase", "WidgetBase", "register", "pack", "Widget"]
 T = TypeVar("T")
 
 
-def pack(obj: Widget | Any):
+if TYPE_CHECKING:
+
+    @overload
+    def pack(obj: Widget) -> str: ...
+    @overload
+    def pack(obj: T) -> T: ...
+
+
+def pack(obj):
     """Return serialized obj if it is a Widget otherwise return it unchanged."""
 
     if isinstance(obj, Widget):
@@ -74,6 +84,7 @@ class WidgetBase(Widget, HasApp):
     add_traits = None  # type: ignore # Don't support the method HasTraits.add_traits as it creates a new type that isn't a subclass of its origin)
 
 
+@register
 class AsyncWidgetBase(WidgetBase):
     """The base for all widgets that need async comms with the frontend model."""
 
@@ -118,6 +129,7 @@ class AsyncWidgetBase(WidgetBase):
         pass
 
     def close(self):
+        "Permanently close the widget."
         for task in self._tasks:
             task.cancel()
         self._tasks.clear()
@@ -141,7 +153,8 @@ class AsyncWidgetBase(WidgetBase):
 
     async def _wrap_coro(self, coro: Coroutine[None, None, T]) -> T:
         try:
-            return await coro
+            async with self:
+                return await coro
         except asyncio.CancelledError:
             raise
         except Exception as e:
@@ -181,7 +194,6 @@ class AsyncWidgetBase(WidgetBase):
             value.observe(lambda _: self.set_trait(name, tuple(i for i in getattr(self, name) if i.comm)), "comm")
             self.set_trait(name, (*items, value))
         return value
-
 
     def send(self, content, buffers=None):
         try:
@@ -323,6 +335,35 @@ class AsyncWidgetBase(WidgetBase):
             content["toObject"] = list(map(str, toObject))
 
         return self.to_task(self._send_receive(content))
+
+    def execute_command(
+        self,
+        command_id: str | CommandConnection,
+        *,
+        transform: TransformType = Transform.done,
+        toLuminoWidget: Iterable[str] | None = None,
+        toObject: Iterable[str] | None = None,
+        **args,
+    ):
+        """Execute any command registered in Jupyterlab.
+
+        `args` are passed to the command.
+
+        see: https://github.com/jtpio/ipylab/issues/128#issuecomment-1683097383 for hints
+        about what args can be used.
+        """
+        id_ = str(command_id)
+        if id_ not in self.app.commands.all_commands:
+            msg = f"Command with id='{id_}' is not registered!"
+            raise ValueError(msg)
+        return self.schedule_operation(
+            "executeCommand",
+            id=id_,
+            args=args,
+            transform=transform,
+            toLuminoWidget=toLuminoWidget,
+            toObject=toObject,
+        )
 
     def execute_method(
         self,

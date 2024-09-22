@@ -5,12 +5,15 @@
 import {
   ISerializers,
   IWidgetRegistryData,
-  WidgetModel,
-  unpack_models,
-  uuid
+  WidgetModel
 } from '@jupyter-widgets/base';
 import { ILabShell, JupyterFrontEnd, LabShell } from '@jupyterlab/application';
-import { ICommandPalette, Notification } from '@jupyterlab/apputils';
+import {
+  DOMUtils,
+  ICommandPalette,
+  Notification,
+  WidgetTracker
+} from '@jupyterlab/apputils';
 import { IDefaultFileBrowser } from '@jupyterlab/filebrowser';
 import { ILauncher } from '@jupyterlab/launcher';
 import { IMainMenu } from '@jupyterlab/mainmenu';
@@ -19,12 +22,8 @@ import { IRenderMimeRegistry } from '@jupyterlab/rendermime';
 import { Kernel, Session } from '@jupyterlab/services';
 import { ITranslator } from '@jupyterlab/translation';
 import { CommandRegistry } from '@lumino/commands';
-import {
-  JSONObject,
-  JSONValue,
-  PromiseDelegate,
-  UUID
-} from '@lumino/coreutils';
+
+import { JSONObject, JSONValue, PromiseDelegate } from '@lumino/coreutils';
 import { IDisposable } from '@lumino/disposable';
 import { Signal } from '@lumino/signaling';
 import { Widget } from '@lumino/widgets';
@@ -48,8 +47,8 @@ export {
   JSONObject,
   JSONValue,
   JupyterFrontEnd,
-  Widget,
-  onKernelLost
+  onKernelLost,
+  Widget
 };
 /**
  * Base model for common features
@@ -265,7 +264,7 @@ export class IpylabModel extends WidgetModel {
    */
   async toLuminoWidget(value: string): Promise<Widget> {
     if (value.slice(0, 10) === 'IPY_MODEL_') {
-      const model = await unpack_models(value, this.widget_manager);
+      const model: any = await this.widget_manager.get_model(value.slice(10));
       if (model.get('_model_name') === IpylabModel.connection_model_name) {
         if (!(model.base instanceof Widget)) {
           throw new Error(`${value} is not a connection to a lumino widget`);
@@ -298,16 +297,16 @@ export class IpylabModel extends WidgetModel {
    */
   async toObject(value: string, nullIfMissing = false): Promise<any> {
     let path = value;
-    let base = this;
+    let base = this as any;
     if (value.slice(0, 10) === 'IPY_MODEL_') {
-      const parts = value.split('.', 2);
-      base = await unpack_models(parts[0], this.widget_manager);
+      let model_id;
+      [model_id, path] = value.slice(10).split('.', 2);
+      base = await this.widget_manager.get_model(model_id);
       if (base.get('_model_name') === IpylabModel.connection_model_name) {
         base = base.base;
       }
-      path = parts[1] ?? '';
     }
-    return await getNestedObject({ base, path, nullIfMissing });
+    return await getNestedObject({ base, path: path ?? '', nullIfMissing });
   }
 
   /**
@@ -320,6 +319,8 @@ export class IpylabModel extends WidgetModel {
    */
   async operation(op: string, payload: any): Promise<JSONValue | IDisposable> {
     switch (op) {
+      case 'executeCommand':
+        return await this.commands.execute(payload.id, payload.args);
       case 'executeMethod':
         return await this._executeMethod(payload);
       case 'listAttributes':
@@ -353,7 +354,7 @@ export class IpylabModel extends WidgetModel {
     payload: JSONValue,
     transform: any
   ): Promise<JSONValue> {
-    const ipylab_FE = `${UUID.uuid4()}`;
+    const ipylab_FE = DOMUtils.createDomID();
     const msg = {
       ipylab_FE: ipylab_FE,
       operation: operation,
@@ -436,7 +437,7 @@ export class IpylabModel extends WidgetModel {
     return super.close(comm_closed);
   }
 
-  save_changes(callbacks?: unknown): void {
+  save_changes(callbacks?: {}): void {
     if (this.comm_live && this._kernelLive) {
       super.save_changes(callbacks);
     }
@@ -447,13 +448,14 @@ export class IpylabModel extends WidgetModel {
    * @param cid Get an object that has been registered as a connection.
    * @returns
    */
-  async getConnection(cid: string, id: string | null = null): Promise<object> {
+  async getConnection(cid: string, id: string = ''): Promise<any> {
+    await IpylabModel.tracker.restored;
     if (Private.connection.has(cid)) {
       return Private.connection.get(cid);
     }
     let obj;
     if (id.slice(0, 10) === 'IPY_MODEL_') {
-      obj = await unpack_models(id, this.widget_manager);
+      obj = await this.widget_manager.get_model(id.slice(10));
       if (!(obj instanceof WidgetModel)) {
         throw new Error(`Failed to get model ${id}`);
       }
@@ -487,7 +489,7 @@ export class IpylabModel extends WidgetModel {
       case 'null':
         return null;
       case 'connection':
-        cid = args?.cid ?? uuid();
+        cid = args?.cid ?? `ipylab-connection:${DOMUtils.createDomID()}`;
         IpylabModel.registerConnection(obj, cid);
         if (args.auto_dispose) {
           onKernelLost(this.kernel, obj.dispose, obj, true);
@@ -621,6 +623,7 @@ export class IpylabModel extends WidgetModel {
   static exports: IWidgetRegistryData;
   static OPERATION_DONE = '--DONE--';
   static connection_model_name = 'ConnectionModel';
+  static tracker = new WidgetTracker<Widget>({ namespace: 'ipylab' });
 }
 
 /**

@@ -18,7 +18,7 @@ from ipylab.hasapp import HasApp
 if TYPE_CHECKING:
     from asyncio import Task
 
-    from ipylab.connection import Connection, MainAreaConnection
+    from ipylab.connection import Connection, ShellConnection
 
 
 @register
@@ -64,7 +64,7 @@ class Panel(Box, HasApp):
         activate: bool = True,
         mode: InsertMode = InsertMode.tab_after,
         rank: int | None = None,
-        ref: Connection | None = None,
+        ref: ShellConnection | None = None,
         **options,
     ):
         """Add this panel to the shell."""
@@ -108,14 +108,14 @@ class SplitPanel(Panel):
         rank: int | None = None,
         ref: Connection | None = None,
         **options,
-    ) -> Task[MainAreaConnection]:
+    ) -> Task[ShellConnection]:
         task = super().add_to_shell(area=area, activate=activate, mode=mode, rank=rank, ref=ref, **options)
 
-        async def _add_to_shell():
+        async def add_to_shell():
             result = await task
             await self._rerender()
             return result
 
-        return self.app.to_task(_add_to_shell())
+        return self.app.to_task(add_to_shell())
 
     # ============== End temp fix =============

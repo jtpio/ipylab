@@ -16,7 +16,7 @@ from ipylab.widgets import Icon
 
 if TYPE_CHECKING:
     from asyncio import Task
-    from collections.abc import Callable, Coroutine, Iterable
+    from collections.abc import Callable, Coroutine
 
     from ipylab.asyncwidget import TransformType
 
@@ -41,7 +41,6 @@ class CommandOptions(TypedDict):
 class CommandConnection(Connection):
     """A Disposable Ipylab command registered in the command pallet."""
 
-    CID_PREFIX = "ipylab command"
     python_command = CallableTrait(allow_none=False)
 
     _config_options: ClassVar = set(CommandOptions.__annotations__)
@@ -69,7 +68,7 @@ class CommandConnection(Connection):
 
         async def add_launcher_():
             launcher = await self.app.commands.launcher.add(self, category, rank=rank, **args)
-            self.observe(lambda _: launcher.dispose(), names="comm")
+            self.observe(lambda _: launcher.close(dispose=True), names="comm")
             return launcher
 
         return self.to_task(add_launcher_())
@@ -84,7 +83,7 @@ class CommandConnection(Connection):
 
         async def add_to_command_pallet_():
             pallet_item = await self.app.commands.pallet.add(self, category, rank=rank, **args)
-            self.observe(lambda _: pallet_item.dispose(), names="comm")
+            self.observe(lambda _: pallet_item.close(dispose=True), names="comm")
             return pallet_item
 
         return self.to_task(add_to_command_pallet_())
@@ -92,8 +91,6 @@ class CommandConnection(Connection):
 
 class CommandPalletConnection(Connection):
     """A connection to an ipylab command in the Jupyter command pallet."""
-
-    CID_PREFIX = "ipylab command pallet"
 
     @classmethod
     def to_cid(cls, command: str | CommandConnection, category: str):
@@ -123,7 +120,7 @@ class CommandPalette(AsyncWidgetBase):
         """
         conn = CommandPalletConnection.get_existing_connection(command, category, quiet=True)
         if conn:
-            conn.dispose()
+            conn.close(dispose=True)
         info = {"args": args, "category": category, "command": str(command), "rank": rank}
         task = self.execute_method(
             "addItem",
@@ -140,13 +137,11 @@ class CommandPalette(AsyncWidgetBase):
     def remove(self, command: str | CommandConnection, category: str):
         conn = CommandPalletConnection.get_existing_connection(str(command), category, quiet=True)
         if conn:
-            conn.dispose()
+            conn.close(dispose=True)
 
 
 class LauncherConnection(CommandPalletConnection):
     """A connection to an disposable launcher item."""
-
-    CID_PREFIX = "ipylab launcher"
 
 
 class Launcher(AsyncWidgetBase):
@@ -164,7 +159,7 @@ class Launcher(AsyncWidgetBase):
         """
         conn = LauncherConnection.get_existing_connection(command, category, quiet=True)
         if conn:
-            conn.dispose()
+            conn.close(dispose=True)
         info = {"command": str(command), "category": category, "rank": rank, "args": args}
         task = self.execute_method(
             "add",
@@ -181,7 +176,7 @@ class Launcher(AsyncWidgetBase):
     def remove(self, command_id: str | CommandConnection, category: str):
         conn = LauncherConnection.get_existing_connection(str(command_id), category)
         if conn:
-            conn.dispose()
+            conn.close(dispose=True)
 
 
 @register
@@ -209,34 +204,6 @@ class CommandRegistry(AsyncWidgetBase):
                     return await result
                 return result
         return await super()._do_operation_for_frontend(operation, payload, buffers)
-
-    def execute(
-        self,
-        command_id: str | CommandConnection,
-        *,
-        transform: TransformType = Transform.done,
-        toLuminoWidget: Iterable[str] | None = None,
-        toObject: Iterable[str] | None = None,
-        **args,
-    ):
-        """Execute a command registered with `id` in Jupyterlab.
-
-        `args` are passed to the command.
-
-        execute_kwgs: dict | None
-            Passed to execute_method (we use a dict to avoid any potential of argument clash).
-
-        see: https://github.com/jtpio/ipylab/issues/128#issuecomment-1683097383 for hints
-        about what args can be used.
-        """
-        return self.execute_method(
-            "execute",
-            str(command_id),
-            args,
-            transform=transform,
-            toLuminoWidget=toLuminoWidget,
-            toObject=toObject,
-        )
 
     def add(
         self,
@@ -289,7 +256,7 @@ class CommandRegistry(AsyncWidgetBase):
     def remove_command(self, name_or_id: str):
         conn = self.get_existing_command_connection(name_or_id)
         if conn:
-            conn.dispose()
+            conn.close(dispose=True)
 
     def get_existing_command_connection(self, name_or_id: str):
         "Will return a CommandConnection if it was added in this kernel."

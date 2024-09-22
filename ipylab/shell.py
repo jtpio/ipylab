@@ -2,14 +2,14 @@
 # Distributed under the terms of the Modified BSD License.
 from __future__ import annotations
 
-import typing as t
+from typing import TYPE_CHECKING
 
-from ipylab import Area, MainAreaConnection, Transform, pack
+from ipylab import Area, ShellConnection, Transform, pack
 from ipylab.asyncwidget import AsyncWidgetBase, Unicode
 from ipylab.common import InsertMode
 from ipylab.connection import Connection
 
-if t.TYPE_CHECKING:
+if TYPE_CHECKING:
     from asyncio import Task
 
     from ipywidgets import Widget
@@ -40,9 +40,9 @@ class Shell(AsyncWidgetBase):
         activate: bool = True,
         mode: InsertMode = InsertMode.tab_after,
         rank: int | None = None,
-        ref: Connection | None = None,
+        ref: ShellConnection | None = None,
         **options,
-    ) -> Task[MainAreaConnection]:
+    ) -> Task[ShellConnection]:
         """
         Add the widget to the shell.
 
@@ -56,20 +56,29 @@ class Shell(AsyncWidgetBase):
             "activate": activate,
             "mode": InsertMode(mode),
             "rank": int(rank) if rank else None,
-            "ref": pack(ref),
+            "ref": ref.id if ref else None,
         }
-        return self.app.schedule_operation(
-            "addToShell",
-            widget=pack(widget),
-            area=Area(area),
-            transform={
-                "transform": Transform.connection,
-                "cid": MainAreaConnection.new_cid(),
-                "auto_dispose": not isinstance(widget, Connection),
-            },
-            options=options_ | options,
-            toLuminoWidget=["widget", "options.ref"],
-        )
+        cid = ShellConnection.to_cid(widget.id if isinstance(widget, Connection) else pack(widget))
+
+        async def add_to_shell():
+            # kernelId should always be available when running as a task.
+            if not self.kernelId:
+                msg = "kernelId has not been set yet"
+                raise RuntimeError(msg)
+            return await self.execute_command(
+                "ipylab:add-to-shell",
+                transform={
+                    "transform": Transform.connection,
+                    "cid": cid,
+                    "auto_dispose": not isinstance(widget, ShellConnection),
+                },
+                cid=cid,
+                kernelId=self.kernelId,
+                area=area,
+                options=options_ | options,
+            )
+
+        return self.to_task(add_to_shell())
 
     def expand_left(self):
         return self.execute_method("expandLeft")

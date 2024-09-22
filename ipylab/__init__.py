@@ -9,7 +9,7 @@ __all__ = [
     "HasApp",
     "JupyterFrontEnd",
     "Connection",
-    "MainAreaConnection",
+    "ShellConnection",
     "Panel",
     "SplitPanel",
     "Icon",
@@ -27,7 +27,7 @@ __all__ = [
 from ipylab import commands, menu
 from ipylab.asyncwidget import pack, pack_code
 from ipylab.common import Area, InsertMode, NotificationType, Transform
-from ipylab.connection import Connection, MainAreaConnection
+from ipylab.connection import Connection, ShellConnection
 from ipylab.hasapp import HasApp
 from ipylab.hookspecs import hookimpl
 from ipylab.jupyterfrontend import JupyterFrontEnd

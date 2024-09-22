@@ -5,13 +5,12 @@ from __future__ import annotations
 import inspect
 from typing import TYPE_CHECKING, Any
 
-from traitlets import Dict, Instance, Tuple, Unicode
+from traitlets import Container, Dict, Instance, Tuple, Unicode, observe
 
-from ipylab import MainAreaConnection
+from ipylab import ShellConnection
 from ipylab.asyncwidget import AsyncWidgetBase, Transform, pack, pack_code, register, widget_serialization
 from ipylab.commands import CommandRegistry
 from ipylab.dialog import Dialog, FileDialog
-from ipylab.hookspecs import pm
 from ipylab.menu import MainMenu
 from ipylab.notification import NotificationManager
 from ipylab.sessions import SessionManager
@@ -33,6 +32,8 @@ class JupyterFrontEnd(AsyncWidgetBase):
     current_widget_id = Unicode(read_only=True).tag(sync=True)
     current_session = Dict(read_only=True).tag(sync=True)
     all_sessions = Tuple(read_only=True).tag(sync=True)
+    all_shell_connections_info: Container[tuple[dict, ...]] = Tuple(read_only=True).tag(sync=True)
+    shell_connections: Container[tuple[ShellConnection, ...]] = Tuple(read_only=True)
     dialog = Instance(Dialog, (), read_only=True)
     file_dialog = Instance(FileDialog, (), read_only=True)
     shell = Instance(Shell, (), read_only=True)
@@ -40,11 +41,20 @@ class JupyterFrontEnd(AsyncWidgetBase):
     menu = Instance(MainMenu, ())
     notification = Instance(NotificationManager, ())
 
+    @observe("all_shell_connections_info")
+    def _observe_all_shell_connections_info(self, _):
+        connections = []
+        for info in self.all_shell_connections_info:
+            if info["kernelId"] == self.kernelId:
+                conn = ShellConnection(cid=info["cid"], id=info["id"], info=info)
+                connections.append(conn)
+        self.set_trait("shell_connections", connections)
+
     @property
     def current_widget(self):
         """A connection to the current widget in the shell."""
         id_ = self.current_widget_id
-        return MainAreaConnection(cid=MainAreaConnection.to_cid(id_), id=id_)
+        return ShellConnection(cid=ShellConnection.to_cid(id_), id=id_)
 
     async def _do_operation_for_frontend(self, operation: str, payload: dict, buffers: list) -> Any:
         match operation:

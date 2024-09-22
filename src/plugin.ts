@@ -4,6 +4,7 @@
 import { IJupyterWidgetRegistry } from '@jupyter-widgets/base';
 import {
   ILabShell,
+  ILayoutRestorer,
   JupyterFrontEnd,
   JupyterFrontEndPlugin
 } from '@jupyterlab/application';
@@ -14,7 +15,7 @@ import { IMainMenu } from '@jupyterlab/mainmenu';
 import { IRenderMimeRegistry } from '@jupyterlab/rendermime';
 import { ITranslator } from '@jupyterlab/translation';
 import { MODULE_NAME, MODULE_VERSION } from './version';
-
+import { IpylabModel, JupyterFrontEndModel } from './widget';
 const EXTENSION_ID = 'ipylab:plugin';
 
 /**
@@ -25,6 +26,7 @@ const extension: JupyterFrontEndPlugin<void> = {
   autoStart: true,
   requires: [IJupyterWidgetRegistry, IRenderMimeRegistry],
   optional: [
+    ILayoutRestorer,
     ICommandPalette,
     ILabShell,
     IDefaultFileBrowser,
@@ -50,6 +52,7 @@ async function activate(
   app: JupyterFrontEnd,
   registry: IJupyterWidgetRegistry,
   rendermime: IRenderMimeRegistry,
+  restorer: ILayoutRestorer,
   palette: ICommandPalette,
   labShell: ILabShell | null,
   defaultBrowser: IDefaultFileBrowser | null,
@@ -76,7 +79,21 @@ async function activate(
 
     registry.registerWidget(widgetExports.IpylabModel.exports);
   }
-  widgetExports.IpylabModel.ipylabKernel.checkStart();
+  await widgetExports.IpylabModel.ipylabKernel.checkStart();
+
+  IpylabModel.app.commands.addCommand('ipylab:add-to-shell', {
+    execute: JupyterFrontEndModel.addToShell
+  });
+
+  // Handle state restoration.
+  if (restorer) {
+    void restorer.restore(JupyterFrontEndModel.tracker, {
+      command: 'ipylab:add-to-shell',
+      args: widget => (widget as any).ipylabSettings,
+      name: widget => (widget as any).id,
+      when: JupyterFrontEndModel.backend_ready.promise
+    });
+  }
 }
 
 export default extension;

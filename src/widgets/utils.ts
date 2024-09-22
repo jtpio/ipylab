@@ -1,11 +1,10 @@
 // Copyright (c) ipylab contributors
 // Distributed under the terms of the Modified BSD License.
 import { KernelWidgetManager } from '@jupyter-widgets/jupyterlab-manager';
-import { SessionContext } from '@jupyterlab/apputils';
+import { DOMUtils, SessionContext } from '@jupyterlab/apputils';
 import { ObservableMap } from '@jupyterlab/observables';
 import { IRenderMimeRegistry } from '@jupyterlab/rendermime';
 import { Kernel } from '@jupyterlab/services';
-import { UUID } from '@lumino/coreutils';
 import { Signal } from '@lumino/signaling';
 import { IpylabModel } from './ipylab';
 
@@ -37,7 +36,7 @@ export async function newSessionContext({
     name: name ?? path,
     type: type,
     kernelPreference: {
-      id: kernelId || `${UUID.uuid4()}`,
+      id: kernelId || DOMUtils.createDomID(),
       language: language
     }
   });

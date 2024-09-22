@@ -24,25 +24,18 @@ __all__ = ["NotificationManager"]
 
 class NotifyAction(TypedDict):
     label: str
-    display_type: Literal["default", "accent", "warn", "link"]
     callback: Callable[[], Any]
+    display_type: NotRequired[Literal["default", "accent", "warn", "link"]]
     keep_open: NotRequired[bool]
     caption: NotRequired[str]
 
 
 class ActionConnection(Connection):
-    CID_PREFIX = "ipylab action"
     callback = traitlets.Callable()
 
 
 class NotificationConnection(Connection):
-    CID_PREFIX = "ipylab notification"
     actions: Container[tuple[ActionConnection, ...]] = TypedTuple(trait=Instance(ActionConnection))
-
-    def close(self):
-        for action in self.actions:
-            action.dispose()
-        return super().close()
 
     def update(
         self,
@@ -114,8 +107,8 @@ class NotificationManager(AsyncWidgetBase):
 
         NotifyAction:
             label: str
-            display_type: Literal["default", "accent", "warn", "link"]
             callback: Callable[[], Any]
+            display_type: NotRequired[Literal["default", "accent", "warn", "link"]]
             keep_open: NotRequired[bool]
             caption: NotRequired[str]
         """

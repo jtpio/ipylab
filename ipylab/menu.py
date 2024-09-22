@@ -25,13 +25,11 @@ class MenuItemConnection(Connection):
     ref:
     """
 
-    CID_PREFIX = "ipylab menu item"
-
     @observe("comm")
     def _ipylab_observe_comm(self, _):
         if self.comm and (cmd := CommandConnection.get_existing_connection(self.info.get("command", ""), quiet=True)):
             # Dispose when the command is disposed.
-            cmd.observe(lambda _: self.dispose())
+            cmd.observe(lambda _: self.close(dispose=True))
 
 
 class RankedMenu(AsyncWidgetBase):
@@ -46,7 +44,7 @@ class RankedMenu(AsyncWidgetBase):
     def _ipylab_observe_comm(self, _):
         if not self.comm:
             for item in self.items:
-                item.dispose()
+                item.close(dispose=True)
 
     def __new__(cls, *, model_id=None, **kwgs):
         kwgs.pop("basename", None)
@@ -113,8 +111,6 @@ class RankedMenu(AsyncWidgetBase):
 class MenuConnection(RankedMenu, Connection):
     """A connection to a custom menu"""
 
-    CID_PREFIX = "ipylab menu"
-
 
 class MainMenu(AsyncWidgetBase):
     """Direct access to the Jupyterlab main menu.
@@ -159,7 +155,7 @@ class MainMenu(AsyncWidgetBase):
     def _generate_menu(self, *, id: str, label: str, cid: str, rank: int = 500) -> Task[MenuConnection]:  # noqa: A002
         "Make a new menu that can be used where a menu is required."
         if existing := MenuConnection.get_existing_connection(cid, quiet=True):
-            existing.dispose()
+            existing.close(dispose=True)
         info = {"id": id, "label": label, "rank": int(rank)}
         coro = self.app.schedule_operation(
             "generateMenu",

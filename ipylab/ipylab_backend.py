@@ -24,7 +24,7 @@ class IpylabBackEnd(AsyncWidgetBase, HasApp):
 
     SINGLETON = True
 
-    def _load_ipylab_backend_entrypoints(self):
+    async def _load_ipylab_backend_entrypoints(self):
         "Load entrypoints."
         try:
             count = pm.load_setuptools_entrypoints("ipylab_autostart")
@@ -32,7 +32,9 @@ class IpylabBackEnd(AsyncWidgetBase, HasApp):
         except Exception as e:
             self.log.exception("An exception occurred loading backend entrypoints")
             self.app.dialog.show_error_message("Plugin failure", str(e))
+        finally:
+            await self.app.schedule_operation("backend_ready")
 
     def on_frontend_init(self, content):
         super().on_frontend_init(content)
-        self._load_ipylab_backend_entrypoints()
+        self.to_task(self._load_ipylab_backend_entrypoints())
