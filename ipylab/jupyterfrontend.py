@@ -105,7 +105,7 @@ class JupyterFrontEnd(AsyncWidgetBase):
             k_id = kernelId
             if task:
                 connection = await task
-                k_id = await connection.get_attribute("session.kernel.id")
+                k_id = await connection.get_property("session.kernel.id")
             return await self.app.schedule_operation(
                 "execEval",
                 code=pack_code(execute),

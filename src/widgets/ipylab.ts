@@ -32,7 +32,7 @@ import { MODULE_NAME, MODULE_VERSION } from '../version';
 import { IpylabPythonKernel } from './ipylab_kernel';
 import {
   getNestedObject,
-  listAttributes,
+  listProperties,
   onKernelLost,
   setNestedAttribute,
   toFunction
@@ -323,14 +323,14 @@ export class IpylabModel extends WidgetModel {
         return await this.commands.execute(payload.id, payload.args);
       case 'executeMethod':
         return await this._executeMethod(payload);
-      case 'listAttributes':
-        return this._listAttributes(payload);
-      case 'setAttribute':
-        return this._setAttribute(payload);
-      case 'updateValues':
-        return this._updateValues(payload);
-      case 'getAttribute':
-        return await this._getAttribute(payload);
+      case 'listProperties':
+        return this._listProperties(payload);
+      case 'setProperty':
+        return this._setProperty(payload);
+      case 'updateProperty':
+        return this._updateProperty(payload);
+      case 'getProperty':
+        return await this._getProperty(payload);
       default:
         // Each failed operation should throw an error if it is un-handled
         throw new Error(
@@ -383,9 +383,9 @@ export class IpylabModel extends WidgetModel {
     return await func();
   }
 
-  private _listAttributes(payload: any) {
+  private _listProperties(payload: any) {
     const { path, type, depth } = payload as any;
-    return listAttributes({
+    return listProperties({
       obj: getNestedObject({
         base: this.base,
         path: path,
@@ -396,7 +396,7 @@ export class IpylabModel extends WidgetModel {
     });
   }
 
-  private _getAttribute(payload: any) {
+  private _getProperty(payload: any) {
     const { path, nullIfMissing } = payload;
     return getNestedObject({
       base: this.base,
@@ -409,14 +409,16 @@ export class IpylabModel extends WidgetModel {
   /**
    * Assign the values at the path instead of replacing it.
    */
-  private async _updateValues(payload: any): Promise<null> {
-    const obj = this._getAttribute(payload);
-    return Object.assign(obj, payload.values);
+  private async _updateProperty(payload: any): Promise<null> {
+    const { values: value, valueTransform } = payload;
+    const obj = this._getProperty(payload);
+    const value_ = await this.transformObject(value, valueTransform);
+    return Object.assign(obj, value_);
   }
   /**
    * Set an attribute at the path with transformation.
    */
-  private async _setAttribute(payload: any): Promise<any> {
+  private async _setProperty(payload: any): Promise<any> {
     const { path, value, valueTransform } = payload;
     const value_ = await this.transformObject(value, valueTransform);
     setNestedAttribute(this.base, path, value_);

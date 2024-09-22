@@ -400,75 +400,84 @@ class AsyncWidgetBase(WidgetBase):
             **kwgs,
         )
 
-    def get_attribute(self, path: str, *, transform: TransformType = Transform.raw, nullIfMissing=False):
-        """Obtain a serialized version of the attribute of the `base` object in the frontend.
+    def get_property(self, path: str, *, transform: TransformType = Transform.raw, nullIfMissing=False):
+        """Obtain a serialized version of the property of the `base` object in the frontend.
 
         path: 'dotted.access.to.the.method' relative to base.
 
-        Tip: This method will await the attribute in the Frontend prior to returning the result
-        where the attribute is an awaitable.
+        Tip: This method will await the property in the Frontend prior to returning the result
+        where the property is an awaitable.
         """
-        return self.schedule_operation("getAttribute", path=path, nullIfMissing=nullIfMissing, transform=transform)
+        return self.schedule_operation("getProperty", path=path, nullIfMissing=nullIfMissing, transform=transform)
 
-    def set_attribute(
+    def set_property(
         self,
         path: str,
         value,
         *,
         value_transform: TransformType = Transform.raw,
-        value_toLuminoWidget=False,
+        toLuminoWidget: Iterable[str] | None = None,
+        toObject: Iterable[str] | None = None,
         transform=Transform.done,
     ):
-        """Set the attribute on the `path` of the `base` object in the Frontend.
+        """Set the property on the `path` of the `base` object in the Frontend.
 
         The value will be transformed according to `value_transform` & `value_transform_kwgs`
-        as specified prior to setting the attribute.
+        as specified prior to setting the property.
 
         path: str
-            "the.path.to.the.attribute" to be set.
+            "the.path.to.the.property" to be set.
         value: jsonable
             The value to set, or instructions for the transform to do in the Frontend.
         valueTransform: TransformType
-            valueTransform is applied to the value prior to setting the attribute.
+            valueTransform is applied to the value prior to setting the property.
             It may be specified as a dict with the mapping: transform:TransformType.<value>
-        value_toLuminoWidget: bool
-            Whether the value should be converted to a Lumino widget. The value transform
-            can be left as raw unless further adanced transformation is required.
+        toLuminoWidget: ['value'] | None
+            Nested notation is also possible under `value`.
+        toObject: ['value'] | None
+            Nested notation is also possible under `value`.
         """
         return self.schedule_operation(
-            "setAttribute",
+            "setProperty",
             path=path,
             value=pack(value),
             valueTransform=Transform.validate(value_transform),
-            toLuminoWidget=["value"] if value_toLuminoWidget else None,
+            toLuminoWidget=toLuminoWidget,
+            toObject=toObject,
             transform=transform,
         )
 
-    def update_values(
+    def update_property(
         self,
         path: str,
-        values: dict,
+        value: dict,
         *,
+        value_transform: TransformType = Transform.raw,
         toLuminoWidget: Iterable[str] | None = None,
         toObject: Iterable[str] | None = None,
     ):
-        """Update the values of the object at the path in the frontend.
+        """Update the value of the object at the path in the frontend.
 
         This is equivalent to `dict.update` in Python.
 
         path: str
-            "the.path.to.the.attribute" to be set.
+            "the.path.to.the.property" to be set.
+        toLuminoWidget: ['value'] | None
+            Nested notation is also possible under `value`.
+        toObject: ['value'] | None
+            Nested notation is also possible under `value`.
         """
         return self.schedule_operation(
-            "updateValues",
+            "updateProperty",
             path=path,
-            values=values,
+            value=dict(value),
             transform=Transform.raw,
+            value_transform=value_transform,
             toLuminoWidget=toLuminoWidget,
             toObject=toObject,
         )
 
-    def list_attributes(
+    def list_properties(
         self,
         path: str = "",
         type: JavascriptType = JavascriptType.function,  # noqa: A002
@@ -478,15 +487,15 @@ class AsyncWidgetBase(WidgetBase):
         transform: TransformType = Transform.raw,
         skip_hidden=True,
     ) -> Task[dict | list]:
-        """Get a mapping of attributes of the object at 'path' of the Frontend instance.
+        """Get a mapping of properties of the object at 'path' of the Frontend instance.
 
-        depth: The depth in the object inheritance to search for attributes.
-            Searching deeper will reveal more lower level attributes.
+        depth: The depth in the object inheritance to search for properties.
+            Searching deeper will reveal more lower level properties.
         how: ['names', 'group', 'raw']
         """
-        task = self.schedule_operation("listAttributes", path=path, type=type, depth=depth, transform=transform)
+        task = self.schedule_operation("listProperties", path=path, type=type, depth=depth, transform=transform)
 
-        async def list_attributes_():
+        async def list_properties():
             def filt(x: dict | str):
                 if not skip_hidden:
                     return x
@@ -506,18 +515,18 @@ class AsyncWidgetBase(WidgetBase):
                 return groups
             return list(filter(filt, payload))
 
-        return self.to_task(list_attributes_())  # type: ignore
+        return self.to_task(list_properties())  # type: ignore
 
-    def list_methods(self, path: str = "", *, depth=2, skip_hidden=True):
+    def list_methods(self, path: str = "", *, depth=3, skip_hidden=True):
         """Get a list of methods belonging to the object 'path' of the Frontend instance.
         depth: The depth in the object inheritance to search for methods.
         """
-        task = self.list_attributes(path, JavascriptType.function, depth, how="names")
+        task = self.list_properties(path, JavascriptType.function, depth, how="names")
 
-        async def _list_methods():
+        async def list_methods():
             payload = (await task) or []
             if skip_hidden:
                 return [n for n in payload if not n.startswith("_")]
             return payload
 
-        return self.to_task(_list_methods())
+        return self.to_task(list_methods())

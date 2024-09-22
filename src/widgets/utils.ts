@@ -146,7 +146,7 @@ export function toFunction(code: string) {
  * @param obj Any object.
  * @returns
  */
-export function findAllAttributes({
+export function findAllProperties({
   obj,
   items = [],
   type = '',
@@ -162,7 +162,7 @@ export function findAllAttributes({
   }
 
   const props = Object.getOwnPropertyNames(obj);
-  return findAllAttributes({
+  return findAllProperties({
     obj: Object.getPrototypeOf(obj),
     items: [...items, ...props],
     type,
@@ -175,7 +175,7 @@ export function findAllAttributes({
  * @param obj Any object
  * @returns
  */
-export function listAttributes({
+export function listProperties({
   obj,
   type = '',
   depth = 1
@@ -184,7 +184,7 @@ export function listAttributes({
   type?: string;
   depth?: number;
 }) {
-  return findAllAttributes({ obj, items: [], type, depth }).map(p => ({
+  return findAllProperties({ obj, items: [], type, depth }).map(p => ({
     name: p,
     type: typeof obj[p]
   }));

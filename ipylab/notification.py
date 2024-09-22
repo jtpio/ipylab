@@ -161,9 +161,9 @@ class NotificationManager(AsyncWidgetBase):
             transform={"transform": Transform.connection, "cid": cid, "auto_dispose": True, "info": info},
         )
 
-        async def _new_action():
+        async def new_action():
             action: ActionConnection = await task
             action.set_trait("callback", callback)
             return action
 
-        return self.to_task(_new_action())
+        return self.to_task(new_action())

@@ -88,7 +88,7 @@ class SplitPanel(Panel):
     def _rerender(self):
         """Toggle the orientation to cause lumino_widget.parent to re-render content."""
 
-        async def _force_refresh(children):
+        async def force_refresh(children):
             if children != self.children:
                 return
             await asyncio.sleep(0.1)
@@ -97,7 +97,7 @@ class SplitPanel(Panel):
             await asyncio.sleep(0.001)
             self.orientation = orientation
 
-        return self.app.to_task(_force_refresh(self.children))
+        return self.app.to_task(force_refresh(self.children))
 
     def add_to_shell(
         self,

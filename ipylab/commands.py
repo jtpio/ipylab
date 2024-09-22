@@ -50,13 +50,13 @@ class CommandConnection(Connection):
             msg = f"The following useless configuration options were detected for {diff} in {self}"
             raise KeyError(msg)
 
-        async def configure_():
-            config = await self.update_values("config", kwgs)  # type: ignore
+        async def configure():
+            config = await self.update_property("config", kwgs)  # type: ignore
             if emit:
                 await self.app.commands.execute_method("commandChanged.emit", {"id": self.cid})
             return config
 
-        return self.to_task(configure_())
+        return self.to_task(configure())
 
     def add_launcher(self, category: str, rank=None, **args):
         """Add a launcher for this command.
@@ -66,12 +66,12 @@ class CommandConnection(Connection):
         When this link is closed the launcher will be disposed.
         """
 
-        async def add_launcher_():
+        async def add_launcher():
             launcher = await self.app.commands.launcher.add(self, category, rank=rank, **args)
             self.observe(lambda _: launcher.close(dispose=True), names="comm")
             return launcher
 
-        return self.to_task(add_launcher_())
+        return self.to_task(add_launcher())
 
     def add_to_command_pallet(self, category: str, rank=None, **args):
         """Add a pallet item for this command.
@@ -81,12 +81,12 @@ class CommandConnection(Connection):
         When this link is closed the pallet item will be disposed.
         """
 
-        async def add_to_command_pallet_():
+        async def add_to_command_pallet():
             pallet_item = await self.app.commands.pallet.add(self, category, rank=rank, **args)
             self.observe(lambda _: pallet_item.close(dispose=True), names="comm")
             return pallet_item
 
-        return self.to_task(add_to_command_pallet_())
+        return self.to_task(add_to_command_pallet())
 
 
 class CommandPalletConnection(Connection):
