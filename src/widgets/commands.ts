@@ -71,12 +71,12 @@ export class CommandRegistryModel extends IpylabModel {
     delete options.frontendTransform;
     const config = { ...options };
     delete config.icon;
-    const isToggled = isToggleable ? () => config?.isToggled ?? true : null;
+    const isToggled = isToggleable ? () => config.isToggled ?? true : null;
     const options_ = {
-      caption: () => config?.caption ?? '',
-      className: () => config?.className ?? '',
-      dataset: () => config?.dataset ?? {},
-      describedBy: () => config?.describedBy ?? '',
+      caption: () => config.caption ?? '',
+      className: () => config.className ?? '',
+      dataset: () => config.dataset ?? {},
+      describedBy: () => config.describedBy ?? '',
       execute: async (args: any) => {
         return await this.scheduleOperation(
           'execute',
@@ -85,15 +85,15 @@ export class CommandRegistryModel extends IpylabModel {
         );
       },
       icon: icon,
-      iconClass: () => config?.iconClass ?? '',
-      iconLabel: () => config?.iconLabel ?? '',
-      isEnabled: () => config?.isEnabled ?? true,
+      iconClass: () => config.iconClass ?? '',
+      iconLabel: () => config.iconLabel ?? '',
+      isEnabled: () => config.isEnabled ?? true,
       isToggleable,
       isToggled,
-      isVisible: () => config?.isVisible ?? true,
-      label: () => config?.label,
-      mnemonic: () => Number(config?.mnemonic ?? -1),
-      usage: () => config?.usage ?? ''
+      isVisible: () => config.isVisible ?? true,
+      label: () => config.label,
+      mnemonic: () => Number(config.mnemonic ?? -1),
+      usage: () => config.usage ?? ''
     };
     const command = this.commands.addCommand(id, options_ as any);
     (command as any).id = id;

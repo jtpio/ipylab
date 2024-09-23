@@ -64,7 +64,7 @@ class Connection(AsyncWidgetBase):
         cls._CLASS_DEFINITIONS[cls._cid_prefix] = cls
         super().__init_subclass__(**kwargs)
 
-    def __new__(cls, *, cid: str, id: str = "", **kwgs):  # noqa: A002
+    def __new__(cls, cid: str, id: str = "", **kwgs):  # noqa: A002
         if cid not in cls._connections:
             cls = cls._CLASS_DEFINITIONS[cid.split(":", maxsplit=1)[0]]
             cls._connections[cid] = inst = super().__new__(cls, **kwgs)
@@ -72,7 +72,7 @@ class Connection(AsyncWidgetBase):
             inst.set_trait("id", id)
         return cls._connections[cid]
 
-    def __init__(self, *, cid: str, id: str = "", info: dict | None = None, **kwgs):  # noqa: A002, ARG002
+    def __init__(self, *args, cid="", id="", info: dict | None = None, **kwgs):  # noqa: A002, ARG002
         self.set_trait("info", info or self.info)
         if self._async_widget_base_init_complete:
             return

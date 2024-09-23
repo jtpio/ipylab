@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import inspect
+import json
 import traceback
 import uuid
 from typing import TYPE_CHECKING, Any, TypeVar
@@ -467,12 +468,13 @@ class AsyncWidgetBase(WidgetBase):
         toObject: ['value'] | None
             Nested notation is also possible under `value`.
         """
+
         return self.schedule_operation(
             "updateProperty",
             path=path,
-            value=dict(value),
+            value=json.loads(json.dumps(value, default=pack)),
             transform=Transform.raw,
-            value_transform=value_transform,
+            valueTransform=Transform.validate(value_transform),
             toLuminoWidget=toLuminoWidget,
             toObject=toObject,
         )

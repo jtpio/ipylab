@@ -410,7 +410,7 @@ export class IpylabModel extends WidgetModel {
    * Assign the values at the path instead of replacing it.
    */
   private async _updateProperty(payload: any): Promise<null> {
-    const { values: value, valueTransform } = payload;
+    const { value, valueTransform } = payload;
     const obj = this._getProperty(payload);
     const value_ = await this.transformObject(value, valueTransform);
     return Object.assign(obj, value_);
