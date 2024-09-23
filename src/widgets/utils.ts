@@ -1,21 +1,18 @@
 // Copyright (c) ipylab contributors
 // Distributed under the terms of the Modified BSD License.
 import { KernelWidgetManager } from '@jupyter-widgets/jupyterlab-manager';
-import { DOMUtils, SessionContext } from '@jupyterlab/apputils';
+import { SessionContext, SessionContextDialogs } from '@jupyterlab/apputils';
 import { ObservableMap } from '@jupyterlab/observables';
-import { IRenderMimeRegistry } from '@jupyterlab/rendermime';
 import { Kernel } from '@jupyterlab/services';
 import { Signal } from '@lumino/signaling';
 import { IpylabModel } from './ipylab';
-
 /**
  * Start a new session that support comms needed for iplab needs for comms.
  * @returns
  */
 export async function newSessionContext({
   name,
-  path,
-  rendermime,
+  path = '',
   kernelId = '',
   language = 'python3',
   code = '',
@@ -23,7 +20,6 @@ export async function newSessionContext({
 }: {
   name: string;
   path: string;
-  rendermime?: IRenderMimeRegistry;
   kernelId?: string;
   language?: string;
   code?: string;
@@ -36,28 +32,23 @@ export async function newSessionContext({
     name: name ?? path,
     type: type,
     kernelPreference: {
-      id: kernelId || DOMUtils.createDomID(),
+      id: kernelId,
       language: language
     }
   });
   await sessionContext.initialize();
-  await sessionContext.ready;
-
+  while (!sessionContext.isReady) {
+    await new SessionContextDialogs({
+      translator: IpylabModel.translator
+    }).selectKernel(sessionContext!);
+  }
+  const kernel = sessionContext.session.kernel;
   // Create a manager for the kernel to support widgets.
   // The pull request at this link enables widgets to work without requiring a document or console to remain open:
   //  https://github.com/jupyter-widgets/ipywidgets/pull/3922
-
-  new KernelWidgetManager(sessionContext.session.kernel, rendermime as any);
+  new KernelWidgetManager(kernel, IpylabModel.rendermime);
   if (code) {
-    const future = sessionContext.session.kernel.requestExecute(
-      {
-        code: code,
-        store_history: false
-      },
-      false
-    );
-    await future.done;
-    future.dispose();
+    await kernel.requestExecute({ code, store_history: false }).done;
   }
   return sessionContext;
 }

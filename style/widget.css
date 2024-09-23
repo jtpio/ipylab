@@ -24,7 +24,3 @@
 .ipylab-splitpanel .lm-SplitPanel-handle {
   background-color: var(--jp-border-color2);
 }
-
-.ipylab-main-area {
-  display: block;
-}
