@@ -1,20 +1,29 @@
-import { Session } from '@jupyterlab/services';
-import { IpylabModel, IDisposable } from './ipylab';
+import { SessionContext } from '@jupyterlab/apputils';
+import { UUID } from '@lumino/coreutils';
+import { IDisposable, IpylabModel } from './ipylab';
 import { newSessionContext } from './utils';
+
 /**
  *  The Python backend that auto loads python side plugins using `pluggy` module.
  *
  */
 export class IpylabPythonKernel {
   async checkStart(restart?: false) {
-    if (!this._backendSession || this._backendSession.disposed) {
-      const context = await newSessionContext({
+    if (
+      !this._backendSession ||
+      this._backendSession?.session === null ||
+      restart
+    ) {
+      if (restart) {
+        await this._backendSession?.session.kernel.shutdown();
+      }
+      this._backendSession = await newSessionContext({
         path: 'Ipylab backend',
         name: 'Ipylab backend',
         language: 'python3',
-        code: 'import ipylab.ipylab_backend; ipylab.ipylab_backend.IpylabBackEnd()'
+        code: 'import ipylab.ipylab_backend; ipylab.ipylab_backend.IpylabBackEnd()',
+        kernelId: UUID.uuid4()
       });
-      this._backendSession = context.session;
     }
     if (restart && this._command) {
       this._command.dispose();
@@ -44,10 +53,10 @@ export class IpylabPythonKernel {
       });
     }
 
-    return this._backendSession.model;
+    return this._backendSession.session.model;
   }
   static checkstart = 'ipylab:check-start-python-backend';
   private _command?: IDisposable;
   private _palletItem?: IDisposable;
-  private _backendSession?: Session.ISessionConnection;
+  private _backendSession?: SessionContext;
 }
