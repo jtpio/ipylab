@@ -166,4 +166,4 @@ class ModelConnection(Connection):
     """A connection to the model of an Ipywidget."""
 
     def __new__(cls, widget: Widget, **kwgs) -> Self:
-        return super().__new__(cls, cid=cls.new_cid(), id=pack(widget), **kwgs)
+        return super().__new__(cls, cid=cls.to_cid(pack(widget)), id=pack(widget), **kwgs)
