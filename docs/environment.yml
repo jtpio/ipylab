@@ -2,8 +2,9 @@ name: ipylab-lite
 channels:
 - conda-forge
 dependencies:
-- build
+- python-build
 - python=3.11
+- pip
 - mamba
 - pydata-sphinx-theme
 - myst-parser
