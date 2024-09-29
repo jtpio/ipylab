@@ -45,8 +45,7 @@ class Transform(StrEnum):
     Transformations that require parameters should be specified in a dict with the key 'transform' specifying
     the transform, and other keys providing the parameters accordingly.
 
-    - done: [default] A string '--DONE--'
-    - raw: No conversion. Note: data is serialized when sending, some object serialization will fail.
+    - raw: [default] No conversion. Note: data is serialized when sending, some object serialization will fail.
     - function: Use a function to calculate the return value. ['code'] = 'function...'
     - connection: Return a connection to a disposable object in the frontend.
         Use `auto_dispose=True` to dispose of the object when the kernel is dead or restarted.
@@ -99,7 +98,7 @@ class Transform(StrEnum):
                     return TransformDictFunction(transform=Transform.function, code=code)
                 case cls.connection:
                     cid = transform.get("cid")
-                    if not isinstance(cid, str):
+                    if cid and not isinstance(cid, str):
                         raise TypeError
                     transform_ = TransformDictConnection(transform=Transform.connection, cid=cid)
                     if info := transform.get("info"):
@@ -158,7 +157,7 @@ class TransformDictAdvanced(TypedDict):
 
 class TransformDictConnection(TypedDict):
     transform: Literal[Transform.connection]
-    cid: str
+    cid: NotRequired[str | None]
     auto_dispose: NotRequired[bool]
     info: NotRequired[dict]
 

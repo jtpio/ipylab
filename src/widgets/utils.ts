@@ -6,6 +6,7 @@ import { ObservableMap } from '@jupyterlab/observables';
 import { Kernel } from '@jupyterlab/services';
 import { Signal } from '@lumino/signaling';
 import { IpylabModel } from './ipylab';
+import { UUID } from '@lumino/coreutils';
 /**
  * Start a new session that support comms needed for iplab needs for comms.
  * @returns
@@ -25,22 +26,27 @@ export async function newSessionContext({
   code?: string;
   type?: string;
 }): Promise<SessionContext> {
+  path = path || UUID.uuid4();
   const sessionContext = new SessionContext({
     sessionManager: IpylabModel.app.serviceManager.sessions,
     specsManager: IpylabModel.app.serviceManager.kernelspecs,
     path: path,
-    name: name ?? path,
+    name: name || path,
     type: type,
     kernelPreference: {
-      id: kernelId,
+      id: kernelId || null,
       language: language
     }
   });
   await sessionContext.initialize();
-  while (!sessionContext.isReady) {
+  if (!sessionContext.isReady) {
     await new SessionContextDialogs({
       translator: IpylabModel.translator
     }).selectKernel(sessionContext!);
+  }
+  if (!sessionContext.isReady) {
+    sessionContext.dispose();
+    throw new Error('Cancelling because a kernel was not provided');
   }
   const kernel = sessionContext.session.kernel;
   // Create a manager for the kernel to support widgets.
@@ -134,6 +140,8 @@ export function toFunction(code: string) {
 /**
  * Provide a list of all attributes belonging to obj.
  *
+ * omitHidden: Will omit properties starting with '_'
+ *
  * @param obj Any object.
  * @returns
  */
@@ -141,23 +149,28 @@ export function findAllProperties({
   obj,
   items = [],
   type = '',
-  depth = 1
+  depth = 1,
+  omitHidden = false
 }: {
   obj: any;
   items?: Array<string>;
   type?: string;
   depth?: number;
+  omitHidden?: boolean;
 }): Array<string> {
   if (!obj || depth === 0) {
     return [...new Set(items)];
   }
 
-  const props = Object.getOwnPropertyNames(obj);
+  const props = Object.getOwnPropertyNames(obj).filter(value =>
+    omitHidden ? value.slice(0, 1) !== '_' : true
+  );
   return findAllProperties({
     obj: Object.getPrototypeOf(obj),
     items: [...items, ...props],
     type,
-    depth: depth - 1
+    depth: depth - 1,
+    omitHidden: omitHidden
   });
 }
 
@@ -169,16 +182,20 @@ export function findAllProperties({
 export function listProperties({
   obj,
   type = '',
-  depth = 1
+  depth = 1,
+  omitHidden = false
 }: {
   obj: any;
   type?: string;
   depth?: number;
+  omitHidden?: boolean;
 }) {
-  return findAllProperties({ obj, items: [], type, depth }).map(p => ({
-    name: p,
-    type: typeof obj[p]
-  }));
+  return findAllProperties({ obj, items: [], type, depth, omitHidden }).map(
+    p => ({
+      name: p,
+      type: typeof obj[p]
+    })
+  );
 }
 
 /**

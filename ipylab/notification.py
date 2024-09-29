@@ -130,7 +130,7 @@ class NotificationManager(AsyncWidgetBase):
                 options=options,
                 transform={
                     "transform": Transform.connection,
-                    "cid": NotificationConnection.new_cid(),
+                    "cid": NotificationConnection.to_cid(),
                     "auto_dispose": True,
                 },
                 toObject=[f"options.actions.{i}" for i in range(len(actions_))] if actions_ else None,
@@ -152,7 +152,7 @@ class NotificationManager(AsyncWidgetBase):
         caption: str = "",
     ) -> Task[ActionConnection]:
         "Create an action to use in a notification."
-        cid = ActionConnection.new_cid()
+        cid = ActionConnection.to_cid()
         info = {"label": label, "displayType": display_type, "keep_open": keep_open, "caption": caption}
         task = self.schedule_operation(
             "createAction",

@@ -2,12 +2,13 @@
 # Distributed under the terms of the Modified BSD License.
 from __future__ import annotations
 
+from traitlets import Unicode
+
 from ipylab.asyncwidget import AsyncWidgetBase
-from ipylab.hasapp import HasApp
 from ipylab.hookspecs import pm
 
 
-class IpylabBackEnd(AsyncWidgetBase, HasApp):
+class IpylabBackEnd(AsyncWidgetBase):
     """This class is provided to load `ipylab_autostart` entypoints.
 
     It will be created by IpylabPythonKernel when the ipylab plugin is activated.
@@ -22,7 +23,9 @@ class IpylabBackEnd(AsyncWidgetBase, HasApp):
     ```
     """
 
+    # This class should not be subclassed or instantiated directly.
     SINGLETON = True
+    _model_name = Unicode("IpylabBackendModel", help="Name of the model.", read_only=True).tag(sync=True)
 
     async def _load_ipylab_backend_entrypoints(self):
         "Load entrypoints."
@@ -33,7 +36,7 @@ class IpylabBackEnd(AsyncWidgetBase, HasApp):
             self.log.exception("An exception occurred loading backend entrypoints")
             self.app.dialog.show_error_message("Plugin failure", str(e))
         finally:
-            await self.app.schedule_operation("backend_ready")
+            await self.schedule_operation("backend_ready")
 
     def on_frontend_init(self, content):
         super().on_frontend_init(content)

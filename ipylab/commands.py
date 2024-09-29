@@ -18,7 +18,6 @@ if TYPE_CHECKING:
     from asyncio import Task
     from collections.abc import Callable, Coroutine
 
-    from ipylab.asyncwidget import TransformType
 
 __all__ = ["CommandConnection", "CommandPalletConnection", "LauncherConnection"]
 
@@ -44,6 +43,9 @@ class CommandConnection(Connection):
     python_command = CallableTrait(allow_none=False)
 
     _config_options: ClassVar = set(CommandOptions.__annotations__)
+
+    def close(self, *, dispose=True):
+        super().close(dispose=dispose)
 
     def configure(self, *, emit=True, **kwgs: Unpack[CommandOptions]) -> Task[CommandOptions]:
         if diff := set(kwgs).difference(self._config_options):
@@ -100,9 +102,8 @@ class CommandPalletConnection(Connection):
     def get_existing_connection(cls, command: str | CommandConnection, category: str, *, quiet=False):
         return super().get_existing_connection(str(command), category, quiet=quiet)
 
-    @classmethod
-    def new_cid(cls, command: str | CommandConnection, category: str):
-        return super().new_cid(str(command), category)
+    def close(self, *, dispose=True):
+        super().close(dispose=dispose)
 
 
 class CommandPalette(AsyncWidgetBase):
@@ -200,8 +201,11 @@ class CommandRegistry(AsyncWidgetBase):
                 for k in set(kwgs).difference(inspect.signature(cmd).parameters):
                     kwgs.pop(k)
                 result = cmd(**kwgs)
-                if inspect.isawaitable(result):
-                    return await result
+                while callable(result) or inspect.isawaitable(result):
+                    if callable(result):
+                        result = result()
+                    if inspect.isawaitable(result):
+                        result = await result
                 return result
         return await super()._do_operation_for_frontend(operation, payload, buffers)
 
@@ -214,7 +218,6 @@ class CommandRegistry(AsyncWidgetBase):
         label="",
         icon_class: str | None = None,
         icon: Icon | None = None,
-        frontend_transform: TransformType = Transform.done,
         **kwgs,
     ) -> Task[CommandConnection]:
         """Add a python command that can be executed by Jupyterlab.
@@ -230,7 +233,6 @@ class CommandRegistry(AsyncWidgetBase):
         """
         cid = CommandConnection.to_cid(name)
         self.remove_command(cid)
-        icon_, to_object = (f"{pack(icon)}.labIcon", ["icon"]) if isinstance(icon, Icon) else (icon, None)
 
         task = self.schedule_operation(
             "addCommand",
@@ -239,9 +241,8 @@ class CommandRegistry(AsyncWidgetBase):
             label=label,
             iconClass=icon_class,
             transform={"transform": Transform.connection, "cid": cid, "auto_dispose": True},
-            icon=icon_,
-            toObject=to_object,
-            frontendTransform=Transform.validate(frontend_transform),
+            icon=f"{pack(icon)}.labIcon" if isinstance(icon, Icon) else None,
+            toObject=["icon"] if isinstance(icon, Icon) else None,
             **kwgs,
         )
 

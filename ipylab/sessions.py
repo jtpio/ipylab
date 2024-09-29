@@ -5,7 +5,7 @@ from asyncio import Task
 from types import ModuleType
 from typing import Literal
 
-from ipylab.asyncwidget import AsyncWidgetBase, Transform, Unicode, pack_code
+from ipylab.asyncwidget import AsyncWidgetBase, Transform, Unicode
 from ipylab.connection import Connection
 
 
@@ -55,6 +55,6 @@ class SessionManager(AsyncWidgetBase):
             kernelId=kernelId,
             kernelName=kernelName,
             type=type,
-            code=pack_code(code),
+            code=code,
             transform=Transform.connection,
         )

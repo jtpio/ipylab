@@ -4,15 +4,19 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from ipylab.asyncwidget import Widget, pack
-from ipylab.hasapp import HasApp
+import ipylab
+from ipylab.asyncwidget import Widget
 
 if TYPE_CHECKING:
     from asyncio import Task
     from typing import Any
 
 
-class Dialog(HasApp):
+class Dialog:
+    @property
+    def app(self):
+        return ipylab.app
+
     def get_boolean(self, title: str) -> Task[bool]:
         """Jupyter dialog to get a boolean value.
         see: https://jupyterlab.readthedocs.io/en/stable/extension/ui_helpers.html#input-dialogs
@@ -102,7 +106,7 @@ class Dialog(HasApp):
         return self.app.schedule_operation(
             "showDialog",
             title=title,
-            body=pack(body),
+            body=body,
             host=host,
             toLuminoWidget=["body"] if isinstance(body, Widget) else None,
             **kwgs,
@@ -132,10 +136,14 @@ class Dialog(HasApp):
         return self.app.schedule_operation("showErrorMessage", title=title, error=error, buttons=buttons)
 
 
-class FileDialog(HasApp):
+class FileDialog:
     """
     https://jupyterlab.readthedocs.io/en/stable/extension/ui_helpers.html#file-dialogs
     """
+
+    @property
+    def app(self):
+        return ipylab.app
 
     def get_open_files(self, **kwgs) -> Task[list[str]]:
         """Get a list of files

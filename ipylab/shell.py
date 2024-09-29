@@ -4,15 +4,14 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from ipylab import Area, ShellConnection, Transform, pack
+from ipywidgets import Widget
+
+from ipylab import Area, Connection, ShellConnection, Transform, pack
 from ipylab.asyncwidget import AsyncWidgetBase, Unicode
 from ipylab.common import InsertMode
-from ipylab.connection import Connection
 
 if TYPE_CHECKING:
     from asyncio import Task
-
-    from ipywidgets import Widget
 
 
 __all__ = ["Shell"]
@@ -34,51 +33,53 @@ class Shell(AsyncWidgetBase):
 
     def add(
         self,
-        widget: Widget,
+        obj: Widget | None,
         *,
         area: Area = Area.main,
         activate: bool = True,
         mode: InsertMode = InsertMode.tab_after,
         rank: int | None = None,
         ref: ShellConnection | None = None,
-        **options,
+        options: dict | None = None,
+        **kwgs,
     ) -> Task[ShellConnection]:
         """
-        Add the widget to the shell.
+        Add a widget or evaluation to the shell.
+
+        When `obj` is NOT a Widget it is assumed `obj` should be evaluated in a python kernel.
+
+        This uses the same method `evaluate` The evaluation must return a Widget.
+
+            Additional **kwgs:
+                kernelId: leave blank to start a new kernel.
+                path: The path of the sessionContext to use when creating a new kernel.
+                name: The name of the sessionContext to use when creating a new kernel.
 
         ref: https://jupyterlab.readthedocs.io/en/latest/api/interfaces/application.JupyterFrontEnd.IShell.html#add
 
         options: dict
             mode: InsertMode
             https://jupyterlab.readthedocs.io/en/latest/api/interfaces/docregistry.DocumentRegistry.IOpenOptions.html
+
+        Basic example
+        -------------
+        ```
+        ipylab.app.shell.add('ipw.HTML("<h1>Hello world<h1>")')
+        ```
         """
-        options_ = {
+        kwgs["options"] = {
             "activate": activate,
             "mode": InsertMode(mode),
             "rank": int(rank) if rank else None,
-            "ref": ref.id if ref else None,
-        }
-        cid = ShellConnection.to_cid(widget.id if isinstance(widget, Connection) else pack(widget))
-
-        async def add_to_shell():
-            # kernelId should always be available when running as a task.
-            if not self.kernelId:
-                msg = "kernelId has not been set yet"
-                raise RuntimeError(msg)
-            return await self.execute_command(
-                "ipylab:add-to-shell",
-                transform={
-                    "transform": Transform.connection,
-                    "cid": cid,
-                    "auto_dispose": not isinstance(widget, ShellConnection),
-                },
-                cid=cid,
-                kernelId=self.kernelId,
-                area=area,
-                options=options_ | options,
-            )
-
-        return self.to_task(add_to_shell())
+            "ref": ref.id if isinstance(ref, Connection) else None,
+        } | (options or {})
+        if isinstance(obj, Widget):
+            kwgs["id"] = obj.id if isinstance(obj, Connection) else pack(obj)
+        else:
+            kwgs["evaluate"] = pack(obj)
+        cid = ShellConnection.to_cid()
+        kwgs["transform"] = {"transform": Transform.connection, "cid": cid}
+        return self.execute_command("ipylab:add-to-shell", cid=cid, area=area, **kwgs)
 
     def expand_left(self):
         return self.execute_method("expandLeft")

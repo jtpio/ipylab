@@ -43,8 +43,8 @@ class Connection(AsyncWidgetBase):
 
     If a specific subclass of Connection is required, the transform should be
     specified with the cid from the subclass. Use the keyword argument `cid` to ensure
-    the subclass instance is returned. The class methods `to_cid` and `new_cid`
-    will generate an appropriate id.
+    the subclass instance is returned. The class methods `to_cid` will generate an
+    appropriate id.
 
     See also `Transform.connection` for further detail about transforms.
     """
@@ -64,33 +64,31 @@ class Connection(AsyncWidgetBase):
         cls._CLASS_DEFINITIONS[cls._cid_prefix] = cls
         super().__init_subclass__(**kwargs)
 
-    def __new__(cls, cid: str, id: str = "", **kwgs):  # noqa: A002
-        if cid not in cls._connections:
+    def __new__(cls, cid: str, id: str = "", info: dict | None = None, **kwgs):  # noqa: A002
+        inst = cls._connections.get(cid)
+        if not inst:
             cls = cls._CLASS_DEFINITIONS[cid.split(":", maxsplit=1)[0]]
             cls._connections[cid] = inst = super().__new__(cls, **kwgs)
             inst.set_trait("cid", cid)
-            inst.set_trait("id", id)
-        return cls._connections[cid]
+        inst.set_trait("id", id or inst.id)
+        inst.set_trait("info", info or inst.info)
+        return inst
 
     def __init__(self, *args, cid="", id="", info: dict | None = None, **kwgs):  # noqa: A002, ARG002
-        self.set_trait("info", info or self.info)
-        if self._async_widget_base_init_complete:
-            return
         super().__init__(**kwgs)
 
     def __str__(self):
         return self.cid
 
     @classmethod
-    def to_cid(cls, *args: str) -> str:
+    def to_cid(cls, *args) -> str:
         """Generate an id for the args"""
-        return " | ".join([f"{cls._cid_prefix}:{args[0].removeprefix(cls._cid_prefix).strip(':')}", *args[1:]]).strip(
-            ": "
-        )
 
-    @classmethod
-    def new_cid(cls, *args):
-        return cls.to_cid(str(uuid.uuid4()), *args)
+        args_ = [str(arg.id) if isinstance(arg, Connection) else str(pack(arg)) for arg in args]
+        if not args_:
+            args_.append(str(uuid.uuid4()))
+        arg0 = args_[0].removeprefix(cls._cid_prefix).strip(":")
+        return "|".join([f"{cls._cid_prefix}:{arg0}", *args_[1:]]).strip(": ")
 
     @classmethod
     def get_instances(cls) -> Generator[Self, Any, None]:
@@ -166,4 +164,4 @@ class ModelConnection(Connection):
     """A connection to the model of an Ipywidget."""
 
     def __new__(cls, widget: Widget, **kwgs) -> Self:
-        return super().__new__(cls, cid=cls.to_cid(pack(widget)), id=pack(widget), **kwgs)
+        return super().__new__(cls, cid=cls.to_cid(widget), id=pack(widget), **kwgs)

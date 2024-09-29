@@ -10,15 +10,13 @@ from ipywidgets import Box, DOMWidget, register, widget_serialization
 from ipywidgets.widgets.trait_types import InstanceDict
 from traitlets import Dict, Instance, Unicode, observe
 
+import ipylab
 import ipylab._frontend as _fe
 from ipylab.asyncwidget import WidgetBase
 from ipylab.common import Area, InsertMode
-from ipylab.hasapp import HasApp
 
 if TYPE_CHECKING:
-    from asyncio import Task
-
-    from ipylab.connection import Connection, ShellConnection
+    from ipylab.connection import ShellConnection
 
 
 @register
@@ -45,7 +43,7 @@ class Title(WidgetBase):
 
 
 @register
-class Panel(Box, HasApp):
+class Panel(Box):
     _model_module = Unicode(_fe.module_name, read_only=True).tag(sync=True)
     _model_module_version = Unicode(_fe.module_version, read_only=True).tag(sync=True)
     _view_module = Unicode(_fe.module_name, read_only=True).tag(sync=True)
@@ -56,6 +54,10 @@ class Panel(Box, HasApp):
     title: Instance[Title] = InstanceDict(Title, ()).tag(sync=True, **widget_serialization)
     class_name = Unicode("ipylab-panel").tag(sync=True)
     _comm = None
+
+    @property
+    def app(self):
+        return ipylab.app
 
     def add_to_shell(
         self,
@@ -68,7 +70,25 @@ class Panel(Box, HasApp):
         **options,
     ):
         """Add this panel to the shell."""
-        return self.app.shell.add(self, area=area, mode=mode, activate=activate, rank=rank, ref=ref, **options)
+
+        async def add_to_shell():
+            async with self.app.shell:
+                result = await self.app.shell.add(
+                    self,
+                    area=area,
+                    mode=mode,
+                    activate=activate,
+                    rank=rank,
+                    ref=ref,
+                    kernelId=self.app.kernelId,
+                    **options,
+                )
+                rerender = getattr(self, "_rerender", None)
+                if callable(rerender):
+                    await rerender()
+                return result
+
+        return self.app.to_task(add_to_shell())
 
 
 @register
@@ -98,24 +118,5 @@ class SplitPanel(Panel):
             self.orientation = orientation
 
         return self.app.to_task(force_refresh(self.children))
-
-    def add_to_shell(
-        self,
-        *,
-        area: Area = Area.main,
-        activate: bool = True,
-        mode: InsertMode = InsertMode.tab_after,
-        rank: int | None = None,
-        ref: Connection | None = None,
-        **options,
-    ) -> Task[ShellConnection]:
-        task = super().add_to_shell(area=area, activate=activate, mode=mode, rank=rank, ref=ref, **options)
-
-        async def add_to_shell():
-            result = await task
-            await self._rerender()
-            return result
-
-        return self.app.to_task(add_to_shell())
 
     # ============== End temp fix =============

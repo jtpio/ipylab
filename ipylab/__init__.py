@@ -6,8 +6,6 @@ from ipylab._version import __version__
 
 __all__ = [
     "__version__",
-    "HasApp",
-    "JupyterFrontEnd",
     "Connection",
     "ShellConnection",
     "Panel",
@@ -19,20 +17,32 @@ __all__ = [
     "hookimpl",
     "Transform",
     "pack",
-    "pack_code",
     "commands",
     "menu",
+    "_jupyter_labextension_paths",
 ]
 
+
 from ipylab import commands, menu
-from ipylab.asyncwidget import pack, pack_code
+from ipylab.asyncwidget import pack
 from ipylab.common import Area, InsertMode, NotificationType, Transform
 from ipylab.connection import Connection, ShellConnection
-from ipylab.hasapp import HasApp
 from ipylab.hookspecs import hookimpl
-from ipylab.jupyterfrontend import JupyterFrontEnd
 from ipylab.widgets import Icon, Panel, SplitPanel
 
 
 def _jupyter_labextension_paths():
+    "Called by Jupyterlab see: jupyterlab.federated_labextensions._get_labextension_metadata."
     return [{"src": "labextension", "dest": "ipylab"}]
+
+
+def _get_app():
+    "Get the frontend"
+    from ipylab.jupyterfrontend import JupyterFrontEnd
+
+    return JupyterFrontEnd()
+
+
+# The Frontend should always be created and can not be subclassed.
+app = _get_app()
+del _get_app

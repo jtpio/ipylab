@@ -10,11 +10,12 @@ import uuid
 from typing import TYPE_CHECKING, Any, TypeVar
 
 from ipywidgets import Widget, register, widget_serialization
-from traitlets import Container, Dict, HasTraits, Instance, Set, Unicode
+from traitlets import Bool, Container, Dict, HasTraits, Instance, Set, Unicode
 
+import ipylab
 import ipylab._frontend as _fe
+import ipylab.commands
 from ipylab.common import JavascriptType, Transform, TransformType
-from ipylab.hasapp import HasApp
 from ipylab.hookspecs import pm
 
 if TYPE_CHECKING:
@@ -40,18 +41,13 @@ if TYPE_CHECKING:
 
 
 def pack(obj):
-    """Return serialized obj if it is a Widget otherwise return it unchanged."""
+    """Return serialized obj if it is a Widget or string of code."""
 
     if isinstance(obj, Widget):
         return widget_serialization["to_json"](obj, None)
+    if inspect.isfunction(obj) or inspect.ismodule(obj):
+        return inspect.getsource(obj)
     return obj
-
-
-def pack_code(code: str | inspect._SourceObjectType) -> str:
-    """Convert code to a string suitable to run in a kernel."""
-    if not isinstance(code, str):
-        code = inspect.getsource(code)
-    return code
 
 
 class Response(asyncio.Event):
@@ -75,7 +71,7 @@ class IpylabFrontendError(IOError):
     pass
 
 
-class WidgetBase(Widget, HasApp):
+class WidgetBase(Widget):
     _model_name = None  # Ensure this gets overloaded
     _model_module = Unicode(_fe.module_name, read_only=True).tag(sync=True)
     _model_module_version = Unicode(_fe.module_version, read_only=True).tag(sync=True)
@@ -83,6 +79,10 @@ class WidgetBase(Widget, HasApp):
     _view_module_version = Unicode(_fe.module_version, read_only=True).tag(sync=True)
     _comm = None
     add_traits = None  # type: ignore # Don't support the method HasTraits.add_traits as it creates a new type that isn't a subclass of its origin)
+
+    @property
+    def app(self):
+        return ipylab.app
 
 
 @register
@@ -100,6 +100,7 @@ class AsyncWidgetBase(WidgetBase):
     _pending_operations: Dict[str, Response] = Dict()
     _tasks: Container[set[asyncio.Task]] = Set()
     _comm = None
+    ready = Bool(read_only=True, help="Set to True when `init` message received")
     add_traits = None  # type: ignore # Don't support the method HasTraits.add_traits as it creates a new type that isn't a subclass of its origin)
     if TYPE_CHECKING:
         log: logging.Logger
@@ -119,11 +120,18 @@ class AsyncWidgetBase(WidgetBase):
         self._ipylab_model_register[self.model_id] = self
         if self.SINGLETON:
             self._singleton_register[self.__class__.__name__] = self.model_id
-        self.on_msg(self._on_frontend_msg)
+        self.on_msg(self._on_custom_msg)
         self._async_widget_base_init_complete = True
 
+    def __repr__(self):
+        if not self.ready and self._repr_mimebundle_:
+            return f"<Not ready:{self.__class__.__name__}>"
+        return super().__repr__()
+
     async def __aenter__(self):
-        await self._ready_event.wait()
+        if not self.ready:
+            self._check_closed()
+            await self._ready_event.wait()
         self._check_closed()
 
     async def __aexit__(self, exc_type, exc, tb):
@@ -134,6 +142,7 @@ class AsyncWidgetBase(WidgetBase):
         for task in self._tasks:
             task.cancel()
         self._tasks.clear()
+        self.set_trait("ready", False)
         if self._repr_mimebundle_ and self._model_id:
             self._ipylab_model_register.pop(self._model_id, None)
             super().close()
@@ -160,28 +169,20 @@ class AsyncWidgetBase(WidgetBase):
             raise
         except Exception as e:
             try:
-                pm.hook.on_task_error(obj=self, error=e)
-                msg = f"Exception for  {type(self)}"
-                self.log.exception(msg)
+                pm.hook.on_task_error(obj=self, coro_name=coro.__name__, error=e)
             finally:
                 raise e
 
-    def _check_get_error(self, content: dict) -> IpylabFrontendError | None:
-        if "error" in content:
-            error = content["error"]
-            operation = content.get("operation")
-            if operation:
-                msg = f'{self.__class__.__name__} operation "{operation}" failed with message "{error}"'
-                if "cyclic" in error:
-                    msg += (
-                        "\nNote: A cyclic error may be due a return value that cannot be converted to JSON. "
-                        "Try changing the transform (eg: transform=ipylab.Transform.done)."
-                    )
-                else:
-                    msg += "\nNote: Additional information may be available in the browser console (press `F12`)"
-                return IpylabFrontendError(msg)
-
-            return IpylabFrontendError(f'{self.__class__.__name__} failed with message "{error}"')
+    def _to_error(self, content: dict) -> IpylabFrontendError | None:
+        error = content["error"]
+        operation = content.get("operation")
+        if operation:
+            msg = (
+                f'{self.__class__.__name__} operation "{operation}" failed with message "{error}"'
+                "\nNote: Additional information may be available in the browser console (press `F12`)"
+            )
+            return IpylabFrontendError(msg)
+        return IpylabFrontendError(f'{self.__class__.__name__} failed with message "{error}"')
         return None
 
     async def _add_to_tuple_trait(self, name: str, item: Awaitable[T] | T) -> T:
@@ -198,7 +199,7 @@ class AsyncWidgetBase(WidgetBase):
 
     def send(self, content, buffers=None):
         try:
-            super().send(content, buffers)
+            super().send(json.dumps(content, default=pack), buffers)
         except Exception as error:
             pm.hook.on_frontend_error(obj=self, error=error, content=content, buffers=buffers)
 
@@ -218,29 +219,32 @@ class AsyncWidgetBase(WidgetBase):
         payload = await response.wait()
         return Transform.transform_payload(content["transform"], payload)
 
-    def _on_frontend_msg(self, _, content: dict, buffers: list):
-        error = self._check_get_error(content)
-        if error:
-            pm.hook.on_frontend_error(obj=self, error=error, content=content, buffers=buffers)
-        if operation := content.get("operation"):
-            ipylab_autostart = content.get("ipylab_BE", "")
-            payload = content.get("payload", {})
-            if ipylab_autostart:
-                self._pending_operations.pop(ipylab_autostart).set(payload, error)
-            if "ipylab_FE" in content:
-                self.to_task(self._handle_frontend_operation(content["ipylab_FE"], operation, payload, buffers))
-        elif "init" in content:
-            self._ready_event.set()
-            self.on_frontend_init(content)
-        elif "closed" in content:
-            self.close()
+    def _on_custom_msg(self, _, msg: str, buffers: list):
+        try:
+            content = json.loads(msg)
+            error = self._to_error(content) if "error" in content else None
+            if "operation" in content:
+                if "ipylab_BE" in content:
+                    self._pending_operations.pop(content["ipylab_BE"]).set(content.get("payload"), error)
+                elif "ipylab_FE" in content:
+                    self.to_task(self._handle_frontend_operation(buffers=buffers, **content))
+            elif "init" in content:
+                self._ready_event.set()
+                self.set_trait("ready", True)
+                self.on_frontend_init(content)
+            elif "closed" in content:
+                self.close()
+            if error:
+                pm.hook.on_frontend_error(obj=self, error=error, content=content, buffers=buffers)
+        except Exception as e:
+            pm.hook.on_message_error(obj=self, error=e, msg=msg, buffers=buffers)
 
     def on_frontend_init(self, content: dict):
         """Called when the frontend is initialized.
 
         This will occur on initial connection and whenever the model is restored from the kernel."""
 
-    async def _handle_frontend_operation(self, ipylab_FE: str, operation: str, payload: dict, buffers: list):
+    async def _handle_frontend_operation(self, *, ipylab_FE: str, operation: str, payload: dict, buffers: list):
         """Handle operation requests from the frontend and reply with a result."""
         content: dict[str, Any] = {"ipylab_FE": ipylab_FE}
         buffers = []
@@ -341,7 +345,7 @@ class AsyncWidgetBase(WidgetBase):
         self,
         command_id: str | CommandConnection,
         *,
-        transform: TransformType = Transform.done,
+        transform: TransformType = Transform.raw,
         toLuminoWidget: Iterable[str] | None = None,
         toObject: Iterable[str] | None = None,
         **args,
@@ -353,18 +357,25 @@ class AsyncWidgetBase(WidgetBase):
         see: https://github.com/jtpio/ipylab/issues/128#issuecomment-1683097383 for hints
         about what args can be used.
         """
-        id_ = str(command_id)
-        if id_ not in self.app.commands.all_commands:
-            msg = f"Command with id='{id_}' is not registered!"
-            raise ValueError(msg)
-        return self.schedule_operation(
-            "executeCommand",
-            id=id_,
-            args=args,
-            transform=transform,
-            toLuminoWidget=toLuminoWidget,
-            toObject=toObject,
-        )
+
+        async def execute_command():
+            id_ = str(command_id)
+            async with self.app.commands:
+                if id_ not in self.app.commands.all_commands:
+                    id_ = ipylab.commands.CommandConnection.to_cid(id_)
+                    if id_ not in self.app.commands.all_commands:
+                        msg = f"Command '{command_id}' not registered!"
+                        raise ValueError(msg)
+            return await self.schedule_operation(
+                "executeCommand",
+                id=id_,
+                args=args,
+                transform=transform,
+                toLuminoWidget=toLuminoWidget,
+                toObject=toObject,
+            )
+
+        return self.to_task(execute_command())
 
     def execute_method(
         self,
@@ -387,7 +398,7 @@ class AsyncWidgetBase(WidgetBase):
 
         example:
         ```
-        app.execute_method(widget=app.current_widget_id, method="close")
+        ipylab.app.execute_method(widget=app.current_widget_id, method="close")
         ```
         """
         # This operation is sent to the frontend function _fe_execute in 'ipylab/src/widgets/ipylab.ts'
@@ -419,7 +430,7 @@ class AsyncWidgetBase(WidgetBase):
         value_transform: TransformType = Transform.raw,
         toLuminoWidget: Iterable[str] | None = None,
         toObject: Iterable[str] | None = None,
-        transform=Transform.done,
+        transform=Transform.raw,
     ):
         """Set the property on the `path` of the `base` object in the Frontend.
 
@@ -441,7 +452,7 @@ class AsyncWidgetBase(WidgetBase):
         return self.schedule_operation(
             "setProperty",
             path=path,
-            value=pack(value),
+            value=value,
             valueTransform=Transform.validate(value_transform),
             toLuminoWidget=toLuminoWidget,
             toObject=toObject,
@@ -456,6 +467,7 @@ class AsyncWidgetBase(WidgetBase):
         value_transform: TransformType = Transform.raw,
         toLuminoWidget: Iterable[str] | None = None,
         toObject: Iterable[str] | None = None,
+        transform=Transform.raw,
     ):
         """Update the value of the object at the path in the frontend.
 
@@ -472,8 +484,8 @@ class AsyncWidgetBase(WidgetBase):
         return self.schedule_operation(
             "updateProperty",
             path=path,
-            value=json.loads(json.dumps(value, default=pack)),
-            transform=Transform.raw,
+            value=value,
+            transform=transform,
             valueTransform=Transform.validate(value_transform),
             toLuminoWidget=toLuminoWidget,
             toObject=toObject,

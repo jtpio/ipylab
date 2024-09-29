@@ -3,13 +3,14 @@
 
 // SessionManager exposes `JupyterLab.serviceManager.sessions` to user python kernel
 import {
+  ICallbacks,
   ISerializers,
   IWidgetRegistryData,
   WidgetModel
 } from '@jupyter-widgets/base';
+import { KernelWidgetManager } from '@jupyter-widgets/jupyterlab-manager';
 import { ILabShell, JupyterFrontEnd, LabShell } from '@jupyterlab/application';
 import {
-  DOMUtils,
   ICommandPalette,
   Notification,
   WidgetTracker
@@ -17,22 +18,25 @@ import {
 import { IDefaultFileBrowser } from '@jupyterlab/filebrowser';
 import { ILauncher } from '@jupyterlab/launcher';
 import { IMainMenu } from '@jupyterlab/mainmenu';
-import { ObservableMap } from '@jupyterlab/observables';
 import { IRenderMimeRegistry } from '@jupyterlab/rendermime';
-import { Kernel, Session } from '@jupyterlab/services';
+import type { Kernel, Session } from '@jupyterlab/services';
 import { ITranslator } from '@jupyterlab/translation';
 import { CommandRegistry } from '@lumino/commands';
-
-import { JSONObject, JSONValue, PromiseDelegate } from '@lumino/coreutils';
+import {
+  JSONObject,
+  JSONValue,
+  PromiseDelegate,
+  UUID
+} from '@lumino/coreutils';
 import { IDisposable } from '@lumino/disposable';
 import { Signal } from '@lumino/signaling';
 import { Widget } from '@lumino/widgets';
-import { ObjectHash } from 'backbone';
 import { MODULE_NAME, MODULE_VERSION } from '../version';
-import { IpylabPythonKernel } from './ipylab_kernel';
+import type { JupyterFrontEndModel } from './frontend';
 import {
   getNestedObject,
   listProperties,
+  newSessionContext,
   onKernelLost,
   setNestedAttribute,
   toFunction
@@ -50,35 +54,84 @@ export {
   onKernelLost,
   Widget
 };
+
+/**
+ * Returns the object for the dotted path 'value'.
+ * 1. If value starts with IPY_MODEL_ it will unpack the model and return
+ *    the object relative to dotted path after the model name. If there is no
+ *    path after the model id it will be the model.
+ * 2. Otherwise the object as specified by the dotted path relate to the base will be returned.
+ * 3. An error will be thrown if the value doesn't point an existing attribute.
+ *
+ * @param value
+ * @param as
+ * @param string
+ * @returns
+ */
+async function toObject(
+  base: any,
+  value: any,
+  nullIfMissing = false
+): Promise<any> {
+  if (typeof value === 'string') {
+    let path = value;
+    if (value.slice(0, 10) === 'IPY_MODEL_') {
+      let model_id;
+      [model_id, path] = value.slice(10).split('.', 2);
+      base = (await IpylabModel.getWidgetModel(model_id)).model;
+      if (base.isConnectionModel) {
+        base = base.base;
+      }
+    }
+    return await getNestedObject({ base, path: path ?? '', nullIfMissing });
+  }
+  if (value?.OTHER_PROPERTIES?.cid) {
+    return await IpylabModel.fromConnectionOrId(value.OTHER_PROPERTIES.cid);
+  }
+  throw new Error(`Cannot convert this value to an object: ${value}`);
+}
+
 /**
  * Base model for common features
  */
 export class IpylabModel extends WidgetModel {
-  async initialize(attributes: ObjectHash, options: any): Promise<void> {
+  initialize(attributes: Backbone.ObjectHash, options: any): void {
     super.initialize(attributes, options);
-    try {
-      if (this.get('cid')) {
-        this._base = await this.getConnection(this.get('cid'), this.get('id'));
-      } else {
-        const basename = this.get('_basename');
-        this._base = basename
-          ? getNestedObject({
-              base: this,
-              path: basename,
-              basename: `model_name= '${this.defaults()._model_name}`
-            })
-          : this;
-      }
-    } catch {
-      this.close();
-      throw new Error(`Failed to set the base so closing...`);
-    }
     this.set('kernelId', this.kernelId);
+    this.ipylabInit();
+  }
+
+  /**
+   * Finish initializing the model.
+   * Overload this method as required.
+   *
+   * When overloading nsuring to call:
+   *  `await super.ipylabInit()`
+   *
+   * @param base The base of the model with regard to all methods that use base.
+   */
+  async ipylabInit(base: any = null) {
+    if (!base) {
+      const path = this.get('_basename');
+      base = this;
+      if (path) {
+        try {
+          base = getNestedObject({ base, path, basename: this.model_name });
+        } catch {
+          this.close();
+          throw new Error(`Failed locate _basename = '${path}' so closing...`);
+        }
+      }
+    }
+    this._base = base;
     this.on('msg:custom', this._onCustomMessage, this);
-    this.save_changes();
-    const msg = `ipylab ${this.get('_model_name')} ready for operations`;
-    this.send({ init: msg });
     onKernelLost(this.kernel, this.close, this);
+    this.save_changes();
+    this.send({ init: this.model_name });
+  }
+
+  get model_name() {
+    return this.get('_model_name');
   }
 
   get base(): any {
@@ -149,27 +202,146 @@ export class IpylabModel extends WidgetModel {
   }
 
   /**
+   * Send a custom msg over the comm.
+   */
+  send(
+    content: any,
+    callbacks?: ICallbacks,
+    buffers?: ArrayBuffer[] | ArrayBufferView[]
+  ) {
+    let content_: string;
+    try {
+      content_ = JSON.stringify(content);
+    } catch {
+      // Assuming the error is due to circular reference
+      content_ = JSON.stringify(content, IpylabModel.replacer);
+    }
+    super.send(content_, callbacks, buffers);
+  }
+
+  static replacer(key: string, value: any) {
+    // Filtering out properties
+    if (key === 'payload') {
+      const other = {} as any;
+      const out = {
+        WARNING:
+          'This payload is a simplified representation because it has circular references.'
+      } as any;
+      for (const attr of listProperties({
+        obj: value,
+        omitHidden: true,
+        depth: 3
+      })) {
+        if (['string', 'number', 'bigint', 'boolean'].indexOf(attr.type) >= 0) {
+          out[attr.name] = value[attr.name];
+        } else {
+          if (!other[attr.type]) {
+            other[attr.type] = [attr.name];
+          } else {
+            other[attr.type].push(attr.name);
+          }
+        }
+      }
+      if (typeof value.dispose === 'function') {
+        // Keep a reference to disposable objects in case it needs to be found again in the frontend.
+        // Not intended to be used by the backend as a connection transform is available.
+        const cid = (other['cid'] = `ipylab-connection:${UUID.uuid4()}`);
+        IpylabModel.registerConnection(cid, value);
+      }
+      out['OTHER_PROPERTIES'] = other;
+      return out;
+    }
+    return value;
+  }
+
+  /**
    * Convert custom messages into operations for action.
    * There are two types:
    * 1. Response to requested operation sent to Python backend (ipylab_FE).
    * 2. Operation requests received from the Python backend (ipylab_BE).
    * @param msg
    */
-  private _onCustomMessage(msg: any) {
-    if (msg.ipylab_FE) {
-      // Frontend operation result
-      const opDone = this._pendingBackendOperations.get(msg.ipylab_FE);
-      this._pendingBackendOperations.delete(msg.ipylab_FE);
-      if (opDone) {
-        if (msg.error) {
-          opDone.reject(new Error(msg.error?.repr ?? msg.error));
-        } else {
-          opDone.resolve(msg.payload);
+  private async _onCustomMessage(msg: any) {
+    const content = JSON.parse(msg);
+    if (content.toLuminoWidget instanceof Array) {
+      // Replace values in kwgs with widgets
+      for (const path of content.toLuminoWidget) {
+        const value = getNestedObject({
+          base: content.kwgs,
+          path: path,
+          nullIfMissing: false
+        });
+        if (value && typeof value === 'string') {
+          const { luminoWidget } = await IpylabModel.toLuminoWidget(value);
+          setNestedAttribute(content.kwgs, path, luminoWidget);
         }
       }
-    } else if (msg.ipylab_BE) {
-      this._do_operation_for_backend(msg);
     }
+    if (content.toObject instanceof Array) {
+      // Replace values in kwgs with attributes
+      for (const path of content.toObject) {
+        const value = getNestedObject({
+          base: content.kwgs,
+          path: path,
+          nullIfMissing: false
+        });
+        if (value && typeof value === 'string') {
+          const value_ = await toObject(this.base, value);
+          setNestedAttribute(content.kwgs, path, value_);
+        }
+      }
+    }
+    if (content.ipylab_FE) {
+      // Result of an operation request in the backend.
+      const op = this._pendingOperations.get(content.ipylab_FE);
+      this._pendingOperations.delete(content.ipylab_FE);
+      if (op) {
+        if (content.error) {
+          op.reject(new Error(content.error?.repr ?? content.error));
+        } else {
+          op.resolve(content.payload);
+        }
+      }
+    } else if (content.ipylab_BE) {
+      this._do_operation_for_backend(content);
+    }
+  }
+
+  /**
+   * Get the WidgetManger searching all known kernels.
+   *
+   * This blocks until the frontend is ready in the kernel.
+   * @param model_id The widget model id
+   * @returns
+   */
+  static async getWidgetManager(model_id: string, kernelId: string) {
+    if (kernelId) {
+      const jfem = await IpylabModel.getFrontendModel(kernelId);
+      if (jfem.widget_manager.has_model(model_id)) {
+        return jfem.widget_manager;
+      }
+    }
+    for (const value of IpylabModel.jfemPromises.values()) {
+      const jfem: JupyterFrontEndModel = await value.promise;
+      if (jfem.widget_manager.has_model(model_id)) {
+        return jfem.widget_manager;
+      }
+    }
+    throw new Error(`WidgetManager not found for model_id='${model_id}'`);
+  }
+
+  /**
+   * Get the WidgetModel
+   *
+   * This depends on the PR requiring a per-kernel widget manager.
+   *
+   * @param model_id The model id
+   * @returns WidgetModel
+   */
+  static async getWidgetModel(model_id: string, kernelId = '') {
+    const manager = await IpylabModel.getWidgetManager(model_id, kernelId);
+    const model: WidgetModel = await manager.get_model(model_id);
+    return { model, kernelId: manager.kernel.id };
   }
 
   /**
@@ -177,57 +349,13 @@ export class IpylabModel extends WidgetModel {
    * or an 'error' message if unsuccessful.
    * Results are 'transformed' by the method specified in the call to the operation from the backend.
    * The transformed result is returned to the backend using the ipylab_BE value (uuid4).
-   * @param msg
+   * @param content
    */
-  private async _do_operation_for_backend(msg: any) {
-    const operation: string = msg.operation;
-    const ipylab_BE: string = msg.ipylab_BE;
-
+  private async _do_operation_for_backend(content: any) {
+    const { operation, ipylab_BE, transform, kwgs } = content;
     try {
-      if (!operation) {
-        throw new Error('operation not provided');
-      }
-
-      if (!ipylab_BE) {
-        throw new Error('ipylab_BE not provided}');
-      }
-
-      if (typeof operation !== 'string') {
-        throw new Error(
-          `operation must be a string not ${typeof operation}  operation='${operation}'`
-        );
-      }
-      let result;
-      if (msg.toLuminoWidget instanceof Array) {
-        // Replace values in kwgs with widgets
-        for (const path of msg.toLuminoWidget) {
-          const value = getNestedObject({
-            base: msg.kwgs,
-            path: path,
-            nullIfMissing: false
-          });
-          if (value && typeof value === 'string') {
-            const luminoWidget = await this.toLuminoWidget(value);
-            setNestedAttribute(msg.kwgs, path, luminoWidget);
-          }
-        }
-      }
-      if (msg.toObject instanceof Array) {
-        // Replace values in kwgs with attributes
-        for (const path of msg.toObject) {
-          const value = getNestedObject({
-            base: msg.kwgs,
-            path: path,
-            nullIfMissing: false
-          });
-          if (value && typeof value === 'string') {
-            const value_ = await this.toObject(value);
-            setNestedAttribute(msg.kwgs, path, value_);
-          }
-        }
-      }
-      result = await this.operation(operation, msg.kwgs);
-      let buffers = null;
+      let result, buffers;
+      result = await this.operation(operation, kwgs);
       if ((result as any)?.buffers) {
         buffers = (result as any).buffers;
         delete (result as any).buffers;
@@ -235,78 +363,45 @@ export class IpylabModel extends WidgetModel {
       if ((result as any)?.payload) {
         result = (result as any).payload;
       }
-      const content = {
-        ipylab_BE: ipylab_BE,
-        operation: operation,
-        payload: await this.transformObject(result, msg.transform)
+      const response = {
+        ipylab_BE,
+        operation,
+        payload: (await this.transformObject(result, transform)) ?? null
       };
-      this.send(content, null, buffers);
+      this.send(response, null, buffers);
     } catch (e) {
-      const content = {
+      this.send({
         operation: operation,
-        ipylab_BE: msg.ipylab_BE,
+        ipylab_BE: content.ipylab_BE,
         error: `${(e as Error).message}`
-      };
-      this.send(content);
+      });
       console.error(e);
     }
   }
+
   /**
-   * Get a Lumino Widget.
-   * 1. If value starts with IPY_MODEL_ it will create a new view and return the widget for that view.
-   * 2. If a widget exists that has and id=value the widget will be returned.
-   * 3. An errow will be thrown if the widget isn't found.
+   * Get a Lumino Widget searching extensively.
    *
-   * @param value
-   * @param as
-   * @param string
+   * @param id
+   * @param kernelId The kernel where to start looking for widget models.
    * @returns
    */
-  async toLuminoWidget(value: string): Promise<Widget> {
-    if (value.slice(0, 10) === 'IPY_MODEL_') {
-      const model: any = await this.widget_manager.get_model(value.slice(10));
-      if (model.get('_model_name') === IpylabModel.connection_model_name) {
-        if (!(model.base instanceof Widget)) {
-          throw new Error(`${value} is not a connection to a lumino widget`);
-        }
-        return model.base;
-      }
-      const view = await this.widget_manager.create_view(model, {});
-      const lw = view.luminoWidget;
-      onKernelLost(this.kernel, lw.dispose, lw);
-      return lw;
+  static async toLuminoWidget(id: string, kernelId = '') {
+    let luminoWidget, manager;
+    if (id.slice(0, 10) === 'IPY_MODEL_') {
+      const model_id = id.slice(10).split(':', 1)[0];
+      manager = await IpylabModel.getWidgetManager(model_id, kernelId);
+      const model = await manager.get_model(model_id);
+      luminoWidget = (await manager.create_view(model, {})).luminoWidget;
+      onKernelLost(manager.kernel, luminoWidget.dispose, luminoWidget);
+      kernelId = manager.kernel.id;
+    } else {
+      luminoWidget = await IpylabModel.fromConnectionOrId(id);
     }
-    const obj = await this.getConnection(value);
-    if (!(obj instanceof Widget)) {
-      throw new Error(`Not a widget '${value}'`);
+    if (luminoWidget instanceof Widget) {
+      return { luminoWidget, kernelId };
     }
-    return obj;
-  }
-  /**
-   * Returns the object for the dotted path 'value'.
-   * 1. If value starts with IPY_MODEL_ it will unpack the model and return
-   *    the object relative to dotted path after the model name. If there is no
-   *    path after the model id it will be the model.
-   * 2. Otherwise the object as specified by the dotted path relate to the base will be returned.
-   * 3. An error will be thrown if the value doesn't point an existing attribute.
-   *
-   * @param value
-   * @param as
-   * @param string
-   * @returns
-   */
-  async toObject(value: string, nullIfMissing = false): Promise<any> {
-    let path = value;
-    let base = this as any;
-    if (value.slice(0, 10) === 'IPY_MODEL_') {
-      let model_id;
-      [model_id, path] = value.slice(10).split('.', 2);
-      base = await this.widget_manager.get_model(model_id);
-      if (base.get('_model_name') === IpylabModel.connection_model_name) {
-        base = base.base;
-      }
-    }
-    return await getNestedObject({ base, path: path ?? '', nullIfMissing });
+    throw new Error(`Not a widget '${id}'`);
   }
 
   /**
@@ -317,7 +412,7 @@ export class IpylabModel extends WidgetModel {
    * @param payload Options relevant to the operation.
    * @returns Raw result of the operation.
    */
-  async operation(op: string, payload: any): Promise<JSONValue | IDisposable> {
+  async operation(op: string, payload: any): Promise<any> {
     switch (op) {
       case 'executeCommand':
         return await this.commands.execute(payload.id, payload.args);
@@ -353,23 +448,18 @@ export class IpylabModel extends WidgetModel {
     operation: string,
     payload: JSONValue,
     transform: any
-  ): Promise<JSONValue> {
-    const ipylab_FE = DOMUtils.createDomID();
-    const msg = {
-      ipylab_FE: ipylab_FE,
-      operation: operation,
-      payload: payload
-    };
+  ): Promise<any> {
+    const ipylab_FE = UUID.uuid4();
     // Create callbacks to be resolved when a custom message is received
     // with the key `ipylab_FE`.
     const opDone = new PromiseDelegate();
-    this._pendingBackendOperations.set(ipylab_FE, opDone);
-    this.send(msg);
+    this._pendingOperations.set(ipylab_FE, opDone);
+    this.send({ ipylab_FE, operation, payload });
     const result: any = await opDone.promise;
     return await this.transformObject(result, transform);
   }
 
-  private async _executeMethod(payload: any): Promise<JSONValue> {
+  private async _executeMethod(payload: any): Promise<any> {
     const { path, args } = payload;
     const obj = this.base;
     const ownername = path.split('.').slice(0, -1).join('.');
@@ -406,6 +496,56 @@ export class IpylabModel extends WidgetModel {
     });
   }
 
+  static async getFrontendModel(kernelId: string, timeout = 10000) {
+    if (!kernelId) {
+      throw new Error('A kernel id must be specified!');
+    }
+    await this.backend_ready.promise;
+    if (!IpylabModel.jfemPromises.has(kernelId)) {
+      IpylabModel.jfemPromises.set(kernelId, new PromiseDelegate());
+      const model = await IpylabModel.kernelManager.findById(kernelId);
+      if (!model) {
+        throw new Error(`Kernel doesn't exist ${kernelId}`);
+      }
+      const kernel = IpylabModel.kernelManager.connectTo({ model });
+      const manager = new KernelWidgetManager(kernel, IpylabModel.rendermime);
+      await kernel.requestExecute(
+        {
+          code: 'import ipylab',
+          store_history: false
+        },
+        true
+      ).done;
+      if (!manager.restoredStatus) {
+        await new Promise(resolve => manager.restored.connect(resolve));
+      }
+    }
+
+    const delegate = IpylabModel.jfemPromises.get(kernelId);
+    const t = setTimeout(() => {
+      IpylabModel.jfemPromises.delete(kernelId);
+      delegate.reject(
+        `Timed out waiting for JupyterFrontEndModel to load for kernelId ='${kernelId}'`
+      );
+    }, timeout);
+    const jfem = await delegate.promise;
+    clearTimeout(t);
+    return jfem;
+  }
+
+  /**
+   * Send an evaluate request to a kernel using its JupyterFrontEndModel.
+   * If the kernelId isn't found (or provided) a new session will be started.
+   */
+  static async evaluate(options: any): Promise<any> {
+    let { kernelId } = options;
+    if (!IpylabModel.jfemPromises.has(kernelId)) {
+      kernelId = (await newSessionContext(options)).session.kernel.id;
+    }
+    const jfem = await IpylabModel.getFrontendModel(kernelId);
+    return await jfem.scheduleOperation('evaluate', options, 'raw');
+  }
+
   /**
    * Assign the values at the path instead of replacing it.
    */
@@ -429,8 +569,8 @@ export class IpylabModel extends WidgetModel {
     if (!this._base) {
       return;
     }
-    this._pendingBackendOperations.forEach(opDone => opDone.reject('Closed'));
-    this._pendingBackendOperations.clear();
+    this._pendingOperations.forEach(opDone => opDone.reject('Closed'));
+    this._pendingOperations.clear();
     comm_closed = comm_closed || !this._kernelLive;
     if (!comm_closed) {
       this.send({ closed: true });
@@ -450,26 +590,16 @@ export class IpylabModel extends WidgetModel {
    * @param cid Get an object that has been registered as a connection.
    * @returns
    */
-  async getConnection(cid: string, id: string = ''): Promise<any> {
-    await IpylabModel.tracker.restored;
-    if (Private.connection.has(cid)) {
-      return Private.connection.get(cid);
+  static async fromConnectionOrId(cid: string, id: string = ''): Promise<any> {
+    if (IpylabModel.connections.has(cid)) {
+      return IpylabModel.connections.get(cid);
     }
-    let obj;
     if (id.slice(0, 10) === 'IPY_MODEL_') {
-      obj = await this.widget_manager.get_model(id.slice(10));
-      if (!(obj instanceof WidgetModel)) {
-        throw new Error(`Failed to get model ${id}`);
-      }
+      const model_id = id.slice(10);
+      return (await IpylabModel.getWidgetModel(model_id)).model;
     } else {
-      obj = this._getLuminoWidgetFromShell(id || cid);
+      return IpylabModel._getLuminoWidgetFromShell(id || cid);
     }
-    IpylabModel.registerConnection(obj, cid);
-    return obj;
-  }
-
-  hasConnection(cid: string) {
-    return Private.connection.has(cid);
   }
 
   /**
@@ -478,21 +608,19 @@ export class IpylabModel extends WidgetModel {
    * @param args The mode as a string or an object with mode and any other parameters.
    * @returns
    */
-  async transformObject(obj: any, args: string | any): Promise<JSONValue> {
+  async transformObject(obj: any, args: string | any): Promise<any> {
     const transform = typeof args === 'string' ? args : args.transform;
     let result, func;
     let cid;
 
     switch (transform) {
-      case 'done':
-        return IpylabModel.OPERATION_DONE;
       case 'raw':
         return (await obj) as any;
       case 'null':
         return null;
       case 'connection':
-        cid = args?.cid ?? `ipylab-connection:${DOMUtils.createDomID()}`;
-        IpylabModel.registerConnection(obj, cid);
+        cid = args?.cid ?? `ipylab-connection:${UUID.uuid4()}`;
+        IpylabModel.registerConnection(cid, obj);
         if (args.auto_dispose) {
           onKernelLost(this.kernel, obj.dispose, obj, true);
         }
@@ -514,6 +642,13 @@ export class IpylabModel extends WidgetModel {
           return await func(obj, args);
         }
         return func(obj);
+      case 'object':
+        if (obj) {
+          try {
+            return await toObject(null, obj);
+          } catch {}
+        }
+        return obj;
       default:
         throw new Error(`Invalid return mode: '${transform}'`);
     }
@@ -523,14 +658,14 @@ export class IpylabModel extends WidgetModel {
    *Keep a reference to an object so it can be found from the backend.
    * @param obj
    */
-  static registerConnection(obj: any, cid: string) {
-    if (typeof obj !== 'object') {
-      throw new Error(`An object is required but got a '${typeof obj}'`);
-    }
+  static registerConnection(cid: string, obj: any) {
     if (!cid) {
       throw new Error('`cid` not provided!');
     }
-    const obj_ = Private.connection.get(cid);
+    if (typeof obj !== 'object') {
+      throw new Error(`An object is required but got a '${typeof obj}'`);
+    }
+    const obj_ = Private.connections.get(cid);
     if (obj_ && obj_ !== obj) {
       throw new Error(
         `Another object with cid='${cid}' is already registered!`
@@ -540,7 +675,7 @@ export class IpylabModel extends WidgetModel {
       obj.dispose = () => '';
       obj.ipylabDisposeOnClose = true;
     }
-    Private.connection.set(cid, obj);
+    Private.connections.set(cid, obj);
     if (!obj.disposed) {
       // Make equivalent to an ObservableDisposable
       obj.disposed = new Signal<any, null>(obj);
@@ -555,7 +690,7 @@ export class IpylabModel extends WidgetModel {
       };
       obj['dispose'] = dispose.bind(obj);
     }
-    obj.disposed.connect(() => Private.connection.delete(cid));
+    obj.disposed.connect(() => Private.connections.delete(cid));
   }
 
   /**
@@ -564,7 +699,7 @@ export class IpylabModel extends WidgetModel {
    * @param id
    * @returns
    */
-  _getLuminoWidgetFromShell(id: string) {
+  static _getLuminoWidgetFromShell(id: string) {
     for (const area of [
       'main',
       'header',
@@ -600,20 +735,37 @@ export class IpylabModel extends WidgetModel {
     };
   }
 
+  static get jfemPromises() {
+    return Private.jfemPromises;
+  }
+
+  static get connections() {
+    return Private.connections;
+  }
+
+  static get kernelManager(): Kernel.IManager {
+    return IpylabModel.app.serviceManager.kernels;
+  }
+
+  static get sessionManager(): Session.IManager {
+    return IpylabModel.app.serviceManager.sessions;
+  }
+
   static serializers: ISerializers = {
     ...WidgetModel.serializers
   };
+  widget_manager: KernelWidgetManager;
 
-  private _pendingBackendOperations = new Map<string, PromiseDelegate<any>>();
+  private _pendingOperations = new Map<string, PromiseDelegate<any>>();
   private _base: object | null;
-  static ipylabKernel = new IpylabPythonKernel();
   static model_name: string = 'IpylabModel';
   static model_module = MODULE_NAME;
   static model_module_version = MODULE_VERSION;
   static view_name: string;
   static view_module: string;
   static view_module_version = MODULE_VERSION;
-
+  static initial_load: boolean;
+  static backend_ready = new PromiseDelegate();
   static app: JupyterFrontEnd;
   static rendermime: IRenderMimeRegistry;
   static labShell: LabShell;
@@ -623,7 +775,6 @@ export class IpylabModel extends WidgetModel {
   static launcher: ILauncher;
   static menu: IMainMenu;
   static exports: IWidgetRegistryData;
-  static OPERATION_DONE = '--DONE--';
   static connection_model_name = 'ConnectionModel';
   static tracker = new WidgetTracker<Widget>({ namespace: 'ipylab' });
 }
@@ -632,5 +783,9 @@ export class IpylabModel extends WidgetModel {
  * A namespace for private data
  */
 namespace Private {
-  export const connection = new ObservableMap<IDisposable>();
+  export const connections = new Map<string, IDisposable>();
+  export const jfemPromises = new Map<
+    string,
+    PromiseDelegate<JupyterFrontEndModel>
+  >();
 }

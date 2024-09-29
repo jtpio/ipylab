@@ -119,8 +119,10 @@ jlpm lint
 jlpm lint:check
 
 
-- Sometimes, it helps to clear cached files too by running `git clean -dfx`
-  from the root of the cloned repository. You will also need to redo `pip install -e ".[dev]`
+# Sometimes, it helps to clear cached files too by running
+git clean -dfX
+# You will also need to redo
+pip install -e .[dev]
 ```
 
 ## Related projects

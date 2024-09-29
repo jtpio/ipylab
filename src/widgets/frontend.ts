@@ -1,9 +1,7 @@
 // Copyright (c) ipylab contributors
 // Distributed under the terms of the Modified BSD License.
 
-import { KernelWidgetManager } from '@jupyter-widgets/jupyterlab-manager';
 import {
-  DOMUtils,
   InputDialog,
   MainAreaWidget,
   showDialog,
@@ -11,15 +9,11 @@ import {
 } from '@jupyterlab/apputils';
 import { FileDialog } from '@jupyterlab/filebrowser';
 import { IMainMenu, MainMenu } from '@jupyterlab/mainmenu';
-import { PromiseDelegate } from '@lumino/coreutils';
-import {
-  IDisposable,
-  ISerializers,
-  IpylabModel,
-  JSONValue,
-  Widget
-} from './ipylab';
+import { PromiseDelegate, UUID } from '@lumino/coreutils';
+import { IpylabBackendModel } from './backend';
+import { IpylabModel, Widget } from './ipylab';
 import { newSessionContext } from './utils';
+
 export class JupyterFrontEndModel extends IpylabModel {
   /**
    * The default attributes.
@@ -31,18 +25,10 @@ export class JupyterFrontEndModel extends IpylabModel {
     };
   }
 
-  /**
-   * Initialize a JupyterFrontEndModel instance.
-   *
-   * @param attributes The base attributes.
-   * @param options The initialization options.
-   */
-  async initialize(attributes: any, options: any): Promise<void> {
-    const kernelId = options.widget_manager.kernel.id;
-    if (!Private.jupyterFrontEndModels.has(options.widget_manager.kernel.id)) {
-      Private.jupyterFrontEndModels.set(kernelId, new PromiseDelegate());
+  async ipylabInit(base: any = null) {
+    if (!IpylabModel.jfemPromises.has(this.kernelId)) {
+      IpylabModel.jfemPromises.set(this.kernelId, new PromiseDelegate());
     }
-    await super.initialize(attributes, options);
     this.set('version', this.app.version);
     this.sessionManager.runningChanged.connect(
       this._updateAllSessionDetails,
@@ -54,11 +40,12 @@ export class JupyterFrontEndModel extends IpylabModel {
       this._updateSessionDetails();
     }
     this._updateAllSessionDetails();
-    Private.jupyterFrontEndModels.get(kernelId).resolve(this);
+    await super.ipylabInit(base);
+    IpylabModel.jfemPromises.get(this.kernelId).resolve(this);
   }
 
   close(comm_closed?: boolean): Promise<void> {
-    Private.jupyterFrontEndModels.delete(this.kernelId);
+    IpylabModel.jfemPromises.delete(this.kernelId);
     this.labShell.currentChanged.disconnect(this._updateSessionDetails, this);
     this.labShell.activeChanged.disconnect(this._updateSessionDetails, this);
     this.sessionManager.runningChanged.disconnect(
@@ -86,11 +73,13 @@ export class JupyterFrontEndModel extends IpylabModel {
     const settings = IpylabModel.tracker
       .filter(widget => true)
       .flatMap(widget => (widget as any).ipylabSettings);
-    this.set('all_shell_connections_info', settings);
-    this.save_changes();
+    if (this.get('all_shell_connections_info') !== settings) {
+      this.set('all_shell_connections_info', settings);
+      this.save_changes();
+    }
   }
 
-  async operation(op: string, payload: any): Promise<JSONValue | IDisposable> {
+  async operation(op: string, payload: any): Promise<any> {
     function _get_result(result: any): any {
       if (result.value === null) {
         throw new Error('Cancelled');
@@ -113,8 +102,11 @@ export class JupyterFrontEndModel extends IpylabModel {
       case 'getPassword':
         return await InputDialog.getPassword(payload).then(_get_result);
       case 'showErrorMessage':
-        await showErrorMessage(payload.title, payload.error, payload.buttons);
-        return IpylabModel.OPERATION_DONE;
+        return await showErrorMessage(
+          payload.title,
+          payload.error,
+          payload.buttons
+        );
       case 'getOpenFiles':
         payload.manager = this.defaultBrowser.model.manager;
         return await FileDialog.getOpenFiles(payload).then(_get_result);
@@ -125,12 +117,10 @@ export class JupyterFrontEndModel extends IpylabModel {
         return await newSessionContext(payload);
       case 'generateMenu':
         return this._generateMenu(payload.options);
-      case 'execEval':
-        return await this._execEval(payload);
-      case 'backend_ready':
-        JupyterFrontEndModel.backend_ready.resolve(null);
+      case 'evaluate':
+        return await JupyterFrontEndModel.evaluate(payload);
       case 'startIyplabPythonBackend':
-        return (await IpylabModel.ipylabKernel.checkStart(
+        return (await IpylabBackendModel.checkStart(
           payload.restart ?? false
         )) as any;
       case 'shutdownKernel':
@@ -147,35 +137,25 @@ export class JupyterFrontEndModel extends IpylabModel {
     }
   }
 
-  static async getFrontendModel(kernelId: string) {
-    if (!Private.jupyterFrontEndModels.has(kernelId)) {
-      Private.jupyterFrontEndModels.set(kernelId, new PromiseDelegate());
-      const model =
-        await IpylabModel.app.serviceManager.kernels.findById(kernelId);
-      if (!model) {
-        throw new Error(`Kernel doesn't exist ${kernelId}`);
-      }
-      const kernel = IpylabModel.app.serviceManager.kernels.connectTo({
-        model
-      });
-      if (kernel.hasComm) {
-        new KernelWidgetManager(kernel, IpylabModel.rendermime);
-      }
-      kernel.requestExecute(
-        {
-          code: 'import ipylab; ipylab.JupyterFrontEnd()',
-          store_history: false
-        },
-        true
-      );
+  /**
+   * Provided for IpylabModel.tracker for restoring widgets to the main area.
+   * @param args `ipylabSettings` in 'addToShell'
+   */
+  static async restoreToShell(args: any): Promise<Widget> {
+    if (
+      !args.kernelId ||
+      !(await IpylabModel.kernelManager.findById(args.kernelId))
+    ) {
+      return;
     }
-    return await Private.jupyterFrontEndModels.get(kernelId).promise;
+    // await new Promise(resolve => setTimeout(resolve, 10000));
+    return JupyterFrontEndModel.addToShell(args);
   }
 
   /**
-   * Add a widget to the application shell.
+   * Add any widget to the application shell.
    *
-   * It can handle ipywidgets and nativive MainAreaWidgets.
+   * It can handle ipywidgets and native MainAreaWidgets.
    * and can be used to move widgets about the shell. A factory can be specified
    * as mapping of 'id' and 'args'. The facto
    *
@@ -185,48 +165,54 @@ export class JupyterFrontEndModel extends IpylabModel {
    * workspaces. Changing a worksace that doesn't have the same object will
    * lose the connection. Define a factory to enable the connection to be restored.
    *
-   * @param payload The payload to add
+   * @param args The payload to add
    */
-  static async addToShell(payload: any): Promise<Widget> {
-    let { kernelId, cid, area, options, factory } = payload;
-    const model_id = cid.slice(cid.lastIndexOf(':') + 1);
-    let luminoWidget;
-    if (!cid) {
-      cid = `ipylab-shell-connection:${DOMUtils.createDomID()}`;
-    }
-    const jfem = await JupyterFrontEndModel.getFrontendModel(kernelId);
-    if (jfem.hasConnection(cid)) {
-      luminoWidget = await jfem.toLuminoWidget(cid);
-    } else if (factory) {
-      luminoWidget = await IpylabModel.app.commands.execute(
-        factory.id,
-        factory.args
-      );
+  static async addToShell(args: any): Promise<Widget> {
+    let { area, options, cid, kernelId } = args;
+    let luminoWidget: Widget | MainAreaWidget;
+    let id: string = args.id ?? '';
+
+    // Wait for backend to load/reload plugins.
+    await IpylabModel.backend_ready.promise;
+    if (IpylabModel.connections.has(cid)) {
+      luminoWidget = await IpylabBackendModel.fromConnectionOrId(cid);
+    } else if (id) {
+      // An existing widget
+      ({ luminoWidget, kernelId } = await IpylabModel.toLuminoWidget(
+        id,
+        kernelId
+      ));
+    } else if (!(luminoWidget instanceof Widget) && args.evaluate) {
+      // Evaluate code in a kernel to create the widget.
+      id = await JupyterFrontEndModel.evaluate(args);
+      return await JupyterFrontEndModel.addToShell({ ...args, id });
     } else {
-      luminoWidget = await jfem.toLuminoWidget(model_id);
+      throw new Error('Insufficient info provided to add to the shell');
     }
+
+    cid = cid || `ipylab-shell-connection:${UUID.uuid4()}`;
+    area = area || 'main';
+
     if (
       (area === 'main' && !(luminoWidget instanceof MainAreaWidget)) ||
       typeof luminoWidget.title === 'undefined'
     ) {
-      luminoWidget = new MainAreaWidget({
-        content: luminoWidget as any
-      }) as any;
-      luminoWidget.node.removeChild(luminoWidget.toolbar.node);
+      const w = (luminoWidget = new MainAreaWidget({ content: luminoWidget }));
+      w.node.removeChild(w.toolbar.node);
+      w.addClass('ipylab-main-area');
     }
-    if (!luminoWidget.id) {
-      luminoWidget.id = cid;
-    }
-    const id = luminoWidget.id;
-    luminoWidget.ipylabSettings = { kernelId, cid, id, area, options, factory };
-    IpylabModel.registerConnection(luminoWidget, cid);
+    luminoWidget.id = id = id || cid;
+    (luminoWidget as any).ipylabSettings = { ...args, id, cid, kernelId };
+    IpylabModel.registerConnection(cid, luminoWidget);
     IpylabModel.app.shell.add(luminoWidget as any, area, options);
     if (!IpylabModel.tracker.has(luminoWidget)) {
-      if (model_id.slice(0, 10) === 'IPY_MODEL_') {
+      if (id && id.slice(0, 10) === 'IPY_MODEL_') {
         // We add ipywidgets so they can be restored, other widgets should have their own tracker.
         IpylabModel.tracker.add(luminoWidget);
-        jfem.updateTrackerInfo();
-        luminoWidget.disposed.connect(() => jfem.updateTrackerInfo());
+        JupyterFrontEndModel.updateTrackers();
+        luminoWidget.disposed.connect(() =>
+          JupyterFrontEndModel.updateTrackers()
+        );
       } else {
         IpylabModel.tracker.inject(luminoWidget);
       }
@@ -234,13 +220,11 @@ export class JupyterFrontEndModel extends IpylabModel {
     return luminoWidget;
   }
 
-  /**
-   *Send an execEval request to another kernel using its JupyterFrontEndModel.
-   */
-  private async _execEval(payload: any): Promise<any> {
-    const { kernelId, frontendTransform } = payload;
-    const jfem = await JupyterFrontEndModel.getFrontendModel(kernelId);
-    return await jfem.scheduleOperation('execEval', payload, frontendTransform);
+  static async updateTrackers() {
+    for (const value of IpylabModel.jfemPromises.values()) {
+      const jfem: JupyterFrontEndModel = await value.promise;
+      jfem.updateTrackerInfo();
+    }
   }
 
   private _generateMenu(options: IMainMenu.IMenuOptions) {
@@ -252,19 +236,5 @@ export class JupyterFrontEndModel extends IpylabModel {
     return menu;
   }
 
-  static serializers: ISerializers = {
-    ...IpylabModel.serializers
-  };
   static model_name = 'JupyterFrontEndModel';
-  static backend_ready = new PromiseDelegate();
-}
-
-/**
- * A namespace for private data
- */
-namespace Private {
-  export const jupyterFrontEndModels = new Map<
-    string,
-    PromiseDelegate<JupyterFrontEndModel>
-  >();
 }

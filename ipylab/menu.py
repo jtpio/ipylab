@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING
 from ipywidgets import TypedTuple
 from traitlets import Container, Instance, Unicode, observe
 
-from ipylab.asyncwidget import AsyncWidgetBase, Transform, pack
+from ipylab.asyncwidget import AsyncWidgetBase, Transform
 from ipylab.commands import CommandConnection
 from ipylab.connection import Connection
 
@@ -86,7 +86,7 @@ class RankedMenu(AsyncWidgetBase):
                 if not isinstance(submenu, MenuConnection):
                     msg = "`submenu` must be an instance of MenuItemConnection"
                     raise TypeError(msg)
-                info["submenu"] = pack(submenu)
+                info["submenu"] = submenu
                 as_object = ["args.0.submenu"]
             case _:
                 msg = f"Invalid type {type}"
@@ -96,7 +96,7 @@ class RankedMenu(AsyncWidgetBase):
             info,
             transform={
                 "transform": Transform.connection,
-                "cid": MenuItemConnection.new_cid(),
+                "cid": MenuItemConnection.to_cid(),
                 "auto_dispose": True,
                 "info": info,
             },
@@ -142,15 +142,15 @@ class MainMenu(AsyncWidgetBase):
 
         async def add_menu():
             menu = await task
-            await self.execute_method("addMenu", pack(menu), update, {"rank": rank}, toObject=["args.0"])
+            await self.execute_method("addMenu", menu, update, {"rank": rank}, toObject=["args.0"])
             return menu
 
         return self.to_task(self._add_to_tuple_trait("menus", add_menu()))
 
     def create_menu(self, label: str, *, rank: int = 500) -> Task[MenuConnection]:
         """Make a new unique menu, likely to be used as a submenu."""
-        cid = MenuConnection.new_cid(label)
-        return self._generate_menu(id=cid, label=label, cid=cid, rank=rank)
+        cid = MenuConnection.to_cid()
+        return self._generate_menu(id=f"{cid}|{label}", label=label, cid=cid, rank=rank)
 
     def _generate_menu(self, *, id: str, label: str, cid: str, rank: int = 500) -> Task[MenuConnection]:  # noqa: A002
         "Make a new menu that can be used where a menu is required."

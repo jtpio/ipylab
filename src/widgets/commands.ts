@@ -2,21 +2,15 @@
 // Distributed under the terms of the Modified BSD License.
 
 import { CommandRegistry } from '@lumino/commands';
-import { IDisposable, ISerializers, IpylabModel, JSONValue } from './ipylab';
+import { IDisposable, IpylabModel } from './ipylab';
 /**
  * The model for a command registry.
  */
 export class CommandRegistryModel extends IpylabModel {
-  /**
-   * Initialize a CommandRegistryModel instance.
-   *
-   * @param attributes The base attributes.
-   * @param options The initialization options.
-   */
-  async initialize(attributes: any, options: any): Promise<void> {
-    await super.initialize(attributes, options);
+  async ipylabInit(base: any = null) {
     this.commands.commandChanged.connect(this._sendCommandList, this);
     this._sendCommandList();
+    await super.ipylabInit(base);
   }
 
   /**
@@ -31,10 +25,8 @@ export class CommandRegistryModel extends IpylabModel {
     return super.close(comm_closed);
   }
 
-  async operation(op: string, payload: any): Promise<JSONValue | IDisposable> {
+  async operation(op: string, payload: any): Promise<any> {
     switch (op) {
-      case 'execute':
-        return await this.commands.execute(payload.id, payload.args);
       case 'addCommand': {
         return await this._addCommand(payload);
       }
@@ -60,15 +52,14 @@ export class CommandRegistryModel extends IpylabModel {
    * @param payload The command options.
    */
   private async _addCommand(
-    options: CommandRegistry.ICommandOptions & {
-      id: string;
-      frontendTransform: any;
-    }
+    options: CommandRegistry.ICommandOptions & { id: string }
   ): Promise<IDisposable> {
-    const { id, frontendTransform, isToggleable, icon } = options;
+    const { id, isToggleable, icon } = options;
 
+    if (IpylabModel.connections.has(id)) {
+      (await IpylabModel.fromConnectionOrId(id)).dispose();
+    }
     // Make a new object and define functions so we can dynamically update.
-    delete options.frontendTransform;
     const config = { ...options };
     delete config.icon;
     const isToggled = isToggleable ? () => config.isToggled ?? true : null;
@@ -78,11 +69,7 @@ export class CommandRegistryModel extends IpylabModel {
       dataset: () => config.dataset ?? {},
       describedBy: () => config.describedBy ?? '',
       execute: async (args: any) => {
-        return await this.scheduleOperation(
-          'execute',
-          { id: id, args: args },
-          frontendTransform
-        );
+        return await this.scheduleOperation('execute', { id, args }, 'object');
       },
       icon: icon,
       iconClass: () => config.iconClass ?? '',
@@ -111,7 +98,4 @@ export class CommandRegistryModel extends IpylabModel {
     };
   }
   static model_name = 'CommandRegistryModel';
-  static serializers: ISerializers = {
-    ...IpylabModel.serializers
-  };
 }
