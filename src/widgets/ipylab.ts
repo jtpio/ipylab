@@ -263,6 +263,9 @@ export class IpylabModel extends WidgetModel {
    * @param msg
    */
   private async _onCustomMessage(msg: any) {
+    if (typeof msg !== 'string') {
+      return;
+    }
     const content = JSON.parse(msg);
     if (content.toLuminoWidget instanceof Array) {
       // Replace values in kwgs with widgets

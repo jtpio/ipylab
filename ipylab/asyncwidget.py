@@ -220,6 +220,8 @@ class AsyncWidgetBase(WidgetBase):
         return Transform.transform_payload(content["transform"], payload)
 
     def _on_custom_msg(self, _, msg: str, buffers: list):
+        if not isinstance(msg, str):
+            return
         try:
             content = json.loads(msg)
             error = self._to_error(content) if "error" in content else None
