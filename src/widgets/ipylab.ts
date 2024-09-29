@@ -57,42 +57,6 @@ export {
 };
 
 /**
- * Returns the object for the dotted path 'value'.
- * 1. If value starts with IPY_MODEL_ it will unpack the model and return
- *    the object relative to dotted path after the model name. If there is no
- *    path after the model id it will be the model.
- * 2. Otherwise the object as specified by the dotted path relate to the base will be returned.
- * 3. An error will be thrown if the value doesn't point an existing attribute.
- *
- * @param value
- * @param as
- * @param string
- * @returns
- */
-async function toObject(
-  base: any,
-  value: any,
-  nullIfMissing = false
-): Promise<any> {
-  if (typeof value === 'string') {
-    let path = value;
-    if (value.slice(0, 10) === 'IPY_MODEL_') {
-      let model_id;
-      [model_id, path] = value.slice(10).split('.', 2);
-      base = (await IpylabModel.getWidgetModel(model_id)).model;
-      if (base.isConnectionModel) {
-        base = base.base;
-      }
-    }
-    return await getNestedObject({ base, path: path ?? '', nullIfMissing });
-  }
-  if (value?.OTHER_PROPERTIES?.cid) {
-    return await IpylabModel.fromConnectionOrId(value.OTHER_PROPERTIES.cid);
-  }
-  throw new Error(`Cannot convert this value to an object: ${value}`);
-}
-
-/**
  * Base model for common features
  */
 export class IpylabModel extends WidgetModel {
@@ -202,6 +166,26 @@ export class IpylabModel extends WidgetModel {
     return status ? !['dead', 'restarting'].includes(status) : false;
   }
 
+  close(comm_closed?: boolean): Promise<void> {
+    if (!this._base) {
+      return;
+    }
+    this._pendingOperations.forEach(opDone => opDone.reject('Closed'));
+    this._pendingOperations.clear();
+    comm_closed = comm_closed || !this._kernelLive;
+    if (!comm_closed) {
+      this.send({ closed: true });
+    }
+    delete this._base;
+    return super.close(comm_closed);
+  }
+
+  save_changes(callbacks?: {}): void {
+    if (this.comm_live && this._kernelLive) {
+      super.save_changes(callbacks);
+    }
+  }
+
   /**
    * Send a custom msg over the comm.
    */
@@ -215,12 +199,12 @@ export class IpylabModel extends WidgetModel {
       content_ = JSON.stringify(content);
     } catch {
       // Assuming the error is due to circular reference
-      content_ = JSON.stringify(content, IpylabModel.replacer);
+      content_ = JSON.stringify(content, IpylabModel._replacer);
     }
     super.send(content_, callbacks, buffers);
   }
 
-  static replacer(key: string, value: any) {
+  static _replacer(key: string, value: any) {
     // Filtering out properties
     if (key === 'payload') {
       const other = {} as any;
@@ -290,7 +274,7 @@ export class IpylabModel extends WidgetModel {
           nullIfMissing: false
         });
         if (value && typeof value === 'string') {
-          const value_ = await toObject(this.base, value);
+          const value_ = await IpylabModel.toObject(this.base, value);
           setNestedAttribute(content.kwgs, path, value_);
         }
       }
@@ -309,6 +293,180 @@ export class IpylabModel extends WidgetModel {
     } else if (content.ipylab_BE) {
       this._do_operation_for_backend(content);
     }
+  }
+
+  /**
+   * Perform an operation for the backend returning the result if successful
+   * or an 'error' message if unsuccessful.
+   * Results are 'transformed' by the method specified in the call to the operation from the backend.
+   * The transformed result is returned to the backend using the ipylab_BE value (uuid4).
+   * @param content
+   */
+  private async _do_operation_for_backend(content: any) {
+    const { operation, ipylab_BE, transform, kwgs } = content;
+    try {
+      let result, buffers;
+      result = await this.operation(operation, kwgs);
+      if ((result as any)?.buffers) {
+        buffers = (result as any).buffers;
+        delete (result as any).buffers;
+      }
+      if ((result as any)?.payload) {
+        result = (result as any).payload;
+      }
+      const response = {
+        ipylab_BE,
+        operation,
+        payload: (await this.transformObject(result, transform)) ?? null
+      };
+      this.send(response, null, buffers);
+    } catch (e) {
+      this.send({
+        operation: operation,
+        ipylab_BE: content.ipylab_BE,
+        error: `${(e as Error).message}`
+      });
+      console.error(e);
+    }
+  }
+
+  private async _executeMethod(payload: any): Promise<any> {
+    const { path, args } = payload;
+    const obj = this.base;
+    const ownername = path.split('.').slice(0, -1).join('.');
+    const owner = getNestedObject({
+      base: obj,
+      path: ownername,
+      basename: this.get('_basename')
+    });
+    let func = getNestedObject({ base: obj, path: path, basename: ownername });
+    func = func.bind(owner, ...args);
+    return await func();
+  }
+
+  private _listProperties(payload: any) {
+    const { path, type, depth } = payload as any;
+    return listProperties({
+      obj: getNestedObject({
+        base: this.base,
+        path: path,
+        basename: this.get('_basename')
+      }),
+      type: type,
+      depth: depth ?? 2
+    });
+  }
+
+  private _getProperty(payload: any) {
+    const { path, nullIfMissing } = payload;
+    return getNestedObject({
+      base: this.base,
+      path,
+      nullIfMissing: nullIfMissing ?? false,
+      basename: this.get('_basename')
+    });
+  }
+
+  /**
+   * Update the property. Equivalent to python: `dict.update`.
+   */
+  private async _updateProperty(payload: any): Promise<null> {
+    const { value, valueTransform } = payload;
+    const obj = this._getProperty(payload);
+    const value_ = await this.transformObject(value, valueTransform);
+    return Object.assign(obj, value_);
+  }
+  /**
+   * Set a property. Equivalent to python `setattr`.
+   */
+  private async _setProperty(payload: any): Promise<any> {
+    const { path, value, valueTransform } = payload;
+    const value_ = await this.transformObject(value, valueTransform);
+    setNestedAttribute(this.base, path, value_);
+    return value_;
+  }
+
+  /**
+   * Schedule an operation to be performed on the backend.
+   * This is a mirror of 'schedule_operation' on the backend.
+   *
+   * @param operation The name of the operation to perform on the backend.
+   * @param payload Corresponding payload as expected by the backend.
+   * @param transform The type of transformation to apply. See python `class Transform`.
+   */
+  async scheduleOperation(
+    operation: string,
+    payload: JSONValue,
+    transform: any
+  ): Promise<any> {
+    const ipylab_FE = UUID.uuid4();
+    // Create callbacks to be resolved when a custom message is received
+    // with the key `ipylab_FE`.
+    const opDone = new PromiseDelegate();
+    this._pendingOperations.set(ipylab_FE, opDone);
+    this.send({ ipylab_FE, operation, payload });
+    const result: any = await opDone.promise;
+    return await this.transformObject(result, transform);
+  }
+
+  /**
+   * Perform an operation and return the result.
+   *
+   * @param op Name of the operation.
+   * @param payload Options relevant to the operation.
+   * @returns Raw result of the operation.
+   */
+  async operation(op: string, payload: any): Promise<any> {
+    switch (op) {
+      case 'executeCommand':
+        return await this.commands.execute(payload.id, payload.args);
+      case 'executeMethod':
+        return await this._executeMethod(payload);
+      case 'getProperty':
+        return await this._getProperty(payload);
+      case 'listProperties':
+        return this._listProperties(payload);
+      case 'setProperty':
+        return this._setProperty(payload);
+      case 'updateProperty':
+        return this._updateProperty(payload);
+      default:
+        // Each failed operation should throw an error if it is un-handled
+        throw new Error(
+          `operation='${op}' has not been implemented in ${
+            this.defaults().model_name
+          }!`
+        );
+    }
+  }
+
+  /**
+   * The default attributes.
+   */
+  defaults(): Backbone.ObjectHash {
+    return {
+      ...super.defaults(),
+      _model_name: 'IpylabModel',
+      _model_module: IpylabModel.model_module,
+      _model_module_version: IpylabModel.model_module_version,
+      _view_name: null,
+      _view_module: IpylabModel.view_module,
+      _view_module_version: IpylabModel.view_module_version
+    };
+  }
+
+  /**
+   * Send an evaluate request to a kernel using its JupyterFrontEndModel.
+   * If the kernelId isn't found (or provided) a new session using path will be used.
+   * The user may be prompted to select a kernel.
+   */
+  static async evaluate(options: any): Promise<any> {
+    let { kernelId } = options;
+    if (!IpylabModel.jfemPromises.has(kernelId)) {
+      kernelId = (await newSessionContext(options)).session.kernel.id;
+    }
+    const jfem = await IpylabModel.getFrontendModel(kernelId);
+    return await jfem.scheduleOperation('evaluate', options, 'raw');
   }
 
   /**
@@ -349,41 +507,6 @@ export class IpylabModel extends WidgetModel {
   }
 
   /**
-   * Perform an operation for the backend returning the result if successful
-   * or an 'error' message if unsuccessful.
-   * Results are 'transformed' by the method specified in the call to the operation from the backend.
-   * The transformed result is returned to the backend using the ipylab_BE value (uuid4).
-   * @param content
-   */
-  private async _do_operation_for_backend(content: any) {
-    const { operation, ipylab_BE, transform, kwgs } = content;
-    try {
-      let result, buffers;
-      result = await this.operation(operation, kwgs);
-      if ((result as any)?.buffers) {
-        buffers = (result as any).buffers;
-        delete (result as any).buffers;
-      }
-      if ((result as any)?.payload) {
-        result = (result as any).payload;
-      }
-      const response = {
-        ipylab_BE,
-        operation,
-        payload: (await this.transformObject(result, transform)) ?? null
-      };
-      this.send(response, null, buffers);
-    } catch (e) {
-      this.send({
-        operation: operation,
-        ipylab_BE: content.ipylab_BE,
-        error: `${(e as Error).message}`
-      });
-      console.error(e);
-    }
-  }
-
-  /**
    * Get a Lumino Widget searching extensively.
    *
    * @param id
@@ -409,95 +532,31 @@ export class IpylabModel extends WidgetModel {
   }
 
   /**
-   * Perform an operation and return the result. The returned result
-   * will be transformed prior to returning the response message to the backend.
+   * Get the lumino widget from the shell using its id.
    *
-   * @param op Name of the operation.
-   * @param payload Options relevant to the operation.
-   * @returns Raw result of the operation.
-   */
-  async operation(op: string, payload: any): Promise<any> {
-    switch (op) {
-      case 'executeCommand':
-        return await this.commands.execute(payload.id, payload.args);
-      case 'executeMethod':
-        return await this._executeMethod(payload);
-      case 'listProperties':
-        return this._listProperties(payload);
-      case 'setProperty':
-        return this._setProperty(payload);
-      case 'updateProperty':
-        return this._updateProperty(payload);
-      case 'getProperty':
-        return await this._getProperty(payload);
-      default:
-        // Each failed operation should throw an error if it is un-handled
-        throw new Error(
-          `operation='${op}' has not been implemented in ${
-            this.defaults().model_name
-          }!`
-        );
-    }
-  }
-
-  /**
-   * Schedule an operation to be performed on the backend.
-   * This is a mirror of 'schedule_operation' on the backend.
-   *
-   * @param operation The name of the operation to perform on the backend.
-   * @param payload Corresponding payload as expected by the backend.
+   * @param id
    * @returns
    */
-  async scheduleOperation(
-    operation: string,
-    payload: JSONValue,
-    transform: any
-  ): Promise<any> {
-    const ipylab_FE = UUID.uuid4();
-    // Create callbacks to be resolved when a custom message is received
-    // with the key `ipylab_FE`.
-    const opDone = new PromiseDelegate();
-    this._pendingOperations.set(ipylab_FE, opDone);
-    this.send({ ipylab_FE, operation, payload });
-    const result: any = await opDone.promise;
-    return await this.transformObject(result, transform);
-  }
-
-  private async _executeMethod(payload: any): Promise<any> {
-    const { path, args } = payload;
-    const obj = this.base;
-    const ownername = path.split('.').slice(0, -1).join('.');
-    const owner = getNestedObject({
-      base: obj,
-      path: ownername,
-      basename: this.get('_basename')
-    });
-    let func = getNestedObject({ base: obj, path: path, basename: ownername });
-    func = func.bind(owner, ...args);
-    return await func();
-  }
-
-  private _listProperties(payload: any) {
-    const { path, type, depth } = payload as any;
-    return listProperties({
-      obj: getNestedObject({
-        base: this.base,
-        path: path,
-        basename: this.get('_basename')
-      }),
-      type: type,
-      depth: depth ?? 2
-    });
-  }
-
-  private _getProperty(payload: any) {
-    const { path, nullIfMissing } = payload;
-    return getNestedObject({
-      base: this.base,
-      path,
-      nullIfMissing: nullIfMissing ?? false,
-      basename: this.get('_basename')
-    });
+  static getLuminoWidgetFromShell(id: string) {
+    for (const area of [
+      'main',
+      'header',
+      'top',
+      'menu',
+      'left',
+      'right',
+      'bottom',
+      'down'
+    ]) {
+      for (const widget of IpylabModel.labShell.widgets(
+        area as ILabShell.Area
+      )) {
+        if (widget.id === id) {
+          return widget;
+        }
+      }
+      throw new Error(`Lumino widget with id='${id}' not found in the shell.`);
+    }
   }
 
   static async getFrontendModel(kernelId: string, timeout = 10000) {
@@ -538,58 +597,6 @@ export class IpylabModel extends WidgetModel {
   }
 
   /**
-   * Send an evaluate request to a kernel using its JupyterFrontEndModel.
-   * If the kernelId isn't found (or provided) a new session will be started.
-   */
-  static async evaluate(options: any): Promise<any> {
-    let { kernelId } = options;
-    if (!IpylabModel.jfemPromises.has(kernelId)) {
-      kernelId = (await newSessionContext(options)).session.kernel.id;
-    }
-    const jfem = await IpylabModel.getFrontendModel(kernelId);
-    return await jfem.scheduleOperation('evaluate', options, 'raw');
-  }
-
-  /**
-   * Assign the values at the path instead of replacing it.
-   */
-  private async _updateProperty(payload: any): Promise<null> {
-    const { value, valueTransform } = payload;
-    const obj = this._getProperty(payload);
-    const value_ = await this.transformObject(value, valueTransform);
-    return Object.assign(obj, value_);
-  }
-  /**
-   * Set an attribute at the path with transformation.
-   */
-  private async _setProperty(payload: any): Promise<any> {
-    const { path, value, valueTransform } = payload;
-    const value_ = await this.transformObject(value, valueTransform);
-    setNestedAttribute(this.base, path, value_);
-    return value_;
-  }
-
-  close(comm_closed?: boolean): Promise<void> {
-    if (!this._base) {
-      return;
-    }
-    this._pendingOperations.forEach(opDone => opDone.reject('Closed'));
-    this._pendingOperations.clear();
-    comm_closed = comm_closed || !this._kernelLive;
-    if (!comm_closed) {
-      this.send({ closed: true });
-    }
-    delete this._base;
-    return super.close(comm_closed);
-  }
-
-  save_changes(callbacks?: {}): void {
-    if (this.comm_live && this._kernelLive) {
-      super.save_changes(callbacks);
-    }
-  }
-
-  /**
    *
    * @param cid Get an object that has been registered as a connection.
    * @returns
@@ -602,8 +609,82 @@ export class IpylabModel extends WidgetModel {
       const model_id = id.slice(10);
       return (await IpylabModel.getWidgetModel(model_id)).model;
     } else {
-      return IpylabModel._getLuminoWidgetFromShell(id || cid);
+      return IpylabModel.getLuminoWidgetFromShell(id || cid);
     }
+  }
+
+  /**
+   *Keep a reference to an object so it can be found from the backend.
+   * @param obj
+   */
+  static registerConnection(cid: string, obj: any) {
+    if (!cid) {
+      throw new Error('`cid` not provided!');
+    }
+    if (typeof obj !== 'object') {
+      throw new Error(`An object is required but got a '${typeof obj}'`);
+    }
+    const obj_ = Private.connections.get(cid);
+    if (obj_ && obj_ !== obj) {
+      throw new Error(
+        `Another object with cid='${cid}' is already registered!`
+      );
+    }
+    if (!obj.dispose) {
+      obj.dispose = () => '';
+      obj.ipylabDisposeOnClose = true;
+    }
+    Private.connections.set(cid, obj);
+    if (!obj.disposed) {
+      // Make equivalent to an ObservableDisposable
+      obj.disposed = new Signal<any, null>(obj);
+      const dispose_ = obj.dispose.bind(obj);
+      const dispose = () => {
+        if (obj.isDisposed) {
+          return;
+        }
+        dispose_();
+        obj.disposed.emit(null);
+        Signal.clearData(obj);
+      };
+      obj['dispose'] = dispose.bind(obj);
+    }
+    obj.disposed.connect(() => Private.connections.delete(cid));
+  }
+
+  /**
+   * Returns the object for the dotted path 'value'.
+   * 1. If value starts with IPY_MODEL_ it will ignore the base, instead
+   *    unpacking the model and return the object relative to dotted path after
+   *    the model name. If there is no path after the model id it will be the model.
+   * 2. The object as specified by the dotted path relate to the base will be returned.
+   * 3. An error will be thrown if the value doesn't point an existing attribute.
+   *
+   * @param base The object to locate the dotted value.
+   * @param value The dotted path on the base (except for IPY_MODEL_).
+   * @param nullIfMissing Return a null instead of throwing an error if missing.
+   */
+  static async toObject(
+    base: any,
+    value: any,
+    nullIfMissing = false
+  ): Promise<any> {
+    if (typeof value === 'string') {
+      let path = value;
+      if (value.slice(0, 10) === 'IPY_MODEL_') {
+        let model_id;
+        [model_id, path] = value.slice(10).split('.', 2);
+        base = (await IpylabModel.getWidgetModel(model_id)).model;
+        if (base.isConnectionModel) {
+          base = base.base;
+        }
+      }
+      return await getNestedObject({ base, path: path ?? '', nullIfMissing });
+    }
+    if (value?.OTHER_PROPERTIES?.cid) {
+      return await IpylabModel.fromConnectionOrId(value.OTHER_PROPERTIES.cid);
+    }
+    throw new Error(`Cannot convert this value to an object: ${value}`);
   }
 
   /**
@@ -649,79 +730,12 @@ export class IpylabModel extends WidgetModel {
       case 'object':
         if (obj) {
           try {
-            return await toObject(null, obj);
+            return await IpylabModel.toObject(null, obj);
           } catch {}
         }
         return obj;
       default:
         throw new Error(`Invalid return mode: '${transform}'`);
-    }
-  }
-
-  /**
-   *Keep a reference to an object so it can be found from the backend.
-   * @param obj
-   */
-  static registerConnection(cid: string, obj: any) {
-    if (!cid) {
-      throw new Error('`cid` not provided!');
-    }
-    if (typeof obj !== 'object') {
-      throw new Error(`An object is required but got a '${typeof obj}'`);
-    }
-    const obj_ = Private.connections.get(cid);
-    if (obj_ && obj_ !== obj) {
-      throw new Error(
-        `Another object with cid='${cid}' is already registered!`
-      );
-    }
-    if (!obj.dispose) {
-      obj.dispose = () => '';
-      obj.ipylabDisposeOnClose = true;
-    }
-    Private.connections.set(cid, obj);
-    if (!obj.disposed) {
-      // Make equivalent to an ObservableDisposable
-      obj.disposed = new Signal<any, null>(obj);
-      const dispose_ = obj.dispose.bind(obj);
-      const dispose = () => {
-        if (obj.isDisposed) {
-          return;
-        }
-        dispose_();
-        obj.disposed.emit(null);
-        Signal.clearData(obj);
-      };
-      obj['dispose'] = dispose.bind(obj);
-    }
-    obj.disposed.connect(() => Private.connections.delete(cid));
-  }
-
-  /**
-   * Get the lumino widget from the shell using its id.
-   *
-   * @param id
-   * @returns
-   */
-  static _getLuminoWidgetFromShell(id: string) {
-    for (const area of [
-      'main',
-      'header',
-      'top',
-      'menu',
-      'left',
-      'right',
-      'bottom',
-      'down'
-    ]) {
-      for (const widget of IpylabModel.labShell.widgets(
-        area as ILabShell.Area
-      )) {
-        if (widget.id === id) {
-          return widget;
-        }
-      }
-      throw new Error(`Lumino widget with id='${id}' not found in the shell.`);
     }
   }
 
@@ -745,20 +759,6 @@ export class IpylabModel extends WidgetModel {
     ...WidgetModel.serializers
   };
 
-  /**
-   * The default attributes.
-   */
-  defaults(): Backbone.ObjectHash {
-    return {
-      ...super.defaults(),
-      _model_name: 'IpylabModel',
-      _model_module: IpylabModel.model_module,
-      _model_module_version: IpylabModel.model_module_version,
-      _view_name: null,
-      _view_module: IpylabModel.view_module,
-      _view_module_version: IpylabModel.view_module_version
-    };
-  }
   widget_manager: KernelWidgetManager;
   private _pendingOperations = new Map<string, PromiseDelegate<any>>();
   private _base: object | null;
