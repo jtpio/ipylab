@@ -63,9 +63,9 @@ export class NotificationManagerModel extends IpylabModel {
   defaults(): Backbone.ObjectHash {
     return {
       ...super.defaults(),
-      _model_name: NotificationManagerModel.model_name
+      _model_name: 'NotificationManagerModel'
     };
   }
+
   notifications = new Map<string, ObservableDisposableDelegate>();
-  static model_name = 'NotificationManagerModel';
 }

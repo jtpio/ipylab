@@ -148,7 +148,7 @@ class ShellConnection(Connection):
             Whether to dispose of the object at the frontend.
             If None, dispose will be True if the widget originated from ipylab.
         """
-        super().close(dispose="IPY_MODEL_" in self.cid if dispose is None else dispose)
+        super().close(dispose=self.id.startswith("IPY_MODEL_") if dispose is None else dispose)
 
     def activate(self):
         task = self.app.shell.execute_method("activateById", self.id)

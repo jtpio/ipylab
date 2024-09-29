@@ -15,16 +15,6 @@ import { IpylabModel, Widget } from './ipylab';
 import { newSessionContext } from './utils';
 
 export class JupyterFrontEndModel extends IpylabModel {
-  /**
-   * The default attributes.
-   */
-  defaults(): Backbone.ObjectHash {
-    return {
-      ...super.defaults(),
-      _model_name: JupyterFrontEndModel.model_name
-    };
-  }
-
   async ipylabInit(base: any = null) {
     if (!IpylabModel.jfemPromises.has(this.kernelId)) {
       IpylabModel.jfemPromises.set(this.kernelId, new PromiseDelegate());
@@ -199,8 +189,9 @@ export class JupyterFrontEndModel extends IpylabModel {
     ) {
       const w = (luminoWidget = new MainAreaWidget({ content: luminoWidget }));
       w.node.removeChild(w.toolbar.node);
-      w.addClass('ipylab-main-area');
+      w.addClass('ipylab-MainArea');
     }
+    luminoWidget.addClass('ipylab-shell');
     luminoWidget.id = id = id || cid;
     (luminoWidget as any).ipylabSettings = { ...args, id, cid, kernelId };
     IpylabModel.registerConnection(cid, luminoWidget);
@@ -236,5 +227,10 @@ export class JupyterFrontEndModel extends IpylabModel {
     return menu;
   }
 
-  static model_name = 'JupyterFrontEndModel';
+  /**
+   * The default attributes.
+   */
+  defaults(): Backbone.ObjectHash {
+    return { ...super.defaults(), _model_name: 'JupyterFrontEndModel' };
+  }
 }

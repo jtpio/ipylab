@@ -27,8 +27,13 @@ export async function newSessionContext({
   type?: string;
 }): Promise<SessionContext> {
   path = path || UUID.uuid4();
+
+  // TODO: Search for path first
+  // if (!kernelId || !(await IpylabModel.kernelManager.findById(kernelId))) {
+  // }
+
   const sessionContext = new SessionContext({
-    sessionManager: IpylabModel.app.serviceManager.sessions,
+    sessionManager: IpylabModel.sessionManager,
     specsManager: IpylabModel.app.serviceManager.kernelspecs,
     path: path,
     name: name || path,

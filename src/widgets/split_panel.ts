@@ -67,14 +67,10 @@ export class SplitPanelModel extends PanelModel {
   defaults(): Backbone.ObjectHash {
     return {
       ...super.defaults(),
-      _model_name: SplitPanelModel.model_name,
-      _view_name: SplitPanelModel.view_name
+      _model_name: 'SplitPanelModel',
+      _view_name: 'SplitPanelView'
     };
   }
-
-  static model_name = 'SplitPanelModel';
-  static view_name = 'SplitPanelView';
-  class_name = 'ipylab-splitpanel';
 }
 
 /**

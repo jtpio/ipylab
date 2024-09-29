@@ -11,21 +11,6 @@ import { IconModel } from './icon';
  */
 export class TitleModel extends WidgetModel {
   /**
-   * The default attributes.
-   */
-  defaults(): Backbone.ObjectHash {
-    return {
-      ...super.defaults(),
-      _model_name: TitleModel.model_name,
-      _model_module: TitleModel.model_module,
-      _model_module_version: TitleModel.model_module_version,
-      _view_name: null,
-      _view_module: MODULE_NAME,
-      _view_module_version: MODULE_VERSION
-    };
-  }
-
-  /**
    * Initialize a LabIcon instance.
    *
    * @param attributes The base attributes.
@@ -67,8 +52,19 @@ export class TitleModel extends WidgetModel {
     icon: { deserialize: unpack_models }
   };
   icon: IconModel;
-  static model_name = 'TitleModel';
-  static model_module = MODULE_NAME;
-  static model_module_version = MODULE_VERSION;
-  static view_module_version = MODULE_VERSION;
+
+  /**
+   * The default attributes.
+   */
+  defaults(): Backbone.ObjectHash {
+    return {
+      ...super.defaults(),
+      _model_name: 'TitleModel',
+      _model_module: MODULE_NAME,
+      _model_module_version: MODULE_VERSION,
+      _view_name: null,
+      _view_module: MODULE_NAME,
+      _view_module_version: MODULE_VERSION
+    };
+  }
 }

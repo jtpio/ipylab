@@ -124,7 +124,7 @@ class AsyncWidgetBase(WidgetBase):
         self._async_widget_base_init_complete = True
 
     def __repr__(self):
-        if not self.ready and self._repr_mimebundle_:
+        if (not self.ready) and self._repr_mimebundle_:
             return f"<Not ready:{self.__class__.__name__}>"
         return super().__repr__()
 
@@ -398,7 +398,7 @@ class AsyncWidgetBase(WidgetBase):
 
         example:
         ```
-        ipylab.app.execute_method(widget=app.current_widget_id, method="close")
+        app.execute_method(widget=app.current_widget_id, method="close")
         ```
         """
         # This operation is sent to the frontend function _fe_execute in 'ipylab/src/widgets/ipylab.ts'

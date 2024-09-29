@@ -3,10 +3,6 @@
 | Distributed under the terms of the Modified BSD License.
 |---------------------------------------------------------------------------- */
 
-.jp-SideAreaWidget {
-  background: var(--jp-layout-color1);
-  display: flex;
-}
 
 .ipylab-panel {
   height: 100%;
@@ -23,4 +19,11 @@
 /* Default Split Handle Color */
 .ipylab-splitpanel .lm-SplitPanel-handle {
   background-color: var(--jp-border-color2);
+}
+
+.ipylab-MainArea {
+  box-sizing: border-box;
+  display: flex;
+  width: 100%;
+  height: 100%;
 }

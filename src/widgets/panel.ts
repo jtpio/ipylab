@@ -20,23 +20,15 @@ export class PanelModel extends BoxModel {
   defaults(): Backbone.ObjectHash {
     return {
       ...super.defaults(),
-      _model_name: PanelModel.model_name,
-      _model_module: PanelModel.model_module,
-      _model_module_version: PanelModel.model_module_version,
-      _view_name: PanelModel.view_name,
-      _view_module: PanelModel.model_module,
-      _view_module_version: PanelModel.model_module_version
+      _model_name: 'PanelModel',
+      _model_module: MODULE_NAME,
+      _model_module_version: MODULE_VERSION,
+      _view_name: 'PanelView',
+      _view_module: MODULE_NAME,
+      _view_module_version: MODULE_VERSION
     };
   }
 
-  class_name: string; // class_name is set in widgets.py
-  title: TitleModel;
-  static model_name = 'PanelModel';
-  static model_module = MODULE_NAME;
-  static model_module_version = MODULE_VERSION;
-  static view_name = 'PanelView';
-  static view_module = MODULE_NAME;
-  static view_module_name = MODULE_VERSION;
   static serializers = {
     ...BoxModel.serializers,
     title: { deserialize: unpack_models }
@@ -63,9 +55,7 @@ export class PanelView extends BoxView {
   }
 
   update_class_name() {
-    if (this.class_name) {
-      this.luminoWidget.removeClass(this.class_name);
-    }
+    this.luminoWidget.removeClass(this.class_name);
     this.class_name = this.model.get('class_name');
     if (this.class_name) {
       this.luminoWidget.addClass(this.class_name);

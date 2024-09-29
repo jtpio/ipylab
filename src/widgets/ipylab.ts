@@ -28,7 +28,7 @@ import {
   PromiseDelegate,
   UUID
 } from '@lumino/coreutils';
-import { IDisposable } from '@lumino/disposable';
+import { IDisposable, IObservableDisposable } from '@lumino/disposable';
 import { Signal } from '@lumino/signaling';
 import { Widget } from '@lumino/widgets';
 import { MODULE_NAME, MODULE_VERSION } from '../version';
@@ -44,6 +44,7 @@ import {
 export {
   CommandRegistry,
   IDisposable,
+  IObservableDisposable,
   ILabShell,
   ILauncher,
   ISerializers,
@@ -720,20 +721,6 @@ export class IpylabModel extends WidgetModel {
       throw new Error(`Lumino widget with id='${id}' not found in the shell.`);
     }
   }
-  /**
-   * The default attributes.
-   */
-  defaults(): Backbone.ObjectHash {
-    return {
-      ...super.defaults(),
-      _model_name: IpylabModel.model_name,
-      _model_module: IpylabModel.model_module,
-      _model_module_version: IpylabModel.model_module_version,
-      _view_name: IpylabModel.view_name,
-      _view_module: IpylabModel.view_module,
-      _view_module_version: IpylabModel.view_module_version
-    };
-  }
 
   static get jfemPromises() {
     return Private.jfemPromises;
@@ -754,14 +741,27 @@ export class IpylabModel extends WidgetModel {
   static serializers: ISerializers = {
     ...WidgetModel.serializers
   };
-  widget_manager: KernelWidgetManager;
 
+  /**
+   * The default attributes.
+   */
+  defaults(): Backbone.ObjectHash {
+    return {
+      ...super.defaults(),
+      _model_name: 'IpylabModel',
+      _model_module: IpylabModel.model_module,
+      _model_module_version: IpylabModel.model_module_version,
+      _view_name: null,
+      _view_module: IpylabModel.view_module,
+      _view_module_version: IpylabModel.view_module_version
+    };
+  }
+  widget_manager: KernelWidgetManager;
   private _pendingOperations = new Map<string, PromiseDelegate<any>>();
   private _base: object | null;
   static model_name: string = 'IpylabModel';
   static model_module = MODULE_NAME;
   static model_module_version = MODULE_VERSION;
-  static view_name: string;
   static view_module: string;
   static view_module_version = MODULE_VERSION;
   static initial_load: boolean;
@@ -783,7 +783,7 @@ export class IpylabModel extends WidgetModel {
  * A namespace for private data
  */
 namespace Private {
-  export const connections = new Map<string, IDisposable>();
+  export const connections = new Map<string, IObservableDisposable>();
   export const jfemPromises = new Map<
     string,
     PromiseDelegate<JupyterFrontEndModel>

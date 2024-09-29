@@ -41,6 +41,7 @@ class Shell(AsyncWidgetBase):
         rank: int | None = None,
         ref: ShellConnection | None = None,
         options: dict | None = None,
+        cid: ShellConnection | Widget | str | None = None,
         **kwgs,
     ) -> Task[ShellConnection]:
         """
@@ -61,10 +62,16 @@ class Shell(AsyncWidgetBase):
             mode: InsertMode
             https://jupyterlab.readthedocs.io/en/latest/api/interfaces/docregistry.DocumentRegistry.IOpenOptions.html
 
+        cid:
+            Specify the cid to use. Useful to restrict the view in the shell to one. If there is
+            already an existing shell connection, it will be used even if an obj is provided.
+
         Basic example
         -------------
+
+        The example evaluates code in a session with path="test".
         ```
-        ipylab.app.shell.add('ipw.HTML("<h1>Hello world<h1>")')
+        ipylab.app.shell.add("ipylab.Panel([ipw.HTML('<h1>Test')])", path="test")
         ```
         """
         kwgs["options"] = {
@@ -77,7 +84,7 @@ class Shell(AsyncWidgetBase):
             kwgs["id"] = obj.id if isinstance(obj, Connection) else pack(obj)
         else:
             kwgs["evaluate"] = pack(obj)
-        cid = ShellConnection.to_cid()
+        cid = ShellConnection.to_cid(cid) if cid else ShellConnection.to_cid()
         kwgs["transform"] = {"transform": Transform.connection, "cid": cid}
         return self.execute_command("ipylab:add-to-shell", cid=cid, area=area, **kwgs)
 
