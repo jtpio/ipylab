@@ -4,9 +4,11 @@ from __future__ import annotations
 
 import functools
 import inspect
+from collections import OrderedDict
 from typing import TYPE_CHECKING, Any
 
 import ipywidgets as ipw
+from IPython.core.getipython import get_ipython
 from traitlets import Container, Dict, Instance, Tuple, Unicode, observe
 
 import ipylab
@@ -21,6 +23,17 @@ from ipylab.shell import Shell
 
 if TYPE_CHECKING:
     from collections.abc import Iterable
+    from typing import ClassVar
+
+
+class LastUpdatedOrderedDict(OrderedDict):
+    "Store items in the order the keys were last added"
+
+    # ref: https://docs.python.org/3/library/collections.html#ordereddict-examples-and-recipes
+
+    def __setitem__(self, key, value):
+        super().__setitem__(key, value)
+        self.move_to_end(key)
 
 
 @register
@@ -41,6 +54,12 @@ class JupyterFrontEnd(AsyncWidgetBase):
     session_manager = Instance(SessionManager, (), read_only=True)
     menu = Instance(MainMenu, ())
     notification = Instance(NotificationManager, ())
+    active_namespace = Unicode("", read_only=True, help="name of the current namespace")
+    namespace_defaults = Dict({"ipylab": ipylab, "ipywidgets": ipw, "ipw": ipw})
+    _namespaces: Container[dict[str, LastUpdatedOrderedDict]] = Dict(read_only=True)  # type: ignore
+    namespaces: Container[tuple[str, ...]] = Tuple(read_only=True).tag(sync=True)
+    _ipy_shell = get_ipython()
+    _ipy_default_namespace: ClassVar = getattr(_ipy_shell, "user_ns", {})
 
     def __init_subclass__(cls, **kwargs) -> None:
         msg = "Subclassing the `JupyterFrontEnd` class is not allowed!"
@@ -77,6 +96,10 @@ class JupyterFrontEnd(AsyncWidgetBase):
         """Shutdown the kernel"""
         return self.schedule_operation("shutdownKernel", kernelId=kernelId)
 
+    def checkstart_iyplab_python_backend(self, *, restart=False):
+        """Checks backend is running and starts it if it isn't, returning the session model."""
+        return self.schedule_operation("startIyplabPythonBackend", restart=restart, transform=Transform.raw)
+
     # TODO: move to AsyncWidgetBase maybe. Maybe use a path instead of a kernel or find the kernel by the path
     def evaluate(
         self, evaluate: dict[str, str | inspect._SourceObjectType] | str, *, kernelId="", path="", name="", **kwgs
@@ -84,9 +107,9 @@ class JupyterFrontEnd(AsyncWidgetBase):
         """Evaluate code in a Python kernel.
 
         If `kernelId` isn't provided a session matching the path will be used, possibly prompting for a kernel.
-            **kwgs are used when creating a new session context.
+            **kwgs are used when creating a new session namespace.
                 name: name of the new session.
-                path: path of the session context.
+                path: path of the session namespace.
 
         evaluate:
             An expression to evaluate or execute.
@@ -117,6 +140,36 @@ class JupyterFrontEnd(AsyncWidgetBase):
             "evaluate", evaluate=evaluate, kernelId=kernelId, path=path, name=name, **kwgs
         )
 
+    def _get_namespace(self, path=""):
+        "Get the 'globals' namespace stored for path."
+        if path not in self._namespaces:
+            self._namespaces[path] = LastUpdatedOrderedDict(self._ipy_default_namespace | self.namespace_defaults)
+            self.set_trait("namespaces", tuple(self.namespaces))
+        return self._namespaces[path]
+
+    def update_namespace(self, path: str, glbls: dict, *, activate=False):
+        "Update the namespace for the path"
+        self._get_namespace(path).update(glbls)
+        if activate:
+            self.activate_namespace(path)
+
+    def activate_namespace(self, path: str):
+        "Sets the ipython/console namespace to the one corresponding to path."
+        if not self._ipy_shell:
+            msg = "Ipython shell is not loaded!"
+            raise RuntimeError(msg)
+        self._ipy_shell.user_ns = self._get_namespace(path)
+        self.set_trait("active_namespace", path)
+        self._ipy_shell.push({})
+
+    def reset_namespace(self, path: str, *, activate=True):
+        "Reset the namespace to default. If activate is False it won't be created."
+        self._namespaces.pop(path, None)
+        if activate:
+            self.activate_namespace(path)
+        else:
+            self.set_trait("namespaces", tuple(self.namespaces))
+
     async def _evaluate(self, options: dict, buffers: list) -> Any:
         """Evaluate code corresponding to a call from 'evaluate'.
 
@@ -125,15 +178,16 @@ class JupyterFrontEnd(AsyncWidgetBase):
          2. A direct call in the frontend at jfem.evaluate.
 
         """
-        glbls = {"ipylab": ipylab, "ipywidgets": ipw, "ipw": ipw} | options | {"buffers": buffers}
+        path = options.get("path", "")
+        glbls = self._get_namespace(path) | options | {"buffers": buffers}
         evaluate = options.get("evaluate", {})
         if isinstance(evaluate, str):
             evaluate = {"payload": evaluate}
         for name, expression in evaluate.items():
             try:
-                result = eval(expression, glbls)  # noqa: S307
+                result = eval(expression, glbls, glbls)  # noqa: S307
             except SyntaxError:
-                exec(expression, glbls)  # noqa: S102
+                exec(expression, glbls, glbls)  # noqa: S102
                 result = next(reversed(glbls.values()))
             while callable(result) or inspect.isawaitable(result):
                 if callable(result):
@@ -144,8 +198,6 @@ class JupyterFrontEnd(AsyncWidgetBase):
                 if inspect.isawaitable(result):
                     result = await result
             glbls[name] = result
-        return {"payload": glbls.get("payload"), "buffers": glbls.get("buffers", [])}
-
-    def checkstart_iyplab_python_backend(self, *, restart=False):
-        """Checks backend is running and starts it if it isn't, returning the session model."""
-        return self.schedule_operation("startIyplabPythonBackend", restart=restart, transform=Transform.raw)
+        buffers = glbls.pop("buffers", [])
+        self.update_namespace(path, glbls)
+        return {"payload": glbls.get("payload"), "buffers": buffers}

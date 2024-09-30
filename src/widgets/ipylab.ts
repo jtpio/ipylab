@@ -476,18 +476,32 @@ export class IpylabModel extends WidgetModel {
    * @param model_id The widget model id
    * @returns
    */
-  static async getWidgetManager(model_id: string, kernelId: string) {
+  static async getWidgetManager(
+    model_id: string,
+    kernelId: string
+  ): Promise<KernelWidgetManager> {
     if (kernelId) {
       const jfem = await IpylabModel.getFrontendModel(kernelId);
       if (jfem.widget_manager.has_model(model_id)) {
         return jfem.widget_manager;
       }
     }
-    for (const value of IpylabModel.jfemPromises.values()) {
-      const jfem: JupyterFrontEndModel = await value.promise;
-      if (jfem.widget_manager.has_model(model_id)) {
-        return jfem.widget_manager;
+
+    function* search_for_manager() {
+      for (const kernelId of IpylabModel.jfemPromises.keys()) {
+        yield (async () => {
+          const jfem = await IpylabModel.getFrontendModel(kernelId, 10000);
+          if (jfem.widget_manager.has_model(model_id)) {
+            return jfem.widget_manager;
+          }
+          throw new Error(`WidgetManager not found in kernel: ${kernelId}`);
+        })();
       }
+    }
+    search_for_manager;
+    const result = await Promise.any(search_for_manager());
+    if (result instanceof KernelWidgetManager) {
+      return result;
     }
     throw new Error(`WidgetManager not found for model_id='${model_id}'`);
   }
@@ -739,10 +753,12 @@ export class IpylabModel extends WidgetModel {
     }
   }
 
+  /**
+   * Promises to frontends that may be loading.
+   */
   static get jfemPromises() {
     return Private.jfemPromises;
   }
-
   static get connections() {
     return Private.connections;
   }

@@ -127,6 +127,15 @@ export class JupyterFrontEndModel extends IpylabModel {
     }
   }
 
+  private _generateMenu(options: IMainMenu.IMenuOptions) {
+    const menu = MainMenu.generateMenu(
+      this.commands,
+      options,
+      this.translator.load('jupyterlab')
+    );
+    return menu;
+  }
+
   /**
    * Provided for IpylabModel.tracker for restoring widgets to the main area.
    * @param args `ipylabSettings` in 'addToShell'
@@ -138,7 +147,6 @@ export class JupyterFrontEndModel extends IpylabModel {
     ) {
       return;
     }
-    // await new Promise(resolve => setTimeout(resolve, 10000));
     return JupyterFrontEndModel.addToShell(args);
   }
 
@@ -216,15 +224,6 @@ export class JupyterFrontEndModel extends IpylabModel {
       const jfem: JupyterFrontEndModel = await value.promise;
       jfem.updateTrackerInfo();
     }
-  }
-
-  private _generateMenu(options: IMainMenu.IMenuOptions) {
-    const menu = MainMenu.generateMenu(
-      this.commands,
-      options,
-      this.translator.load('jupyterlab')
-    );
-    return menu;
   }
 
   /**
