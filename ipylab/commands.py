@@ -10,7 +10,8 @@ from traitlets import Callable as CallableTrait
 from traitlets import Container, Instance, Tuple, Unicode
 
 from ipylab._compat.typing import Any, NotRequired, TypedDict, Unpack
-from ipylab.asyncwidget import AsyncWidgetBase, Transform, pack, register
+from ipylab.asyncwidget import AsyncWidgetBase, Transform, register
+from ipylab.common import pack
 from ipylab.connection import Connection
 from ipylab.widgets import Icon
 

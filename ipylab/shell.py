@@ -6,9 +6,8 @@ from typing import TYPE_CHECKING
 
 from ipywidgets import Widget
 
-from ipylab import Area, Connection, ShellConnection, Transform, pack
+from ipylab import Area, Connection, InsertMode, ShellConnection, Transform, pack
 from ipylab.asyncwidget import AsyncWidgetBase, Unicode
-from ipylab.common import InsertMode
 
 if TYPE_CHECKING:
     from asyncio import Task

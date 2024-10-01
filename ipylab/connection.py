@@ -10,7 +10,8 @@ from typing import TYPE_CHECKING, Any, ClassVar
 from ipywidgets import Widget, register
 from traitlets import Bool, Dict, Unicode
 
-from ipylab.asyncwidget import AsyncWidgetBase, pack
+from ipylab.asyncwidget import AsyncWidgetBase
+from ipylab.common import pack
 
 if TYPE_CHECKING:
     from collections.abc import Generator

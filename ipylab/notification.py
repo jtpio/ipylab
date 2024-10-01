@@ -5,13 +5,12 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Literal
 
 import traitlets
-from ipywidgets import TypedTuple
+from ipywidgets import TypedTuple, register
 from traitlets import Container, Instance, Unicode
 
+from ipylab import Connection, NotificationType, Transform, pack
 from ipylab._compat.typing import NotRequired, TypedDict
-from ipylab.asyncwidget import AsyncWidgetBase, Transform, pack, register
-from ipylab.common import NotificationType
-from ipylab.connection import Connection
+from ipylab.asyncwidget import AsyncWidgetBase
 
 if TYPE_CHECKING:
     from asyncio import Task

@@ -17,15 +17,10 @@ __all__ = [
     "hookimpl",
     "Transform",
     "pack",
-    "commands",
-    "menu",
     "_jupyter_labextension_paths",
 ]
-
-
-from ipylab import commands, menu
-from ipylab.asyncwidget import pack
-from ipylab.common import Area, InsertMode, NotificationType, Transform
+import ipylab.commands as _commands  # noqa: F401
+from ipylab.common import Area, InsertMode, NotificationType, Transform, pack
 from ipylab.connection import Connection, ShellConnection
 from ipylab.hookspecs import hookimpl
 from ipylab.widgets import Icon, Panel, SplitPanel

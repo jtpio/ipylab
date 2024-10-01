@@ -1,13 +1,38 @@
 from __future__ import annotations
 
+import inspect
 import typing
-from typing import Literal
+from typing import TYPE_CHECKING, Literal
+
+from ipywidgets import Widget, widget_serialization
 
 import ipylab
 from ipylab._compat.enum import StrEnum
 from ipylab._compat.typing import NotRequired, TypedDict
 
 __all__ = ["Area", "InsertMode", "Transform", "TransformType", "JavascriptType", "ShellConnectionInfo"]
+
+if TYPE_CHECKING:
+    from typing import TypeVar, overload
+
+    T = TypeVar("T")
+
+    @overload
+    def pack(obj: Widget) -> str: ...
+    @overload
+    def pack(obj: inspect._SourceObjectType) -> str: ...  # Technically only modules and functions.
+    @overload
+    def pack(obj: T) -> T: ...
+
+
+def pack(obj):
+    """Return serialized obj if it is a Widget or string of code."""
+
+    if isinstance(obj, Widget):
+        return widget_serialization["to_json"](obj, None)
+    if inspect.isfunction(obj) or inspect.ismodule(obj):
+        return inspect.getsource(obj)
+    return obj
 
 
 class Area(StrEnum):

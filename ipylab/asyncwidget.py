@@ -9,45 +9,27 @@ import traceback
 import uuid
 from typing import TYPE_CHECKING, Any, TypeVar
 
-from ipywidgets import Widget, register, widget_serialization
+from ipywidgets import Widget, register
 from traitlets import Bool, Container, Dict, HasTraits, Instance, Set, Unicode
 
 import ipylab
 import ipylab._frontend as _fe
 import ipylab.commands
-from ipylab.common import Transform, TransformType
+from ipylab.common import Transform, TransformType, pack
 from ipylab.hookspecs import pm
 
 if TYPE_CHECKING:
     import logging
     from asyncio import Task
     from collections.abc import Awaitable, Coroutine, Iterable
-    from typing import ClassVar, overload
+    from typing import ClassVar
 
     from ipylab.commands import CommandConnection
 
 
-__all__ = ["AsyncWidgetBase", "WidgetBase", "register", "pack", "Widget"]
+__all__ = ["AsyncWidgetBase", "WidgetBase"]
 
 T = TypeVar("T")
-
-
-if TYPE_CHECKING:
-
-    @overload
-    def pack(obj: Widget) -> str: ...
-    @overload
-    def pack(obj: T) -> T: ...
-
-
-def pack(obj):
-    """Return serialized obj if it is a Widget or string of code."""
-
-    if isinstance(obj, Widget):
-        return widget_serialization["to_json"](obj, None)
-    if inspect.isfunction(obj) or inspect.ismodule(obj):
-        return inspect.getsource(obj)
-    return obj
 
 
 class Response(asyncio.Event):

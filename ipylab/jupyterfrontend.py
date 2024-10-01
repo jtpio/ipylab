@@ -7,13 +7,14 @@ import inspect
 from collections import OrderedDict
 from typing import TYPE_CHECKING, Any
 
-import ipywidgets as ipw
+import ipywidgets
 from IPython.core.getipython import get_ipython
+from ipywidgets import widget_serialization
 from traitlets import Container, Dict, Instance, Tuple, Unicode, observe
 
 import ipylab
 from ipylab import ShellConnection, Transform
-from ipylab.asyncwidget import AsyncWidgetBase, register, widget_serialization
+from ipylab.asyncwidget import AsyncWidgetBase, register
 from ipylab.commands import CommandRegistry
 from ipylab.common import InsertMode
 from ipylab.dialog import Dialog, FileDialog
@@ -59,7 +60,7 @@ class JupyterFrontEnd(AsyncWidgetBase):
     context_menu = Instance(ContextMenu, ())
     notification = Instance(NotificationManager, ())
     active_namespace = Unicode("", read_only=True, help="name of the current namespace")
-    namespace_defaults = Dict({"ipylab": ipylab, "ipywidgets": ipw, "ipw": ipw})
+    namespace_defaults = Dict({"ipylab": ipylab, "ipywidgets": ipywidgets, "ipw": ipywidgets})
     _namespaces: Container[dict[str, LastUpdatedOrderedDict]] = Dict(read_only=True)  # type: ignore
     namespaces: Container[tuple[str, ...]] = Tuple(read_only=True).tag(sync=True)
     _ipy_shell = get_ipython()
