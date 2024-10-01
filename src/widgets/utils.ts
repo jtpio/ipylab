@@ -143,7 +143,7 @@ export function toFunction(code: string) {
 }
 
 /**
- * Provide a list of all attributes belonging to obj.
+ * Provide an object detailing objects in obj.
  *
  * omitHidden: Will omit properties starting with '_'
  *
@@ -194,15 +194,50 @@ export function listProperties({
   type?: string;
   depth?: number;
   omitHidden?: boolean;
-}) {
-  return findAllProperties({ obj, items: [], type, depth, omitHidden }).map(
-    p => ({
-      name: p,
-      type: typeof obj[p]
-    })
-  );
+}): any {
+  const out: any = {};
+  for (const name of findAllProperties({
+    obj,
+    items: [],
+    type,
+    depth,
+    omitHidden
+  })) {
+    const obj_ = obj[name];
+    let type_: string = typeof obj_;
+    let val: any = name;
+    switch (type_) {
+      case 'string':
+      case 'number':
+      case 'bigint':
+      case 'boolean':
+        out[name] = obj_;
+        break;
+      case 'undefined':
+        out[name] = null;
+      case 'object':
+        if (obj_ instanceof Promise) {
+          type_ = 'Promise';
+          break;
+        } else if (obj_ instanceof Signal) {
+          type_ = 'Signal';
+        }
+        if (depth > 1) {
+          val = {};
+          val[name] = listProperties({ obj: obj_, type, depth: 1, omitHidden });
+        }
+      default:
+        if (!out[`<${type_}s>`]) {
+          out[`<${type_}s>`] = [val];
+        } else {
+          out[`<${type_}s>`].push(val);
+          out[`<${type_}s>`] = out[`<${type_}s>`].sort();
+        }
+    }
+  }
+  // Sort alphabetically
+  return Object.fromEntries(Object.entries(out).sort());
 }
-
 /**
  * Call slot when kernel is restarting or dead.
  *

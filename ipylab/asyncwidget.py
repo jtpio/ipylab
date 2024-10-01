@@ -15,14 +15,14 @@ from traitlets import Bool, Container, Dict, HasTraits, Instance, Set, Unicode
 import ipylab
 import ipylab._frontend as _fe
 import ipylab.commands
-from ipylab.common import JavascriptType, Transform, TransformType
+from ipylab.common import Transform, TransformType
 from ipylab.hookspecs import pm
 
 if TYPE_CHECKING:
     import logging
     from asyncio import Task
     from collections.abc import Awaitable, Coroutine, Iterable
-    from typing import ClassVar, Literal, overload
+    from typing import ClassVar, overload
 
     from ipylab.commands import CommandConnection
 
@@ -499,56 +499,10 @@ class AsyncWidgetBase(WidgetBase):
             toObject=toObject,
         )
 
-    def list_properties(
-        self,
-        path: str = "",
-        type: JavascriptType = JavascriptType.function,  # noqa: A002
-        depth=3,
-        *,
-        how: Literal["names", "group", "raw"] = "group",
-        transform: TransformType = Transform.raw,
-        skip_hidden=True,
-    ) -> Task[dict | list]:
-        """Get a mapping of properties of the object at 'path' of the Frontend instance.
+    def list_properties(self, path="", depth=3, *, skip_hidden=True) -> Task[dict]:
+        """Get a dict listing of properties at `path` relative to the `base` on the frontend object.
 
-        depth: The depth in the object inheritance to search for properties.
-            Searching deeper will reveal more lower level properties.
-        how: ['names', 'group', 'raw']
+        depth: int
+            How deep to look inside the inheritance structure of the object.
         """
-        task = self.schedule_operation("listProperties", path=path, type=type, depth=depth, transform=transform)
-
-        async def list_properties():
-            def filt(x: dict | str):
-                if not skip_hidden:
-                    return x
-                if isinstance(x, dict):
-                    return not x["name"].startswith("_")
-                return not x.startswith("_")
-
-            payload: list = await task  # type: ignore
-            if how == "names":
-                payload = [row["name"] for row in filter(filt, payload)]
-            elif how == "group":
-                groups = {}
-                for item in filter(filt, payload):
-                    st = groups.get(item["type"], [])
-                    st.append(item["name"])
-                    groups[item["type"]] = st
-                return groups
-            return list(filter(filt, payload))
-
-        return self.to_task(list_properties())  # type: ignore
-
-    def list_methods(self, path: str = "", *, depth=3, skip_hidden=True):
-        """Get a list of methods belonging to the object 'path' of the Frontend instance.
-        depth: The depth in the object inheritance to search for methods.
-        """
-        task = self.list_properties(path, JavascriptType.function, depth, how="names")
-
-        async def list_methods():
-            payload = (await task) or []
-            if skip_hidden:
-                return [n for n in payload if not n.startswith("_")]
-            return payload
-
-        return self.to_task(list_methods())
+        return self.schedule_operation("listProperties", path=path, depth=depth, omitHidden=skip_hidden)

@@ -208,33 +208,19 @@ export class IpylabModel extends WidgetModel {
   static _replacer(key: string, value: any) {
     // Filtering out properties
     if (key === 'payload') {
-      const other = {} as any;
-      const out = {
-        WARNING:
-          'This payload is a simplified representation because it has circular references.'
-      } as any;
-      for (const attr of listProperties({
+      const out = listProperties({
         obj: value,
         omitHidden: true,
         depth: 3
-      })) {
-        if (['string', 'number', 'bigint', 'boolean'].indexOf(attr.type) >= 0) {
-          out[attr.name] = value[attr.name];
-        } else {
-          if (!other[attr.type]) {
-            other[attr.type] = [attr.name];
-          } else {
-            other[attr.type].push(attr.name);
-          }
-        }
-      }
+      });
+      out['WARNING'] =
+        'This payload is a simplified representation because it has circular references.';
       if (typeof value.dispose === 'function') {
         // Keep a reference to disposable objects in case it needs to be found again in the frontend.
         // Not intended to be used by the backend as a connection transform is available.
-        const cid = (other['cid'] = `ipylab-connection:${UUID.uuid4()}`);
+        const cid = (out['ipylab_cid'] = `ipylab-connection:${UUID.uuid4()}`);
         IpylabModel.registerConnection(cid, value);
       }
-      out['OTHER_PROPERTIES'] = other;
       return out;
     }
     return value;
@@ -346,16 +332,12 @@ export class IpylabModel extends WidgetModel {
   }
 
   private _listProperties(payload: any) {
-    const { path, type, depth } = payload as any;
-    return listProperties({
-      obj: getNestedObject({
-        base: this.base,
-        path: path,
-        basename: this.get('_basename')
-      }),
-      type: type,
-      depth: depth ?? 2
+    const obj = getNestedObject({
+      base: this.base,
+      path: payload.path,
+      basename: this.get('_basename')
     });
+    return listProperties({ ...payload, obj });
   }
 
   private _getProperty(payload: any) {
