@@ -12,10 +12,11 @@ hookspec = pluggy.HookspecMarker("ipylab")
 pm = pluggy.PluginManager("ipylab")
 if t.TYPE_CHECKING:
     from ipylab.asyncwidget import AsyncWidgetBase
+    from ipylab.jupyterfrontend import JupyterFrontEnd
 
 
 class IpylabHookspec:
-    @hookspec
+    @hookspec(firstresult=True)
     def on_frontend_error(self, obj: AsyncWidgetBase, error: Exception, content: dict, buffers) -> None:
         """Intercept an error message for logging purposes.
 
@@ -30,7 +31,7 @@ class IpylabHookspec:
                 The content of the message accompanying the frontend error.
         """
 
-    @hookspec
+    @hookspec(firstresult=True)
     def on_task_error(self, obj: AsyncWidgetBase, coro_name: str, error: Exception) -> None:
         """Intercept an error message for logging purposes.
 
@@ -41,7 +42,7 @@ class IpylabHookspec:
                 The object from where the error.
         """
 
-    @hookspec
+    @hookspec(firstresult=True)
     def on_message_error(self, obj: AsyncWidgetBase, msg: str, error: Exception) -> None:
         """Intercept an error message for logging purposes.
 
@@ -56,6 +57,10 @@ class IpylabHookspec:
     def unhandled_frontend_operation_message(self, obj: AsyncWidgetBase, operation: str):
         """Handle a message from the frontend."""
         obj.log.error("Unknown operation '%s' for %r", operation, obj)
+
+    @hookspec(firstresult=True)
+    def on_app_ready(self, app: JupyterFrontEnd):
+        """Called when the app is ready."""
 
 
 class IpylabDefaultsPlugin:

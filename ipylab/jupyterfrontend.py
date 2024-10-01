@@ -15,13 +15,16 @@ import ipylab
 from ipylab import ShellConnection, Transform
 from ipylab.asyncwidget import AsyncWidgetBase, register, widget_serialization
 from ipylab.commands import CommandRegistry
+from ipylab.common import InsertMode
 from ipylab.dialog import Dialog, FileDialog
-from ipylab.menu import MainMenu
+from ipylab.hookspecs import pm
+from ipylab.menu import ContextMenu, MainMenu
 from ipylab.notification import NotificationManager
 from ipylab.sessions import SessionManager
 from ipylab.shell import Shell
 
 if TYPE_CHECKING:
+    from asyncio import Task
     from collections.abc import Iterable
     from typing import ClassVar
 
@@ -52,7 +55,8 @@ class JupyterFrontEnd(AsyncWidgetBase):
     file_dialog = Instance(FileDialog, (), read_only=True)
     shell = Instance(Shell, (), read_only=True)
     session_manager = Instance(SessionManager, (), read_only=True)
-    menu = Instance(MainMenu, ())
+    main_menu = Instance(MainMenu, ())
+    context_menu = Instance(ContextMenu, ())
     notification = Instance(NotificationManager, ())
     active_namespace = Unicode("", read_only=True, help="name of the current namespace")
     namespace_defaults = Dict({"ipylab": ipylab, "ipywidgets": ipw, "ipw": ipw})
@@ -68,6 +72,10 @@ class JupyterFrontEnd(AsyncWidgetBase):
     def close(self):
         "Cannot close"
 
+    def on_frontend_init(self, content: dict):
+        super().on_frontend_init(content)
+        pm.hook.on_app_ready()
+
     def _gen_repr_from_keys(self, keys: Iterable):  # noqa: ARG002
         return super()._gen_repr_from_keys(("kernelId",))
 
@@ -81,7 +89,7 @@ class JupyterFrontEnd(AsyncWidgetBase):
         self.set_trait("shell_connections", connections)
 
     @property
-    def current_widget(self):
+    def current_widget(self) -> ShellConnection:
         """A connection to the current widget in the shell."""
         id_ = self.current_widget_id
         return ShellConnection(cid=ShellConnection.to_cid(id_), id=id_)
@@ -90,6 +98,8 @@ class JupyterFrontEnd(AsyncWidgetBase):
         match operation:
             case "evaluate":
                 return await self._evaluate(payload, buffers)
+            case "open console":
+                return await self.open_console(**payload)
         return await super()._do_operation_for_frontend(operation, payload, buffers)
 
     def shutdown_kernel(self, kernelId: str | None = None):
@@ -145,6 +155,7 @@ class JupyterFrontEnd(AsyncWidgetBase):
         if path not in self._namespaces:
             self._namespaces[path] = LastUpdatedOrderedDict(self._ipy_default_namespace | self.namespace_defaults)
             self.set_trait("namespaces", tuple(self.namespaces))
+        self._namespaces[path]["app"] = self
         return self._namespaces[path]
 
     def update_namespace(self, path: str, glbls: dict, *, activate=False):
@@ -169,6 +180,37 @@ class JupyterFrontEnd(AsyncWidgetBase):
             self.activate_namespace(path)
         else:
             self.set_trait("namespaces", tuple(self.namespaces))
+
+    def open_console(
+        self,
+        path="",
+        *,
+        insertMode=InsertMode.split_bottom,
+        namespace_name="",
+        activate=True,
+        **args,
+    ) -> Task[ShellConnection]:
+        """Open a console and activate the namespace.
+
+        path: str
+            The path of the session context and default namespace_name.
+
+        namespace_name: str
+            An alternate namespace to activate.
+        """
+        args["path"] = path
+        args["insertMode"] = insertMode
+
+        async def open_console():
+            self.activate_namespace(namespace_name or path)
+            return await self.execute_command(
+                "console:open",
+                activate=activate,
+                **args,
+                transform={"transform": Transform.connection, "cid": ShellConnection.to_cid("console", "path")},
+            )
+
+        return self.to_task(open_console())
 
     async def _evaluate(self, options: dict, buffers: list) -> Any:
         """Evaluate code corresponding to a call from 'evaluate'.

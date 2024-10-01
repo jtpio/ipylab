@@ -16,7 +16,7 @@ if TYPE_CHECKING:
     from typing import Literal
 
 
-__all__ = ["MenuItemConnection", "MenuConnection", "MainMenu"]
+__all__ = ["MenuItemConnection", "MenuConnection", "MainMenu", "ContextMenu"]
 
 
 class MenuItemConnection(Connection):
@@ -29,7 +29,10 @@ class MenuItemConnection(Connection):
     def _ipylab_observe_comm(self, _):
         if self.comm and (cmd := CommandConnection.get_existing_connection(self.info.get("command", ""), quiet=True)):
             # Dispose when the command is disposed.
-            cmd.observe(lambda _: self.close(dispose=True))
+            cmd.observe(lambda _: self.close())
+
+    def close(self):
+        super().close(dispose=True)
 
 
 class RankedMenu(AsyncWidgetBase):
@@ -71,7 +74,12 @@ class RankedMenu(AsyncWidgetBase):
 
         ref: https://jupyterlab.readthedocs.io/en/4.0.x/api/classes/ui_components.RankedMenu.html#addItem.addItem-1
         """
-        info = {"rank": rank, "args": args, "type": type}
+        if isinstance(self, ContextMenu):
+            selector = args.pop("selector")
+            info = {"rank": rank, "args": args, "type": type, "selector": selector}
+        else:
+            info = {"rank": rank, "args": args, "type": type}
+
         as_object = None
         match type:
             case "command":
@@ -105,7 +113,12 @@ class RankedMenu(AsyncWidgetBase):
         return self.to_task(self._add_to_tuple_trait("items", task))
 
     def activate(self):
-        return self.execute_method("open")
+        async def activate():
+            await self.app.main_menu.set_property("activeMenu", self, toObject=["value"])
+            await self.app.main_menu.execute_method("openActiveMenu")
+            return self
+
+        return self.to_task(activate())
 
 
 class MenuConnection(RankedMenu, Connection):
@@ -163,3 +176,33 @@ class MainMenu(AsyncWidgetBase):
             transform={"transform": Transform.connection, "cid": cid, "auto_dispose": True, "info": info},
         )
         return self.to_task(self._add_to_tuple_trait("_all_menus", coro))
+
+
+class ContextMenuConnection(RankedMenu, Connection):
+    """A connection to a custom context menu"""
+
+
+class ContextMenu(RankedMenu):
+    """Direct access to the Jupyterlab context menu."""
+
+    _basename = Unicode("app.contextMenu").tag(sync=True)
+    SINGLETON = True
+
+    _all_menus: Container[tuple[ContextMenuConnection, ...]] = TypedTuple(trait=Instance(ContextMenuConnection))
+
+    def add_item(
+        self,
+        *,
+        command: str | CommandConnection = "",
+        selector=".ipylab-MainArea",
+        submenu: MenuConnection | None = None,
+        rank=None,
+        type: Literal["command", "submenu", "separator"] = "command",  # noqa: A002
+        **args,
+    ) -> Task[MenuItemConnection]:
+        """Add command, subitem or separator.
+        **args are 'defaults' used with command only.
+
+        ref: https://jupyterlab.readthedocs.io/en/stable/extension/extension_points.html#context-menu
+        """
+        return super().add_item(command=command, selector=selector, submenu=submenu, rank=rank, type=type, **args)

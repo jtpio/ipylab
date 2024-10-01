@@ -238,7 +238,7 @@ class CommandRegistry(AsyncWidgetBase):
             "addCommand",
             id=cid,
             caption=caption,
-            label=label,
+            label=label or name,
             iconClass=icon_class,
             transform={"transform": Transform.connection, "cid": cid, "auto_dispose": True},
             icon=f"{pack(icon)}.labIcon" if isinstance(icon, Icon) else None,

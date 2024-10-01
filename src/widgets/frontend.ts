@@ -219,6 +219,18 @@ export class JupyterFrontEndModel extends IpylabModel {
     return luminoWidget;
   }
 
+  static async openConsole(args: any) {
+    const info = (IpylabModel.tracker.currentWidget as any).ipylabSettings;
+    const path = args.path ?? info.path ?? '';
+    const kernelId = args.kernelId ?? info.kernelId;
+    const jfem = await IpylabModel.getFrontendModel(kernelId);
+    return await jfem.scheduleOperation(
+      'open console',
+      { ...args, path },
+      'raw'
+    );
+  }
+
   static async updateTrackers() {
     for (const value of IpylabModel.jfemPromises.values()) {
       const jfem: JupyterFrontEndModel = await value.promise;

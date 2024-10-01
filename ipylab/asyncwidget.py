@@ -133,6 +133,7 @@ class AsyncWidgetBase(WidgetBase):
             self._check_closed()
             await self._ready_event.wait()
         self._check_closed()
+        return self
 
     async def __aexit__(self, exc_type, exc, tb):
         pass
@@ -231,9 +232,14 @@ class AsyncWidgetBase(WidgetBase):
                 elif "ipylab_FE" in content:
                     self.to_task(self._handle_frontend_operation(buffers=buffers, **content))
             elif "init" in content:
-                self._ready_event.set()
-                self.set_trait("ready", True)
-                self.on_frontend_init(content)
+                match content["init"]:
+                    case "ipylabInit":
+                        self._ready_event.clear()
+                        self.set_trait("ready", False)
+                    case "ready":
+                        self._ready_event.set()
+                        self.set_trait("ready", True)
+                        self.on_frontend_init(content)
             elif "closed" in content:
                 self.close()
             if error:

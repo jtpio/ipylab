@@ -7,7 +7,7 @@ import ipylab
 from ipylab._compat.enum import StrEnum
 from ipylab._compat.typing import NotRequired, TypedDict
 
-__all__ = ["Area", "InsertMode", "Transform", "TransformType", "JavascriptType"]
+__all__ = ["Area", "InsertMode", "Transform", "TransformType", "JavascriptType", "ShellConnectionInfo"]
 
 
 class Area(StrEnum):
@@ -171,3 +171,10 @@ class JavascriptType(StrEnum):
     boolean = "boolean"
     object = "object"
     function = "function"
+
+
+class ShellConnectionInfo(TypedDict):
+    cid: str
+    id: str
+    kernelId: NotRequired[str]  # noqa: N815
+    path: NotRequired[str]

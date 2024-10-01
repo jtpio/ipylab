@@ -79,12 +79,22 @@ async function activate(
 
     registry.registerWidget(widgetExports.IpylabModel.exports);
   }
-  IpylabModel.app.commands.addCommand('ipylab:add-to-shell', {
+  app.commands.addCommand('ipylab:add-to-shell', {
     execute: JupyterFrontEndModel.addToShell
   });
-  IpylabModel.app.commands.addCommand('ipylab:restore', {
+  app.commands.addCommand('ipylab:restore', {
     execute: JupyterFrontEndModel.restoreToShell
   });
+  app.commands.addCommand('ipylab:open-console', {
+    execute: JupyterFrontEndModel.openConsole,
+    label: 'Open console'
+  });
+  app.contextMenu.addItem({
+    command: 'ipylab:open-console',
+    selector: '.ipylab-shell',
+    rank: 1
+  });
+
   widgetExports.IpylabBackendModel.checkStart();
   // Handle state restoration.
   if (restorer) {

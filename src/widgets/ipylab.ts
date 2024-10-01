@@ -63,6 +63,7 @@ export class IpylabModel extends WidgetModel {
   initialize(attributes: Backbone.ObjectHash, options: any): void {
     super.initialize(attributes, options);
     this.set('kernelId', this.kernelId);
+    this.send({ init: 'ipylabInit' });
     this.ipylabInit();
   }
 
@@ -92,7 +93,7 @@ export class IpylabModel extends WidgetModel {
     this.on('msg:custom', this._onCustomMessage, this);
     onKernelLost(this.kernel, this.close, this);
     this.save_changes();
-    this.send({ init: this.model_name });
+    this.send({ init: 'ready' });
   }
 
   get model_name() {
