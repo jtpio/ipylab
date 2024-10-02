@@ -38,15 +38,15 @@ import {
   listProperties,
   newSessionContext,
   onKernelLost,
-  setNestedAttribute,
+  setNestedProperty,
   toFunction
 } from './utils';
 export {
   CommandRegistry,
   IDisposable,
-  IObservableDisposable,
   ILabShell,
   ILauncher,
+  IObservableDisposable,
   ISerializers,
   ITranslator,
   JSONObject,
@@ -78,14 +78,16 @@ export class IpylabModel extends WidgetModel {
    */
   async ipylabInit(base: any = null) {
     if (!base) {
-      const path = this.get('_basename');
+      const dottedname = this.get('_basename');
       base = this;
-      if (path) {
+      if (dottedname) {
         try {
-          base = getNestedObject({ base, path, basename: this.model_name });
+          base = getNestedObject({ base, dottedname });
         } catch {
           this.close();
-          throw new Error(`Failed locate _basename = '${path}' so closing...`);
+          throw new Error(
+            `Failed locate _basename = '${dottedname}' so closing...`
+          );
         }
       }
     }
@@ -240,29 +242,29 @@ export class IpylabModel extends WidgetModel {
     const content = JSON.parse(msg);
     if (content.toLuminoWidget instanceof Array) {
       // Replace values in kwgs with widgets
-      for (const path of content.toLuminoWidget) {
+      for (const dottedname of content.toLuminoWidget) {
         const value = getNestedObject({
           base: content.kwgs,
-          path: path,
+          dottedname,
           nullIfMissing: false
         });
         if (value && typeof value === 'string') {
           const { luminoWidget } = await IpylabModel.toLuminoWidget(value);
-          setNestedAttribute(content.kwgs, path, luminoWidget);
+          setNestedProperty(content.kwgs, dottedname, luminoWidget);
         }
       }
     }
     if (content.toObject instanceof Array) {
       // Replace values in kwgs with attributes
-      for (const path of content.toObject) {
+      for (const dottedname of content.toObject) {
         const value = getNestedObject({
           base: content.kwgs,
-          path: path,
+          dottedname,
           nullIfMissing: false
         });
         if (value && typeof value === 'string') {
           const value_ = await IpylabModel.toObject(this.base, value);
-          setNestedAttribute(content.kwgs, path, value_);
+          setNestedProperty(content.kwgs, dottedname, value_);
         }
       }
     }
@@ -318,36 +320,22 @@ export class IpylabModel extends WidgetModel {
   }
 
   private async _executeMethod(payload: any): Promise<any> {
-    const { path, args } = payload;
+    const { dottedname, args } = payload;
     const obj = this.base;
-    const ownername = path.split('.').slice(0, -1).join('.');
-    const owner = getNestedObject({
-      base: obj,
-      path: ownername,
-      basename: this.get('_basename')
-    });
-    let func = getNestedObject({ base: obj, path: path, basename: ownername });
+    const ownername = dottedname.split('.').slice(0, -1).join('.');
+    const owner = getNestedObject({ base: obj, dottedname: ownername });
+    let func = getNestedObject({ base: obj, dottedname });
     func = func.bind(owner, ...args);
     return await func();
   }
 
   private _listProperties(payload: any) {
-    const obj = getNestedObject({
-      base: this.base,
-      path: payload.path,
-      basename: this.get('_basename')
-    });
+    const obj = getNestedObject({ ...payload, base: this.base });
     return listProperties({ ...payload, obj });
   }
 
   private _getProperty(payload: any) {
-    const { path, nullIfMissing } = payload;
-    return getNestedObject({
-      base: this.base,
-      path,
-      nullIfMissing: nullIfMissing ?? false,
-      basename: this.get('_basename')
-    });
+    return getNestedObject({ ...payload, base: this.base });
   }
 
   /**
@@ -363,9 +351,9 @@ export class IpylabModel extends WidgetModel {
    * Set a property. Equivalent to python `setattr`.
    */
   private async _setProperty(payload: any): Promise<any> {
-    const { path, value, valueTransform } = payload;
+    const { dottedname, value, valueTransform } = payload;
     const value_ = await this.transformObject(value, valueTransform);
-    setNestedAttribute(this.base, path, value_);
+    setNestedProperty(this.base, dottedname, value_);
     return value_;
   }
 
@@ -650,15 +638,15 @@ export class IpylabModel extends WidgetModel {
   }
 
   /**
-   * Returns the object for the dotted path 'value'.
+   * Returns the object for the dottedname 'value'.
    * 1. If value starts with IPY_MODEL_ it will ignore the base, instead
-   *    unpacking the model and return the object relative to dotted path after
+   *    unpacking the model and return the object relative to dottedname after
    *    the model name. If there is no path after the model id it will be the model.
-   * 2. The object as specified by the dotted path relate to the base will be returned.
+   * 2. The object as specified by the dottedname relate to the base will be returned.
    * 3. An error will be thrown if the value doesn't point an existing attribute.
    *
    * @param base The object to locate the dotted value.
-   * @param value The dotted path on the base (except for IPY_MODEL_).
+   * @param value The dottedname on the base (except for IPY_MODEL_).
    * @param nullIfMissing Return a null instead of throwing an error if missing.
    */
   static async toObject(
@@ -667,16 +655,20 @@ export class IpylabModel extends WidgetModel {
     nullIfMissing = false
   ): Promise<any> {
     if (typeof value === 'string') {
-      let path = value;
+      let dottedname = value;
       if (value.slice(0, 10) === 'IPY_MODEL_') {
         let model_id;
-        [model_id, path] = value.slice(10).split('.', 2);
+        [model_id, dottedname] = value.slice(10).split('.', 2);
         base = (await IpylabModel.getWidgetModel(model_id)).model;
         if (base.isConnectionModel) {
           base = base.base;
         }
       }
-      return await getNestedObject({ base, path: path ?? '', nullIfMissing });
+      return await getNestedObject({
+        base,
+        dottedname: dottedname ?? '',
+        nullIfMissing
+      });
     }
     if (value?.OTHER_PROPERTIES?.cid) {
       return await IpylabModel.fromConnectionOrId(value.OTHER_PROPERTIES.cid);
@@ -711,7 +703,7 @@ export class IpylabModel extends WidgetModel {
         // expects args.mappings = {key:transform}
         result = new Object();
         for (const key of Object.keys(args.mappings)) {
-          const base = getNestedObject({ base: obj, path: key });
+          const base = getNestedObject({ base: obj, dottedname: key });
           (result as any)[key] = await this.transformObject(
             base,
             args.mappings[key]

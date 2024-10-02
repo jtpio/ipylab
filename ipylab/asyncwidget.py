@@ -288,7 +288,7 @@ class AsyncWidgetBase(WidgetBase):
 
         toLuminoWidget: Iterable[str] | None
             A list of item name mappings to convert to a Lumino widget in the frontend.
-            Each string should correspond to the dotted path/index in kwgs that has
+            Each string should correspond to the dotted dottedname/index in kwgs that has
             the packed (json version of the widget or id of a lumino widget)
 
         toObject:  Iterable[str] | None
@@ -369,7 +369,7 @@ class AsyncWidgetBase(WidgetBase):
 
     def execute_method(
         self,
-        path: str,
+        dottedname: str,
         *args,
         transform: TransformType = Transform.raw,
         toLuminoWidget: Iterable[str] | None = None,
@@ -378,7 +378,7 @@ class AsyncWidgetBase(WidgetBase):
     ):
         """Call a method relative to the `base` object in the Frontend.
 
-        path: 'dotted.access.to.the.method' relative to base.
+        dottedname: 'dotted.access.to.the.method' relative to base.
 
         *args
         `args` are passed in order so must correspond with the order in the JS method.
@@ -394,7 +394,7 @@ class AsyncWidgetBase(WidgetBase):
         # This operation is sent to the frontend function _fe_execute in 'ipylab/src/widgets/ipylab.ts'
         return self.schedule_operation(
             operation="executeMethod",
-            path=path,
+            dottedname=dottedname,
             args=args,
             transform=transform,
             toLuminoWidget=toLuminoWidget,
@@ -402,19 +402,21 @@ class AsyncWidgetBase(WidgetBase):
             **kwgs,
         )
 
-    def get_property(self, path: str, *, transform: TransformType = Transform.raw, nullIfMissing=False):
+    def get_property(self, dottedname: str, *, transform: TransformType = Transform.raw, nullIfMissing=False):
         """Obtain a serialized version of the property of the `base` object in the frontend.
 
-        path: 'dotted.access.to.the.method' relative to base.
+        dottedname: 'dotted.access.to.the.method' relative to base.
 
         Tip: This method will await the property in the Frontend prior to returning the result
         where the property is an awaitable.
         """
-        return self.schedule_operation("getProperty", path=path, nullIfMissing=nullIfMissing, transform=transform)
+        return self.schedule_operation(
+            "getProperty", dottedname=dottedname, nullIfMissing=nullIfMissing, transform=transform
+        )
 
     def set_property(
         self,
-        path: str,
+        dottedname: str,
         value,
         *,
         value_transform: TransformType = Transform.raw,
@@ -422,13 +424,13 @@ class AsyncWidgetBase(WidgetBase):
         toObject: Iterable[str] | None = None,
         transform=Transform.raw,
     ):
-        """Set the property on the `path` of the `base` object in the Frontend.
+        """Set the property on the `dottedname` of the `base` object in the Frontend.
 
         The value will be transformed according to `value_transform` & `value_transform_kwgs`
         as specified prior to setting the property.
 
-        path: str
-            "the.path.to.the.property" to be set.
+        dottedname: str
+            "the.dottedname.to.the.property" to be set.
         value: jsonable
             The value to set, or instructions for the transform to do in the Frontend.
         valueTransform: TransformType
@@ -441,7 +443,7 @@ class AsyncWidgetBase(WidgetBase):
         """
         return self.schedule_operation(
             "setProperty",
-            path=path,
+            dottedname=dottedname,
             value=value,
             valueTransform=Transform.validate(value_transform),
             toLuminoWidget=toLuminoWidget,
@@ -451,7 +453,7 @@ class AsyncWidgetBase(WidgetBase):
 
     def update_property(
         self,
-        path: str,
+        dottedname: str,
         value: dict,
         *,
         value_transform: TransformType = Transform.raw,
@@ -459,12 +461,12 @@ class AsyncWidgetBase(WidgetBase):
         toObject: Iterable[str] | None = None,
         transform=Transform.raw,
     ):
-        """Update the value of the object at the path in the frontend.
+        """Update the value of the object at the dottedname in the frontend.
 
         This is equivalent to `dict.update` in Python.
 
-        path: str
-            "the.path.to.the.property" to be set.
+        dottedname: str
+            "the.dottedname.to.the.property" to be set.
         toLuminoWidget: ['value'] | None
             Nested notation is also possible under `value`.
         toObject: ['value'] | None
@@ -473,7 +475,7 @@ class AsyncWidgetBase(WidgetBase):
 
         return self.schedule_operation(
             "updateProperty",
-            path=path,
+            dottedname=dottedname,
             value=value,
             transform=transform,
             valueTransform=Transform.validate(value_transform),
@@ -481,10 +483,10 @@ class AsyncWidgetBase(WidgetBase):
             toObject=toObject,
         )
 
-    def list_properties(self, path="", depth=3, *, skip_hidden=True) -> Task[dict]:
-        """Get a dict listing of properties at `path` relative to the `base` on the frontend object.
+    def list_properties(self, dottedname="", depth=3, *, skip_hidden=True) -> Task[dict]:
+        """Get a dict listing of properties at `dottedname` relative to the `base` on the frontend object.
 
         depth: int
             How deep to look inside the inheritance structure of the object.
         """
-        return self.schedule_operation("listProperties", path=path, depth=depth, omitHidden=skip_hidden)
+        return self.schedule_operation("listProperties", dottedname=dottedname, depth=depth, omitHidden=skip_hidden)

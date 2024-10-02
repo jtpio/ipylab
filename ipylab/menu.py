@@ -47,7 +47,7 @@ class RankedMenu(AsyncWidgetBase):
     def _ipylab_observe_comm(self, _):
         if not self.comm:
             for item in self.items:
-                item.close(dispose=True)
+                item.close()
 
     def __new__(cls, *, model_id=None, **kwgs):
         kwgs.pop("basename", None)

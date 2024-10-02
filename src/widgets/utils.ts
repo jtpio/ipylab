@@ -65,72 +65,59 @@ export async function newSessionContext({
 }
 
 /**
- *Returns a nested object relative to `this`.
+ *Returns a nested object relative to `base`.
  * @param base The starting object.
- * @param path The dotted path of the object.
+ * @param dottedname The dotted path to the object.
  * @returns
  */
 
-/**
- * Get the nested object of base at path.
- * @param base Starting object
- * @param path Dotted path to an object below base
- * @returns
- */
 export function getNestedObject({
   base,
-  path,
-  nullIfMissing = false,
-  basename = ''
+  dottedname,
+  nullIfMissing = false
 }: {
   base: object;
-  path: string;
+  dottedname: string;
   nullIfMissing?: boolean;
-  basename?: string;
 }): any {
   let obj: object = base;
-  let path_ = '';
-  const parts = path.split('.');
+  let dottedname_ = '';
+  const parts = dottedname.split('.');
   let attr = '';
   for (let i = 0; i < parts.length; i++) {
     attr = parts[i];
     if (attr in obj) {
       obj = obj[attr as keyof typeof obj];
-      path_ = !path_ ? attr : `${path_}.${attr}`;
+      dottedname_ = !dottedname_ ? attr : `${dottedname_}.${attr}`;
     } else {
       break;
     }
   }
-  if (path_ !== path) {
+  if (dottedname_ !== dottedname) {
     if (nullIfMissing) {
       return null;
     }
-    throw new Error(
-      `Failed to get the attribute '${attr}' in the nested path '${path}'.` +
-        (basename ? ` from the base '${basename}'` : '')
-    );
+    throw new Error(`Failed to get the object for dottedname='${dottedname}'`);
   }
   return obj;
 }
 
 /**
- * Set a nested attribute relative to the base
- * @param base
- * @param path
- * @param value
+ * Set a nested property relative to the base
+ * @param base The object
+ * @param dottedname The dotted path of the property to set
+ * @param value The value to set as the property
  */
-export function setNestedAttribute(
+export function setNestedProperty(
   base: object,
-  path: string,
-  value: any,
-  basename: string = ''
+  dottedname: string,
+  value: any
 ) {
   const obj = getNestedObject({
     base: base,
-    path: path.split('.').slice(0, -1).join('.'),
-    basename: basename
+    dottedname: dottedname.split('.').slice(0, -1).join('.')
   });
-  obj[path.split('.').slice(-1)[0]] = value;
+  obj[dottedname.split('.').slice(-1)[0]] = value;
 }
 
 /**
