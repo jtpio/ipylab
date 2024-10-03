@@ -12,7 +12,7 @@ import { IMainMenu, MainMenu } from '@jupyterlab/mainmenu';
 import { PromiseDelegate, UUID } from '@lumino/coreutils';
 import { IpylabBackendModel } from './backend';
 import { IpylabModel, Widget } from './ipylab';
-import { newSessionContext } from './utils';
+import { listProperties, newSessionContext } from './utils';
 
 export class JupyterFrontEndModel extends IpylabModel {
   async ipylabInit(base: any = null) {
@@ -137,10 +137,12 @@ export class JupyterFrontEndModel extends IpylabModel {
   }
 
   /**
-   * Provided for IpylabModel.tracker for restoring widgets to the main area.
+   * Provided for IpylabModel.tracker for restoring widgets to the shell.
    * @param args `ipylabSettings` in 'addToShell'
    */
   static async restoreToShell(args: any): Promise<Widget> {
+    // Wait for backend to load/reload plugins.
+    await IpylabModel.backend_ready.promise;
     if (
       !args.kernelId ||
       !(await IpylabModel.kernelManager.findById(args.kernelId))
@@ -151,43 +153,45 @@ export class JupyterFrontEndModel extends IpylabModel {
   }
 
   /**
-   * Add any widget to the application shell.
+   * Add a widget to the application shell.
    *
-   * It can handle ipywidgets and native MainAreaWidgets.
-   * and can be used to move widgets about the shell. A factory can be specified
-   * as mapping of 'id' and 'args'. The facto
+   * This function can handle ipywidgets and native Widgets and  be used to move
+   * widgets about the shell.
    *
-   * If factory is specified, it should include 'id' and 'args'.
+   * New widgets are added to a tracker enabling restoration from a
+   * running kernel such as page refreshing and switching workspaces.
    *
-   * Ipywidgets are tracked making it is possible to refresh the page and change
-   * workspaces. Changing a worksace that doesn't have the same object will
-   * lose the connection. Define a factory to enable the connection to be restored.
+   * Generative widget creation is supported with 'evaluate' using the same
+   * code as 'evalute'. The evaluated code must return a widget to be valid.
    *
-   * @param args The payload to add
+   * @param args An object with area, options, cid, id, kernelId & evaluate.
    */
   static async addToShell(args: any): Promise<Widget> {
-    let { area, options, cid, kernelId } = args;
+    let { area, options, cid, kernelId, evaluate } = args;
     let luminoWidget: Widget | MainAreaWidget;
     let id: string = args.id ?? '';
 
-    // Wait for backend to load/reload plugins.
-    await IpylabModel.backend_ready.promise;
     if (IpylabModel.connections.has(cid)) {
       luminoWidget = await IpylabBackendModel.fromConnectionOrId(cid);
-    } else if (id) {
-      // An existing widget
+      if (!(luminoWidget instanceof Widget)) {
+        throw new Error(`Not a Widget ${listProperties(luminoWidget)}`);
+      }
+    } else {
+      // Create a new lumino widget
+      if (!id && evaluate) {
+        // Evaluate code in a kernel to create the widget.
+        id = await JupyterFrontEndModel.evaluate(args);
+      }
+      if (!id) {
+        throw new Error(
+          `Unable to create a lumino widget using these details: ${listProperties(args)}`
+        );
+      }
       ({ luminoWidget, kernelId } = await IpylabModel.toLuminoWidget(
         id,
         kernelId
       ));
-    } else if (!(luminoWidget instanceof Widget) && args.evaluate) {
-      // Evaluate code in a kernel to create the widget.
-      id = await JupyterFrontEndModel.evaluate(args);
-      return await JupyterFrontEndModel.addToShell({ ...args, id });
-    } else {
-      throw new Error('Insufficient info provided to add to the shell');
     }
-
     cid = cid || `ipylab-shell-connection:${UUID.uuid4()}`;
     area = area || 'main';
 
@@ -195,10 +199,12 @@ export class JupyterFrontEndModel extends IpylabModel {
       (area === 'main' && !(luminoWidget instanceof MainAreaWidget)) ||
       typeof luminoWidget.title === 'undefined'
     ) {
+      // Wrap the widget with a MainAreaWidget
       const w = (luminoWidget = new MainAreaWidget({ content: luminoWidget }));
       w.node.removeChild(w.toolbar.node);
       w.addClass('ipylab-MainArea');
     }
+
     luminoWidget.addClass('ipylab-shell');
     luminoWidget.id = id = id || cid;
     (luminoWidget as any).ipylabSettings = { ...args, id, cid, kernelId };

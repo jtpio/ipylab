@@ -76,7 +76,7 @@ class Shell(AsyncWidgetBase):
 
         async def add_to_shell():
             async with self.app as app:
-                if isinstance(obj, Widget) and "kernelId" not in kwgs and "path" not in kwgs:
+                if "kernelId" not in kwgs and "path" not in kwgs:
                     kwgs["path"] = app.current_session["path"]
                     kwgs["kernelId"] = app.current_session["kernel"]["id"]
 
