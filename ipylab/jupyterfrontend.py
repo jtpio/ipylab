@@ -151,41 +151,46 @@ class JupyterFrontEnd(AsyncWidgetBase):
             "evaluate", evaluate=evaluate, kernelId=kernelId, path=path, name=name, **kwgs
         )
 
-    def _get_namespace(self, path=""):
-        "Get the 'globals' namespace stored for path."
-        if path not in self._namespaces:
-            self._namespaces[path] = LastUpdatedOrderedDict(self._ipy_default_namespace | self.namespace_defaults)
+    def _get_namespace(self, name=""):
+        "Get the 'globals' namespace stored for name."
+        d = self._ipy_default_namespace
+        if self.activate_namespace == name and self._ipy_shell:
+            d = self._ipy_shell.user_ns
+            self._namespaces.pop(name)
+        if name not in self._namespaces:
+            self._namespaces[name] = LastUpdatedOrderedDict(d | self.namespace_defaults)
             self.set_trait("namespaces", tuple(self.namespaces))
-        self._namespaces[path]["app"] = self
-        return self._namespaces[path]
+        self._namespaces[name]["app"] = self
+        return self._namespaces[name]
 
-    def update_namespace(self, path: str, glbls: dict, *, activate=False):
-        "Update the namespace for the path"
-        self._get_namespace(path).update(glbls)
+    def update_namespace(self, name: str, glbls: dict, *, activate=False):
+        "Update the namespace for the name."
+        self._get_namespace(name).update(glbls)
         if activate:
-            self.activate_namespace(path)
+            self.activate_namespace(name)
 
-    def activate_namespace(self, path: str):
+    def activate_namespace(self, name: str):
         "Sets the ipython/console namespace to the one corresponding to path."
         if not self._ipy_shell:
             msg = "Ipython shell is not loaded!"
             raise RuntimeError(msg)
-        self._ipy_shell.user_ns = self._get_namespace(path)
-        self.set_trait("active_namespace", path)
+        self._ipy_shell.reset()
+        self._ipy_shell.push(self._get_namespace(name))
+        self.set_trait("active_namespace", name)
         self._ipy_shell.push({})
 
-    def reset_namespace(self, path: str, *, activate=True):
+    def reset_namespace(self, name: str, *, activate=True):
         "Reset the namespace to default. If activate is False it won't be created."
-        self._namespaces.pop(path, None)
+        self._namespaces.pop(name, None)
         if activate:
-            self.activate_namespace(path)
+            self.activate_namespace(name)
         else:
             self.set_trait("namespaces", tuple(self.namespaces))
 
     def open_console(
         self,
-        path="",
         *,
+        path="",
         insertMode=InsertMode.split_bottom,
         namespace_name="",
         activate=True,
@@ -194,7 +199,7 @@ class JupyterFrontEnd(AsyncWidgetBase):
         """Open a console and activate the namespace.
 
         path: str
-            The path of the session context and default namespace_name.
+            The path of the session context.
 
         namespace_name: str
             An alternate namespace to activate.
@@ -203,7 +208,11 @@ class JupyterFrontEnd(AsyncWidgetBase):
         args["insertMode"] = insertMode
 
         async def open_console():
-            self.activate_namespace(namespace_name or path)
+            async with self:
+                if not path:
+                    args["path"] = self.current_session["path"]
+            if namespace_name:
+                self.activate_namespace(namespace_name)
             return await self.execute_command(
                 "console:open",
                 activate=activate,

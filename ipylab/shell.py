@@ -53,7 +53,7 @@ class Shell(AsyncWidgetBase):
             Additional **kwgs:
                 kernelId: leave blank to start a new kernel.
                 path: The path of the sessionContext to use when creating a new kernel.
-                name: The name of the sessionContext to use when creating a new kernel.
+
 
         ref: https://jupyterlab.readthedocs.io/en/latest/api/interfaces/application.JupyterFrontEnd.IShell.html#add
 
@@ -73,19 +73,28 @@ class Shell(AsyncWidgetBase):
         ipylab.app.shell.add("ipylab.Panel([ipw.HTML('<h1>Test')])", path="test")
         ```
         """
-        kwgs["options"] = {
-            "activate": activate,
-            "mode": InsertMode(mode),
-            "rank": int(rank) if rank else None,
-            "ref": ref.id if isinstance(ref, Connection) else None,
-        } | (options or {})
-        if isinstance(obj, Widget):
-            kwgs["id"] = obj.id if isinstance(obj, Connection) else pack(obj)
-        else:
-            kwgs["evaluate"] = pack(obj)
-        cid = ShellConnection.to_cid(cid) if cid else ShellConnection.to_cid()
-        kwgs["transform"] = {"transform": Transform.connection, "cid": cid}
-        return self.execute_command("ipylab:add-to-shell", cid=cid, area=area, **kwgs)
+
+        async def add_to_shell():
+            async with self.app as app:
+                if isinstance(obj, Widget) and "kernelId" not in kwgs and "path" not in kwgs:
+                    kwgs["path"] = app.current_session["path"]
+                    kwgs["kernelId"] = app.current_session["kernel"]["id"]
+
+                kwgs["options"] = {
+                    "activate": activate,
+                    "mode": InsertMode(mode),
+                    "rank": int(rank) if rank else None,
+                    "ref": ref.id if isinstance(ref, Connection) else None,
+                } | (options or {})
+                if isinstance(obj, Widget):
+                    kwgs["id"] = obj.id if isinstance(obj, Connection) else pack(obj)
+                else:
+                    kwgs["evaluate"] = pack(obj)
+                cid_ = ShellConnection.to_cid(cid) if cid else ShellConnection.to_cid()
+                kwgs["transform"] = {"transform": Transform.connection, "cid": cid_}
+            return await self.execute_command("ipylab:add-to-shell", cid=cid_, area=area, **kwgs)
+
+        return self.to_task(add_to_shell())
 
     def expand_left(self):
         return self.execute_method("expandLeft")

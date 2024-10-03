@@ -72,15 +72,14 @@ class Panel(Box):
         """Add this panel to the shell."""
 
         async def add_to_shell():
-            async with self.app.shell:
-                result = await self.app.shell.add(
+            async with self.app as app, app.shell as shell:
+                result = await shell.add(
                     self,
                     area=area,
                     mode=mode,
                     activate=activate,
                     rank=rank,
                     ref=ref,
-                    kernelId=self.app.kernelId,
                     **options,
                 )
                 rerender = getattr(self, "_rerender", None)
