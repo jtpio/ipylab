@@ -113,7 +113,14 @@ class JupyterFrontEnd(AsyncWidgetBase):
 
     # TODO: move to AsyncWidgetBase maybe. Maybe use a path instead of a kernel or find the kernel by the path
     def evaluate(
-        self, evaluate: dict[str, str | inspect._SourceObjectType] | str, *, kernelId="", path="", name="", **kwgs
+        self,
+        evaluate: dict[str, str | inspect._SourceObjectType] | str,
+        *,
+        kernelId="",
+        path="",
+        name="",
+        namespace_name="",
+        **kwgs,
     ):
         """Evaluate code in a Python kernel.
 
@@ -148,15 +155,24 @@ class JupyterFrontEnd(AsyncWidgetBase):
             * ipw (ipywidgets)
         """
         return self.app.schedule_operation(
-            "evaluate", evaluate=evaluate, kernelId=kernelId, path=path, name=name, **kwgs
+            "evaluate",
+            evaluate=evaluate,
+            kernelId=kernelId,
+            path=path,
+            name=name,
+            namespace_name=namespace_name,
+            **kwgs,
         )
 
     def _get_namespace(self, name=""):
         "Get the 'globals' namespace stored for name."
         d = self._ipy_default_namespace
-        if self.activate_namespace == name and self._ipy_shell:
-            d = self._ipy_shell.user_ns
-            self._namespaces.pop(name)
+        if self._ipy_shell:
+            if "" not in self._namespaces:
+                self._namespaces[""] = LastUpdatedOrderedDict(self._ipy_shell.user_ns)
+            if self.activate_namespace == name:
+                d = self._ipy_shell.user_ns
+                self._namespaces.pop(name)
         if name not in self._namespaces:
             self._namespaces[name] = LastUpdatedOrderedDict(d | self.namespace_defaults)
             self.set_trait("namespaces", tuple(self.namespaces))
@@ -174,10 +190,10 @@ class JupyterFrontEnd(AsyncWidgetBase):
         if not self._ipy_shell:
             msg = "Ipython shell is not loaded!"
             raise RuntimeError(msg)
+        ns = self._get_namespace(name)
         self._ipy_shell.reset()
-        self._ipy_shell.push(self._get_namespace(name))
+        self._ipy_shell.push(ns)
         self.set_trait("active_namespace", name)
-        self._ipy_shell.push({})
 
     def reset_namespace(self, name: str, *, activate=True):
         "Reset the namespace to default. If activate is False it won't be created."
@@ -211,8 +227,7 @@ class JupyterFrontEnd(AsyncWidgetBase):
             async with self:
                 if not path:
                     args["path"] = self.current_session["path"]
-            if namespace_name:
-                self.activate_namespace(namespace_name)
+            self.activate_namespace(namespace_name)
             return await self.execute_command(
                 "console:open",
                 activate=activate,
@@ -230,8 +245,8 @@ class JupyterFrontEnd(AsyncWidgetBase):
          2. A direct call in the frontend at jfem.evaluate.
 
         """
-        path = options.get("path", "")
-        glbls = self._get_namespace(path) | options | {"buffers": buffers}
+        namespace_name = options.get("namespace_name", "")
+        glbls = self._get_namespace(namespace_name) | options | {"buffers": buffers}
         evaluate = options.get("evaluate", {})
         if isinstance(evaluate, str):
             evaluate = {"payload": evaluate}
@@ -251,5 +266,5 @@ class JupyterFrontEnd(AsyncWidgetBase):
                     result = await result
             glbls[name] = result
         buffers = glbls.pop("buffers", [])
-        self.update_namespace(path, glbls)
+        self.update_namespace(namespace_name, glbls)
         return {"payload": glbls.get("payload"), "buffers": buffers}
