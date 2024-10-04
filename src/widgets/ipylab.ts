@@ -510,7 +510,7 @@ export class IpylabModel extends WidgetModel {
       type: type,
       kernelPreference: {
         id: kernelId || null,
-        language: language,
+        language: language
       }
     });
     await sessionContext.initialize();
@@ -722,17 +722,11 @@ export class IpylabModel extends WidgetModel {
     if (typeof obj !== 'object') {
       throw new Error(`An object is required but got a '${typeof obj}'`);
     }
-    const obj_ = Private.connections.get(cid);
-    if (obj_ && obj_ !== obj) {
-      throw new Error(
-        `Another object with cid='${cid}' is already registered!`
-      );
-    }
+
     if (!obj.dispose) {
       obj.dispose = () => '';
       obj.ipylabDisposeOnClose = true;
     }
-    Private.connections.set(cid, obj);
     if (!obj.disposed) {
       // Make equivalent to an ObservableDisposable
       obj.disposed = new Signal<any, null>(obj);
@@ -748,6 +742,11 @@ export class IpylabModel extends WidgetModel {
       obj['dispose'] = dispose.bind(obj);
     }
     obj.disposed.connect(() => Private.connections.delete(cid));
+    Private.connections.set(cid, obj);
+    if (IpylabModel.pendingConnections.has(cid)) {
+      IpylabModel.pendingConnections.get(cid).resolve(null);
+      IpylabModel.pendingConnections.delete(cid);
+    }
   }
 
   /**
@@ -843,6 +842,10 @@ export class IpylabModel extends WidgetModel {
     return IpylabModel.app.serviceManager.sessions;
   }
 
+  static get pendingConnections() {
+    return Private.pendingConnections;
+  }
+
   static serializers: ISerializers = {
     ...WidgetModel.serializers
   };
@@ -888,6 +891,7 @@ namespace Private {
     string,
     PromiseDelegate<JupyterFrontEndModel>
   >();
+  export const pendingConnections = new Map<string, PromiseDelegate<null>>();
   export const kernelLostSlot = new ObservableMap<
     Signal<Kernel.IKernelConnection, null>
   >();

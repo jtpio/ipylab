@@ -183,7 +183,7 @@ export class JupyterFrontEndModel extends IpylabModel {
     let { area, options, cid, kernelId, evaluate } = args;
     let luminoWidget: Widget | MainAreaWidget;
     let id: string = args.id ?? '';
-
+    cid = cid || `ipylab-shell-connection:${UUID.uuid4()}`;
     if (IpylabModel.connections.has(cid)) {
       luminoWidget = await IpylabBackendModel.fromConnectionOrId(cid);
       if (!(luminoWidget instanceof Widget)) {
@@ -191,6 +191,7 @@ export class JupyterFrontEndModel extends IpylabModel {
       }
     } else {
       // Create a new lumino widget
+      IpylabModel.pendingConnections.set(cid, new PromiseDelegate());
       if (!id && evaluate) {
         // Evaluate code in a kernel to create the widget.
         id = await JupyterFrontEndModel.evaluate(args);
@@ -205,7 +206,7 @@ export class JupyterFrontEndModel extends IpylabModel {
         kernelId
       ));
     }
-    cid = cid || `ipylab-shell-connection:${UUID.uuid4()}`;
+
     area = area || 'main';
 
     if (

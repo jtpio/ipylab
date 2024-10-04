@@ -19,6 +19,7 @@ export class ConnectionModel extends IpylabModel {
     const cid = this.get('cid');
     const id = this.get('id') ?? '';
     try {
+      await IpylabModel.pendingConnections.get(cid)?.promise;
       const base = await IpylabModel.fromConnectionOrId(cid, id);
       IpylabModel.registerConnection(cid, base);
       this.base;
