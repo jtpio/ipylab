@@ -33,28 +33,30 @@ class SessionManager(AsyncWidgetBase):
         *,
         name: str = "",
         kernelId="",
-        kernelName="python3",
+        language="python",
         code: str | ModuleType = "",
         type: Literal["console", "notebook"] = "console",  # noqa: A002
+        ensureFrontend=True,
     ) -> Task[Connection]:
         """
         Create a new sessionContext.
 
-        If kernelId is omitted a new kernel will be started.
 
         path: The session path.
         name: The name of the session.
-        kernelName: The name of the kernel (only Python kernel implemented).
+        language: language for kernel prefrences.
         code: A string, module or function to be called in the kernel.
         type: The type of session.
+        ensureFrontend: Ensures a frontend has been started.
         """
         return self.app.schedule_operation(
             "newSessionContext",
             path=path,
             name=name or path,
             kernelId=kernelId,
-            kernelName=kernelName,
+            language=language,
             type=type,
             code=code,
+            ensureFrontend=ensureFrontend,
             transform=Transform.connection,
         )

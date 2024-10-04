@@ -12,7 +12,7 @@ import { IMainMenu, MainMenu } from '@jupyterlab/mainmenu';
 import { PromiseDelegate, UUID } from '@lumino/coreutils';
 import { IpylabBackendModel } from './backend';
 import { IpylabModel, Widget } from './ipylab';
-import { listProperties, newSessionContext } from './utils';
+import { listProperties } from './utils';
 
 export class JupyterFrontEndModel extends IpylabModel {
   async ipylabInit(base: any = null) {
@@ -103,8 +103,6 @@ export class JupyterFrontEndModel extends IpylabModel {
       case 'getExistingDirectory':
         payload.manager = this.defaultBrowser.model.manager;
         return await FileDialog.getExistingDirectory(payload).then(_get_result);
-      case 'newSessionContext':
-        return await newSessionContext(payload);
       case 'generateMenu':
         return this._generateMenu(payload.options);
       case 'evaluate':
@@ -143,13 +141,28 @@ export class JupyterFrontEndModel extends IpylabModel {
   static async restoreToShell(args: any): Promise<Widget> {
     // Wait for backend to load/reload plugins.
     await IpylabModel.backend_ready.promise;
-    if (
-      !args.kernelId ||
-      !(await IpylabModel.kernelManager.findById(args.kernelId))
-    ) {
-      return;
+
+    // When starting from scratch we should start new kernels and substitute the kernelId
+    if (!(await IpylabModel.kernelManager.findById(args.kernelId))) {
+      const oldKernelId = args.kernelId;
+
+      delete args.id;
+      if (!Private.newKernelId.has(oldKernelId)) {
+        if (!args.evaluate) {
+          return;
+        }
+        const pd = new PromiseDelegate<string>();
+        Private.newKernelId.set(oldKernelId, pd);
+        try {
+          const sc = await IpylabModel.newSessionContext(args);
+          pd.resolve(sc.session.kernel.id);
+        } catch (e) {
+          pd.reject(e);
+        }
+      }
+      args.kernelId = await Private.newKernelId.get(oldKernelId).promise;
     }
-    return JupyterFrontEndModel.addToShell(args);
+    await JupyterFrontEndModel.addToShell(args);
   }
 
   /**
@@ -251,3 +264,11 @@ export class JupyterFrontEndModel extends IpylabModel {
     return { ...super.defaults(), _model_name: 'JupyterFrontEndModel' };
   }
 }
+
+/**
+ * A namespace for private data
+ */
+namespace Private {
+  export const newKernelId = new Map<string, PromiseDelegate<string>>();
+}
+``;

@@ -4,7 +4,6 @@
 import { ISessionContext } from '@jupyterlab/apputils';
 import { UUID } from '@lumino/coreutils';
 import { IDisposable, IpylabModel } from './ipylab';
-import { newSessionContext } from './utils';
 /**
  * The model to run in the backend for loading plugins.
  */
@@ -31,10 +30,10 @@ export class IpylabBackendModel extends IpylabModel {
         await IpylabBackendModel.sessionContext?.session?.kernel?.shutdown();
       }
       const model = await IpylabModel.sessionManager.findByPath(path);
-      IpylabBackendModel.sessionContext = await newSessionContext({
+      IpylabBackendModel.sessionContext = await IpylabModel.newSessionContext({
         path: path,
         name: path,
-        language: 'python3',
+        language: 'python',
         kernelId: model ? null : UUID.uuid4(),
         code: 'import ipylab._backend; ipylab._backend.IpylabBackEnd()'
       });

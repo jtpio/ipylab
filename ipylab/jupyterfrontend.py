@@ -174,8 +174,9 @@ class JupyterFrontEnd(AsyncWidgetBase):
                 d = self._ipy_shell.user_ns
                 self._namespaces.pop(name)
         if name not in self._namespaces:
-            self._namespaces[name] = LastUpdatedOrderedDict(d | self.namespace_defaults)
+            self._namespaces[name] = LastUpdatedOrderedDict(d)
             self.set_trait("namespaces", tuple(self.namespaces))
+        self._namespaces[name].update(self.namespace_defaults)
         self._namespaces[name]["app"] = self
         return self._namespaces[name]
 
@@ -185,7 +186,7 @@ class JupyterFrontEnd(AsyncWidgetBase):
         if activate:
             self.activate_namespace(name)
 
-    def activate_namespace(self, name: str):
+    def activate_namespace(self, name=""):
         "Sets the ipython/console namespace to the one corresponding to path."
         if not self._ipy_shell:
             msg = "Ipython shell is not loaded!"

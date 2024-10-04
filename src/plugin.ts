@@ -101,7 +101,7 @@ async function activate(
     void restorer.restore(IpylabModel.tracker, {
       command: 'ipylab:restore',
       args: widget => (widget as any).ipylabSettings,
-      name: widget => (widget as any).id,
+      name: widget => (widget as any).ipylabSettings.cid,
       when: IpylabModel.backend_ready.promise
     });
   }

@@ -1,7 +1,6 @@
 // Copyright (c) ipylab contributors
 // Distributed under the terms of the Modified BSD License.
 
-// SessionManager exposes `JupyterLab.serviceManager.sessions` to user python kernel
 import {
   ICallbacks,
   ISerializers,
@@ -13,11 +12,14 @@ import { ILabShell, JupyterFrontEnd, LabShell } from '@jupyterlab/application';
 import {
   ICommandPalette,
   Notification,
+  SessionContext,
+  SessionContextDialogs,
   WidgetTracker
 } from '@jupyterlab/apputils';
 import { IDefaultFileBrowser } from '@jupyterlab/filebrowser';
 import { ILauncher } from '@jupyterlab/launcher';
 import { IMainMenu } from '@jupyterlab/mainmenu';
+import { ObservableMap } from '@jupyterlab/observables';
 import { IRenderMimeRegistry } from '@jupyterlab/rendermime';
 import type { Kernel, Session } from '@jupyterlab/services';
 import { ITranslator } from '@jupyterlab/translation';
@@ -36,8 +38,6 @@ import type { JupyterFrontEndModel } from './frontend';
 import {
   getNestedObject,
   listProperties,
-  newSessionContext,
-  onKernelLost,
   setNestedProperty,
   toFunction
 } from './utils';
@@ -52,7 +52,6 @@ export {
   JSONObject,
   JSONValue,
   JupyterFrontEnd,
-  onKernelLost,
   Widget
 };
 
@@ -93,7 +92,7 @@ export class IpylabModel extends WidgetModel {
     }
     this._base = base;
     this.on('msg:custom', this._onCustomMessage, this);
-    onKernelLost(this.kernel, this.close, this);
+    IpylabModel.onKernelLost(this.kernel, this.close, this);
     this.save_changes();
     this.send({ init: 'ready' });
   }
@@ -401,6 +400,8 @@ export class IpylabModel extends WidgetModel {
         return this._setProperty(payload);
       case 'updateProperty':
         return this._updateProperty(payload);
+      case 'newSessionContext':
+        return await IpylabModel.newSessionContext(payload);
       default:
         // Each failed operation should throw an error if it is un-handled
         throw new Error(
@@ -408,6 +409,58 @@ export class IpylabModel extends WidgetModel {
             this.defaults().model_name
           }!`
         );
+    }
+  }
+
+  /**
+   * Transform the object for sending.
+   * @param obj
+   * @param args The mode as a string or an object with mode and any other parameters.
+   * @returns
+   */
+  async transformObject(obj: any, args: string | any): Promise<any> {
+    const transform = typeof args === 'string' ? args : args.transform;
+    let result, func;
+    let cid;
+
+    switch (transform) {
+      case 'raw':
+        return (await obj) as any;
+      case 'null':
+        return null;
+      case 'connection':
+        cid = args?.cid ?? `ipylab-connection:${UUID.uuid4()}`;
+        IpylabModel.registerConnection(cid, obj);
+        if (args.auto_dispose) {
+          IpylabModel.onKernelLost(this.kernel, obj.dispose, obj, true);
+        }
+        return { cid: cid, id: obj.id, info: args.info };
+      case 'advanced':
+        // expects args.mappings = {key:transform}
+        result = new Object();
+        for (const key of Object.keys(args.mappings)) {
+          const base = getNestedObject({ base: obj, dottedname: key });
+          (result as any)[key] = await this.transformObject(
+            base,
+            args.mappings[key]
+          );
+        }
+        return result as any;
+      case 'function':
+        func = toFunction(args.code).bind(this);
+        if (func.constructor.name === 'AsyncFunction') {
+          return await func(obj, args);
+        }
+        return func(obj);
+      case 'object':
+        if (obj) {
+          try {
+            return await IpylabModel.toObject(null, obj);
+          } catch {}
+        }
+        return obj;
+      default:
+        throw new Error(`Invalid return mode: '${transform}'`);
     }
   }
 
@@ -427,14 +480,69 @@ export class IpylabModel extends WidgetModel {
   }
 
   /**
+   * Start a new session that support comms needed for iplab needs for comms.
+   * @returns
+   */
+  static async newSessionContext({
+    name,
+    path = '',
+    kernelId = '',
+    language = 'python',
+    code = '',
+    type = 'console',
+    ensureFrontend = true
+  }: {
+    name: string;
+    path: string;
+    kernelId?: string;
+    language?: string;
+    code?: string;
+    type?: string;
+    ensureFrontend?: boolean;
+  }): Promise<SessionContext> {
+    path = path || UUID.uuid4();
+
+    const sessionContext = new SessionContext({
+      sessionManager: IpylabModel.sessionManager,
+      specsManager: IpylabModel.app.serviceManager.kernelspecs,
+      path: path,
+      name: name || path,
+      type: type,
+      kernelPreference: {
+        id: kernelId || null,
+        language: language,
+      }
+    });
+    await sessionContext.initialize();
+    if (!sessionContext.isReady) {
+      await new SessionContextDialogs({
+        translator: IpylabModel.translator
+      }).selectKernel(sessionContext!);
+    }
+    if (!sessionContext.isReady) {
+      sessionContext.dispose();
+      throw new Error('Cancelling because a kernel was not provided');
+    }
+    const kernel = sessionContext.session.kernel;
+    if (ensureFrontend) {
+      await IpylabModel.ensureFrontend(kernel);
+    }
+    if (code) {
+      await kernel.requestExecute({ code, store_history: false }).done;
+    }
+    return sessionContext;
+  }
+
+  /**
    * Send an evaluate request to a kernel using its JupyterFrontEndModel.
-   * If the kernelId isn't found (or provided) a new session using path will be used.
+   * If the kernelId isn't found a new context will be started.
    * The user may be prompted to select a kernel.
    */
   static async evaluate(options: any): Promise<any> {
     let { kernelId } = options;
     if (!IpylabModel.jfemPromises.has(kernelId)) {
-      kernelId = (await newSessionContext(options)).session.kernel.id;
+      const sc = await IpylabModel.newSessionContext(options);
+      kernelId = sc.session.kernel.id;
     }
     const jfem = await IpylabModel.getFrontendModel(kernelId);
     return await jfem.scheduleOperation('evaluate', options, 'raw');
@@ -500,20 +608,22 @@ export class IpylabModel extends WidgetModel {
    */
   static async toLuminoWidget(id: string, kernelId = '') {
     let luminoWidget, manager;
-    if (id.slice(0, 10) === 'IPY_MODEL_') {
-      const model_id = id.slice(10).split(':', 1)[0];
-      manager = await IpylabModel.getWidgetManager(model_id, kernelId);
-      const model = await manager.get_model(model_id);
-      luminoWidget = (await manager.create_view(model, {})).luminoWidget;
-      onKernelLost(manager.kernel, luminoWidget.dispose, luminoWidget);
-      kernelId = manager.kernel.id;
-    } else {
-      luminoWidget = await IpylabModel.fromConnectionOrId(id);
+    if (typeof id === 'string' && id) {
+      if (id.slice(0, 10) === 'IPY_MODEL_') {
+        const model_id = id.slice(10).split(':', 1)[0];
+        manager = await IpylabModel.getWidgetManager(model_id, kernelId);
+        const kernel = manager.kernel;
+        const model = await manager.get_model(model_id);
+        luminoWidget = (await manager.create_view(model, {})).luminoWidget;
+        IpylabModel.onKernelLost(kernel, luminoWidget.dispose, luminoWidget);
+      } else {
+        luminoWidget = await IpylabModel.fromConnectionOrId(id);
+      }
+      if (luminoWidget instanceof Widget) {
+        return { luminoWidget, kernelId: kernelId };
+      }
     }
-    if (luminoWidget instanceof Widget) {
-      return { luminoWidget, kernelId };
-    }
-    throw new Error(`Not a widget '${id}'`);
+    throw new Error(`Unable to generate a Widget for id='${id}'`);
   }
 
   /**
@@ -544,18 +654,9 @@ export class IpylabModel extends WidgetModel {
     }
   }
 
-  static async getFrontendModel(kernelId: string, timeout = 10000) {
-    if (!kernelId) {
-      throw new Error('A kernel id must be specified!');
-    }
-    await this.backend_ready.promise;
-    if (!IpylabModel.jfemPromises.has(kernelId)) {
-      IpylabModel.jfemPromises.set(kernelId, new PromiseDelegate());
-      const model = await IpylabModel.kernelManager.findById(kernelId);
-      if (!model) {
-        throw new Error(`Kernel doesn't exist ${kernelId}`);
-      }
-      const kernel = IpylabModel.kernelManager.connectTo({ model });
+  static async ensureFrontend(kernel: Kernel.IKernelConnection) {
+    if (!IpylabModel.jfemPromises.has(kernel.id)) {
+      IpylabModel.jfemPromises.set(kernel.id, new PromiseDelegate());
       const manager = new KernelWidgetManager(kernel, IpylabModel.rendermime);
       await kernel.requestExecute(
         {
@@ -568,7 +669,19 @@ export class IpylabModel extends WidgetModel {
         await new Promise(resolve => manager.restored.connect(resolve));
       }
     }
+    return await IpylabModel.jfemPromises.get(kernel.id).promise;
+  }
 
+  static async getFrontendModel(kernelId: string, timeout = 100000) {
+    await this.backend_ready.promise;
+    if (!IpylabModel.jfemPromises.has(kernelId)) {
+      const model = await IpylabModel.kernelManager.findById(kernelId);
+      if (!model) {
+        throw new Error(`Kernel doesn't exist ${kernelId}`);
+      }
+      const kernel = IpylabModel.kernelManager.connectTo({ model });
+      await IpylabModel.ensureFrontend(kernel);
+    }
     const delegate = IpylabModel.jfemPromises.get(kernelId);
     const t = setTimeout(() => {
       IpylabModel.jfemPromises.delete(kernelId);
@@ -677,55 +790,39 @@ export class IpylabModel extends WidgetModel {
   }
 
   /**
-   * Transform the object for sending.
-   * @param obj
-   * @param args The mode as a string or an object with mode and any other parameters.
-   * @returns
+   * Call slot when kernel is restarting or dead.
+   *
+   * As soon as the kernel is restarted, all Python objects are lost. Use this
+   * function to close the corresponding frontend objects.
+   * @param kernel
+   * @param slot
+   * @param thisArg
+   * @param onceOnly -  [true] Once called the slot will be disconnected.
    */
-  async transformObject(obj: any, args: string | any): Promise<any> {
-    const transform = typeof args === 'string' ? args : args.transform;
-    let result, func;
-    let cid;
-
-    switch (transform) {
-      case 'raw':
-        return (await obj) as any;
-      case 'null':
-        return null;
-      case 'connection':
-        cid = args?.cid ?? `ipylab-connection:${UUID.uuid4()}`;
-        IpylabModel.registerConnection(cid, obj);
-        if (args.auto_dispose) {
-          onKernelLost(this.kernel, obj.dispose, obj, true);
-        }
-        return { cid: cid, id: obj.id, info: args.info };
-      case 'advanced':
-        // expects args.mappings = {key:transform}
-        result = new Object();
-        for (const key of Object.keys(args.mappings)) {
-          const base = getNestedObject({ base: obj, dottedname: key });
-          (result as any)[key] = await this.transformObject(
-            base,
-            args.mappings[key]
-          );
-        }
-        return result as any;
-      case 'function':
-        func = toFunction(args.code).bind(this);
-        if (func.constructor.name === 'AsyncFunction') {
-          return await func(obj, args);
-        }
-        return func(obj);
-      case 'object':
-        if (obj) {
-          try {
-            return await IpylabModel.toObject(null, obj);
-          } catch {}
-        }
-        return obj;
-      default:
-        throw new Error(`Invalid return mode: '${transform}'`);
+  static onKernelLost(
+    kernel: Kernel.IKernelConnection,
+    slot: any,
+    thisArg?: any,
+    onceOnly = true
+  ) {
+    const id = kernel.id;
+    if (!Private.kernelLostSlot.has(id)) {
+      kernel.statusChanged.connect(_onKernelStatusChanged);
+      Private.kernelLostSlot.set(id, new Signal<any, null>(kernel));
+      kernel.disposed.connect(() => {
+        Private.kernelLostSlot.get(id).emit(null);
+        Signal.clearData(Private.kernelLostSlot.get(id));
+        Private.kernelLostSlot.delete(id);
+        kernel.statusChanged.disconnect(_onKernelStatusChanged);
+      });
     }
+    const callback = () => {
+      slot.bind(thisArg)();
+      if (onceOnly) {
+        Private.kernelLostSlot.get(id)?.disconnect(callback);
+      }
+    };
+    Private.kernelLostSlot.get(id).connect(callback);
   }
 
   /**
@@ -774,6 +871,15 @@ export class IpylabModel extends WidgetModel {
 }
 
 /**
+ * React to changes to the kernel status.
+ */
+function _onKernelStatusChanged(kernel: Kernel.IKernelConnection) {
+  if (['dead', 'restarting'].includes(kernel.status)) {
+    Private.kernelLostSlot.get(kernel.id).emit(null);
+  }
+}
+
+/**
  * A namespace for private data
  */
 namespace Private {
@@ -781,5 +887,8 @@ namespace Private {
   export const jfemPromises = new Map<
     string,
     PromiseDelegate<JupyterFrontEndModel>
+  >();
+  export const kernelLostSlot = new ObservableMap<
+    Signal<Kernel.IKernelConnection, null>
   >();
 }
