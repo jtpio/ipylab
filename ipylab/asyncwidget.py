@@ -135,13 +135,13 @@ class AsyncWidgetBase(WidgetBase):
             msg = f"This widget is closed {self!r}"
             raise RuntimeError(msg)
 
-    def to_task(self, coro: Coroutine[None, None, T]) -> Task[T]:
+    def to_task(self, coro: Coroutine[None, None, T], name: str | None = None) -> Task[T]:
         """Run the coro in a task."""
 
         self._check_closed()
-        task = asyncio.create_task(self._wrap_coro(coro))
+        task = asyncio.create_task(self._wrap_coro(coro), name=name)
         self._tasks.add(task)
-        task.add_done_callback(self._tasks.discard)
+        task.add_done_callback(self._task_done_callback)
         return task
 
     async def _wrap_coro(self, coro: Coroutine[None, None, T]) -> T:
@@ -155,6 +155,12 @@ class AsyncWidgetBase(WidgetBase):
                 pm.hook.on_task_error(obj=self, coro_name=coro.__name__, error=e)
             finally:
                 raise e
+
+    def _task_done_callback(self, task: Task):
+        self._tasks.discard(task)
+        # TODO: It'd be great if we could cancel in the frontend.
+        # Unfortunately it looks like Javascript Promises can't be cancelled.
+        # https://stackoverflow.com/questions/30233302/promise-is-it-possible-to-force-cancel-a-promise#30235261
 
     def _to_error(self, content: dict) -> IpylabFrontendError | None:
         error = content["error"]
@@ -329,7 +335,7 @@ class AsyncWidgetBase(WidgetBase):
         if toObject:
             content["toObject"] = list(map(str, toObject))
 
-        return self.to_task(self._send_receive(content))
+        return self.to_task(self._send_receive(content), name=ipylab_BE)
 
     def execute_command(
         self,
