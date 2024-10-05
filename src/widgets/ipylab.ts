@@ -498,7 +498,7 @@ export class IpylabModel extends WidgetModel {
     language?: string;
     code?: string;
     type?: string;
-    ensureFrontend?: boolean;
+    ensureFrontend?: boolean | string;
   }): Promise<SessionContext> {
     path = path || UUID.uuid4();
 
@@ -525,7 +525,10 @@ export class IpylabModel extends WidgetModel {
     }
     const kernel = sessionContext.session.kernel;
     if (ensureFrontend) {
-      await IpylabModel.ensureFrontend(kernel);
+      await IpylabModel.ensureFrontend(
+        kernel,
+        ensureFrontend === 'isIpylabKernel'
+      );
     }
     if (code) {
       await kernel.requestExecute({ code, store_history: false }).done;
@@ -654,13 +657,27 @@ export class IpylabModel extends WidgetModel {
     }
   }
 
-  static async ensureFrontend(kernel: Kernel.IKernelConnection) {
+  /**
+   * Ensure the JupyterFrontendModel 'app' is running in the kernel.
+   * @param kernel
+   * @param isIpylabKernel Provided for the default ipylab kernel
+   */
+  static async ensureFrontend(
+    kernel: Kernel.IKernelConnection,
+    isIpylabKernel = false
+  ) {
     if (!IpylabModel.jfemPromises.has(kernel.id)) {
       IpylabModel.jfemPromises.set(kernel.id, new PromiseDelegate());
       const manager = new KernelWidgetManager(kernel, IpylabModel.rendermime);
       await kernel.requestExecute(
         {
-          code: 'import ipylab',
+          code: isIpylabKernel
+            ? `
+            import ipylab
+            ipylab.app._in_ipylab_kernel=True
+            import ipylab._backend
+            ipylab._backend.IpylabBackEnd()`
+            : `import ipylab`,
           store_history: false
         },
         true

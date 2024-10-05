@@ -16,6 +16,7 @@ __all__ = [
     "InsertMode",
     "hookimpl",
     "Transform",
+    "JupyterFrontEnd",
     "pack",
     "_jupyter_labextension_paths",
 ]
@@ -23,6 +24,7 @@ import ipylab.commands as _commands  # noqa: F401
 from ipylab.common import Area, InsertMode, NotificationType, Transform, pack
 from ipylab.connection import Connection, ShellConnection
 from ipylab.hookspecs import hookimpl
+from ipylab.jupyterfrontend import JupyterFrontEnd
 from ipylab.widgets import Icon, Panel, SplitPanel
 
 
@@ -31,13 +33,5 @@ def _jupyter_labextension_paths():
     return [{"src": "labextension", "dest": "ipylab"}]
 
 
-def _get_app():
-    "Get the frontend"
-    from ipylab.jupyterfrontend import JupyterFrontEnd
-
-    return JupyterFrontEnd()
-
-
 # The Frontend should always be created and can not be subclassed.
-app = _get_app()
-del _get_app
+app = JupyterFrontEnd()

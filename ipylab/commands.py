@@ -2,12 +2,13 @@
 # Distributed under the terms of the Modified BSD License.
 from __future__ import annotations
 
+import functools
 import inspect
 from typing import TYPE_CHECKING, ClassVar
 
 from ipywidgets import TypedTuple
 from traitlets import Callable as CallableTrait
-from traitlets import Container, Instance, Tuple, Unicode
+from traitlets import Container, Dict, Instance, Tuple, Unicode
 
 from ipylab._compat.typing import Any, NotRequired, TypedDict, Unpack
 from ipylab.asyncwidget import AsyncWidgetBase, Transform, register
@@ -41,8 +42,9 @@ class CommandOptions(TypedDict):
 class CommandConnection(Connection):
     """A Disposable Ipylab command registered in the command pallet."""
 
+    args = Dict()
     python_command = CallableTrait(allow_none=False)
-
+    namespace_name = Unicode("")
     _config_options: ClassVar = set(CommandOptions.__annotations__)
 
     def close(self, *, dispose=True):
@@ -198,15 +200,21 @@ class CommandRegistry(AsyncWidgetBase):
                     msg = f'Command not found: "{payload["id"]}"'
                     raise RuntimeError(msg)
                 cmd = conn.python_command
-                kwgs = (payload.get("args") or {}) | {"buffers": buffers}
-                for k in set(kwgs).difference(inspect.signature(cmd).parameters):
-                    kwgs.pop(k)
-                result = cmd(**kwgs)
-                while callable(result) or inspect.isawaitable(result):
-                    if callable(result):
-                        result = result()
-                    if inspect.isawaitable(result):
-                        result = await result
+                args = conn.args | (payload.get("args") or {}) | {"buffers": buffers}
+                glbls = self.app.get_namespace(conn.namespace_name)
+                kwgs = {}
+                for n, p in inspect.signature(cmd).parameters.items():
+                    if n in args:
+                        kwgs[n] = args[n]
+                    elif n in glbls:
+                        kwgs[n] = glbls[n]
+                    elif p.default is p.empty:
+                        msg = f"Required parameter '{n}' missing for {cmd} of {conn}"
+                        raise NameError(msg)
+                glbls["_to_eval"] = functools.partial(cmd, **kwgs)
+                result = eval("_to_eval()", glbls)  # noqa: S307
+                if inspect.isawaitable(result):
+                    result = await result
                 return result
         return await super()._do_operation_for_frontend(operation, payload, buffers)
 
@@ -219,6 +227,8 @@ class CommandRegistry(AsyncWidgetBase):
         label="",
         icon_class: str | None = None,
         icon: Icon | None = None,
+        args: dict | None = None,
+        namespace_name="",
         **kwgs,
     ) -> Task[CommandConnection]:
         """Add a python command that can be executed by Jupyterlab.
@@ -227,6 +237,8 @@ class CommandRegistry(AsyncWidgetBase):
             The suffix for the 'id'.
         execute:
 
+        args: dict | None
+            Mapping of default arguments to provide.
         kwgs:
             Additional ICommandOptions can be passed as kwgs
 
@@ -249,7 +261,10 @@ class CommandRegistry(AsyncWidgetBase):
 
         async def add_command():
             conn: CommandConnection = await task
+            conn.set_trait("namespace_name", namespace_name)
             conn.set_trait("python_command", execute)
+            if args:
+                conn.set_trait("args", args)
             await self._add_to_tuple_trait("items", conn)
             return conn
 

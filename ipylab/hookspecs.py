@@ -9,8 +9,10 @@ import pluggy
 
 hookimpl = pluggy.HookimplMarker("ipylab")
 hookspec = pluggy.HookspecMarker("ipylab")
-pm = pluggy.PluginManager("ipylab")
+
 if t.TYPE_CHECKING:
+    from collections.abc import Awaitable
+
     from ipylab.asyncwidget import AsyncWidgetBase
     from ipylab.jupyterfrontend import JupyterFrontEnd
 
@@ -32,7 +34,7 @@ class IpylabHookspec:
         """
 
     @hookspec(firstresult=True)
-    def on_task_error(self, obj: AsyncWidgetBase, coro_name: str, error: Exception) -> None:
+    def on_task_error(self, obj: AsyncWidgetBase, aw: Awaitable, error: Exception) -> None:
         """Intercept an error message for logging purposes.
 
         Fired when an exception occurs in a task started with the method `AsyncWidgetBase.to_task`.
@@ -58,9 +60,13 @@ class IpylabHookspec:
         """Handle a message from the frontend."""
         obj.log.error("Unknown operation '%s' for %r", operation, obj)
 
-    @hookspec(firstresult=True)
-    def on_app_ready(self, app: JupyterFrontEnd):
-        """Called when the app is ready."""
+    @hookspec()
+    async def on_app_ready(self, app: JupyterFrontEnd):
+        """Called when the app is ready but not in the backend."""
+
+    @hookspec()
+    async def on_backend_ready(self, app: JupyterFrontEnd):
+        "Called when the backend is ready."
 
 
 class IpylabDefaultsPlugin:
@@ -75,13 +81,21 @@ class IpylabDefaultsPlugin:
         raise RuntimeError(msg)
 
     @hookimpl
-    def on_task_error(self, obj: AsyncWidgetBase, coro_name: str, error: Exception) -> None:
-        obj.log.error("Error executing %s", coro_name, exc_info=error)
+    def on_task_error(self, obj: AsyncWidgetBase, aw: str, error: Exception) -> None:
+        obj.log.error("Error executing %s", aw, exc_info=error)
 
     @hookimpl
     def on_message_error(self, obj: AsyncWidgetBase, msg: str, error: Exception) -> None:
         obj.log.exception("%r handling message %s", error, msg, exc_info=error)
 
+    @hookimpl(specname="on_backend_ready")
+    async def autostart_example(self, app: JupyterFrontEnd):
+        "Demonstrates how to use on_backend_ready"
 
-pm.add_hookspecs(IpylabHookspec)
-pm.register(IpylabDefaultsPlugin())
+
+def get_plugin_manager():
+    pm = pluggy.PluginManager("ipylab")
+    pm.add_hookspecs(IpylabHookspec)
+    pm.load_setuptools_entrypoints("ipylab")
+    pm.register(IpylabDefaultsPlugin())
+    return pm

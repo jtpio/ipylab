@@ -10,6 +10,7 @@ from ipylab import Area, Connection, InsertMode, ShellConnection, Transform, pac
 from ipylab.asyncwidget import AsyncWidgetBase, Unicode
 
 if TYPE_CHECKING:
+    import inspect
     from asyncio import Task
 
 
@@ -32,7 +33,7 @@ class Shell(AsyncWidgetBase):
 
     def add(
         self,
-        obj: Widget | None,
+        obj: Widget | inspect._SourceObjectType,
         *,
         area: Area = Area.main,
         activate: bool = True,

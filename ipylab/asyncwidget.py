@@ -16,12 +16,12 @@ import ipylab
 import ipylab._frontend as _fe
 import ipylab.commands
 from ipylab.common import Transform, TransformType, pack
-from ipylab.hookspecs import pm
+from ipylab.hookspecs import get_plugin_manager
 
 if TYPE_CHECKING:
     import logging
     from asyncio import Task
-    from collections.abc import Awaitable, Coroutine, Iterable
+    from collections.abc import Awaitable, Iterable
     from typing import ClassVar
 
     from ipylab.commands import CommandConnection
@@ -82,10 +82,15 @@ class AsyncWidgetBase(WidgetBase):
     _pending_operations: Dict[str, Response] = Dict()
     _tasks: Container[set[asyncio.Task]] = Set()
     _comm = None
+    _plugin_manager = get_plugin_manager()
     ready = Bool(read_only=True, help="Set to True when `init` message received")
     add_traits = None  # type: ignore # Don't support the method HasTraits.add_traits as it creates a new type that isn't a subclass of its origin)
     if TYPE_CHECKING:
         log: logging.Logger
+
+    @property
+    def plugin_manager(self):
+        return self._plugin_manager
 
     def __new__(cls, *, model_id=None, **kwgs):
         if not model_id and cls.SINGLETON:
@@ -135,24 +140,24 @@ class AsyncWidgetBase(WidgetBase):
             msg = f"This widget is closed {self!r}"
             raise RuntimeError(msg)
 
-    def to_task(self, coro: Coroutine[None, None, T], name: str | None = None) -> Task[T]:
+    def to_task(self, coro: Awaitable[T], name: str | None = None) -> Task[T]:
         """Run the coro in a task."""
 
         self._check_closed()
-        task = asyncio.create_task(self._wrap_coro(coro), name=name)
+        task = asyncio.create_task(self._wrap_awaitable(coro), name=name)
         self._tasks.add(task)
         task.add_done_callback(self._task_done_callback)
         return task
 
-    async def _wrap_coro(self, coro: Coroutine[None, None, T]) -> T:
+    async def _wrap_awaitable(self, aw: Awaitable[T]) -> T:
         try:
             async with self:
-                return await coro
+                return await aw
         except asyncio.CancelledError:
             raise
         except Exception as e:
             try:
-                pm.hook.on_task_error(obj=self, coro_name=coro.__name__, error=e)
+                self.plugin_manager.hook.on_task_error(obj=self, aw=aw, error=e)
             finally:
                 raise e
 
@@ -190,7 +195,7 @@ class AsyncWidgetBase(WidgetBase):
         try:
             super().send(json.dumps(content, default=pack), buffers)
         except Exception as error:
-            pm.hook.on_frontend_error(obj=self, error=error, content=content, buffers=buffers)
+            self.plugin_manager.hook.on_frontend_error(obj=self, error=error, content=content, buffers=buffers)
 
     async def _send_receive(self, content: dict):
         async with self:
@@ -231,9 +236,9 @@ class AsyncWidgetBase(WidgetBase):
             elif "closed" in content:
                 self.close()
             if error:
-                pm.hook.on_frontend_error(obj=self, error=error, content=content, buffers=buffers)
+                self.plugin_manager.hook.on_frontend_error(obj=self, error=error, content=content, buffers=buffers)
         except Exception as e:
-            pm.hook.on_message_error(obj=self, error=e, msg=msg, buffers=buffers)
+            self.plugin_manager.hook.on_message_error(obj=self, error=e, msg=msg, buffers=buffers)
 
     def on_frontend_init(self, content: dict):
         """Called when the frontend is initialized.
@@ -257,7 +262,7 @@ class AsyncWidgetBase(WidgetBase):
                 "repr": repr(e).replace("'", '"'),
                 "traceback": traceback.format_tb(e.__traceback__),
             }
-            pm.hook.on_frontend_error(obj=self, error=e, content=content, buffers=buffers)
+            self.plugin_manager.hook.on_frontend_error(obj=self, error=e, content=content, buffers=buffers)
         finally:
             try:
                 self.send(content, buffers)
@@ -268,11 +273,11 @@ class AsyncWidgetBase(WidgetBase):
                     "traceback": traceback.format_tb(e.__traceback__),
                 }
                 self.send(content, buffers)
-                pm.hook.on_frontend_error(obj=self, error=e, content=content, buffers=buffers)
+                self.plugin_manager.hook.on_frontend_error(obj=self, error=e, content=content, buffers=buffers)
 
     async def _do_operation_for_frontend(self, operation: str, payload: dict, buffers: list):  # noqa: ARG002
         """Overload this function as required."""
-        pm.hook.unhandled_frontend_operation_message(obj=self, operation=operation)
+        self.plugin_manager.hook.unhandled_frontend_operation_message(obj=self, operation=operation)
 
     def schedule_operation(
         self,

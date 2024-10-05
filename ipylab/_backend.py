@@ -2,24 +2,28 @@
 # Distributed under the terms of the Modified BSD License.
 from __future__ import annotations
 
+import asyncio
+
 from traitlets import Unicode
 
 from ipylab.asyncwidget import AsyncWidgetBase
-from ipylab.hookspecs import pm
 
 
 class IpylabBackEnd(AsyncWidgetBase):
-    """This class is provided to load `ipylab_autostart` entypoints.
+    """This class is provided to run plugins on a default kernel.
 
     It will be created by IpylabPythonKernel when the ipylab plugin is activated.
+    Entry points are loaded:
+     1. On initial launch.
+     2. When the page is loaded/refreshed.
+     3. When the workspace is updated.
 
     Include the following lines in a module to utilise.
 
     ``` toml
     # pyproject.toml
-    [project.entry-points.ipylab_autostart]
-        myproject = "myproject.pluginmodule"
-
+    [project.entry-points.ipylab:load]
+        myplugin = "myproject.ipylab_plugin:myplugin"
     ```
     """
 
@@ -27,17 +31,18 @@ class IpylabBackEnd(AsyncWidgetBase):
     SINGLETON = True
     _model_name = Unicode("IpylabBackendModel", help="Name of the model.", read_only=True).tag(sync=True)
 
-    async def _load_ipylab_backend_entrypoints(self):
-        "Load entrypoints."
-        try:
-            count = pm.load_setuptools_entrypoints("ipylab_autostart")
-            self.log.info("Ipylab python backend found {%} plugin entry points.", count)
-        except Exception as e:
-            self.log.exception("An exception occurred loading backend entrypoints")
-            self.app.dialog.show_error_message("Plugin failure", str(e))
-        finally:
-            await self.schedule_operation("backend_ready")
-
     def on_frontend_init(self, content):
         super().on_frontend_init(content)
-        self.to_task(self._load_ipylab_backend_entrypoints())
+
+        async def _backend_ready():
+            "Load entrypoints."
+            coros = self.plugin_manager.hook.on_backend_ready(app=self.app)
+
+            results = await asyncio.gather(*coros, return_exceptions=True)
+            for result in results:
+                if isinstance(result, Exception):
+                    self.log.exception("An exception occurred loading backend entrypoints")
+                    await self.app.dialog.show_error_message("Plugin failure", str(result))
+            await self.schedule_operation("backend_ready")
+
+        self.to_task(_backend_ready())

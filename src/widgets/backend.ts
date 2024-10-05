@@ -17,7 +17,7 @@ export class IpylabBackendModel extends IpylabModel {
     }
   }
 
-  static async checkStart(restart?: false) {
+  static async checkStart(restart = false) {
     // TODO: Make this a singleton and maybe don't need to subclass widget model (on the backend)
     if (
       !IpylabBackendModel.sessionContext ||
@@ -35,7 +35,7 @@ export class IpylabBackendModel extends IpylabModel {
         name: path,
         language: 'python',
         kernelId: model ? null : UUID.uuid4(),
-        code: 'import ipylab._backend; ipylab._backend.IpylabBackEnd()'
+        ensureFrontend: 'isIpylabKernel'
       });
     }
     if (restart && IpylabBackendModel._command) {
@@ -49,14 +49,9 @@ export class IpylabBackendModel extends IpylabModel {
       IpylabBackendModel._command = IpylabModel.app.commands.addCommand(
         IpylabBackendModel.checkstart,
         {
-          label: 'Ipylab check start Python backend',
-          caption:
-            'Start the Ipylab Python backend that will run registered autostart plugins.\n ' +
-            ' in "pyproject.toml"  added entry for: \n' +
-            '[project.entry-points.ipylab_autostart] \n' +
-            '\tmyproject = "myproject.pluginmodule"',
-
-          execute: () => IpylabBackendModel.checkStart()
+          label: 'Ipylab restart default kernel',
+          caption: 'Start or restart the default Ipylab Kernel.',
+          execute: () => IpylabBackendModel.checkStart(true)
         }
       );
       if (IpylabBackendModel._palletItem) {

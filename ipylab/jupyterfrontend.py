@@ -2,6 +2,7 @@
 # Distributed under the terms of the Modified BSD License.
 from __future__ import annotations
 
+import asyncio
 import functools
 import inspect
 from collections import OrderedDict
@@ -18,7 +19,6 @@ from ipylab.asyncwidget import AsyncWidgetBase, register
 from ipylab.commands import CommandRegistry
 from ipylab.common import InsertMode
 from ipylab.dialog import Dialog, FileDialog
-from ipylab.hookspecs import pm
 from ipylab.menu import ContextMenu, MainMenu
 from ipylab.notification import NotificationManager
 from ipylab.sessions import SessionManager
@@ -51,6 +51,8 @@ class JupyterFrontEnd(AsyncWidgetBase):
     current_session = Dict(read_only=True).tag(sync=True)
     all_sessions = Tuple(read_only=True).tag(sync=True)
     all_shell_connections_info: Container[tuple[dict, ...]] = Tuple(read_only=True).tag(sync=True)
+    namespaces: Container[tuple[str, ...]] = Tuple(read_only=True).tag(sync=True)
+
     shell_connections: Container[tuple[ShellConnection, ...]] = Tuple(read_only=True)
     dialog = Instance(Dialog, (), read_only=True)
     file_dialog = Instance(FileDialog, (), read_only=True)
@@ -62,7 +64,7 @@ class JupyterFrontEnd(AsyncWidgetBase):
     active_namespace = Unicode("", read_only=True, help="name of the current namespace")
     namespace_defaults = Dict({"ipylab": ipylab, "ipywidgets": ipywidgets, "ipw": ipywidgets})
     _namespaces: Container[dict[str, LastUpdatedOrderedDict]] = Dict(read_only=True)  # type: ignore
-    namespaces: Container[tuple[str, ...]] = Tuple(read_only=True).tag(sync=True)
+
     _ipy_shell = get_ipython()
     _ipy_default_namespace: ClassVar = getattr(_ipy_shell, "user_ns", {})
 
@@ -75,7 +77,19 @@ class JupyterFrontEnd(AsyncWidgetBase):
 
     def on_frontend_init(self, content: dict):
         super().on_frontend_init(content)
-        pm.hook.on_app_ready()
+        if getattr(self, "_in_ipylab_kernel", False):
+            return
+
+        async def frontend_ready():
+            coros = self.plugin_manager.hook.on_app_ready(app=self.app)
+            if coros:
+                results = await asyncio.gather(*coros, return_exceptions=True)
+                for result in results:
+                    if isinstance(result, Exception):
+                        await self.app.dialog.show_error_message("Plugin failed", str(result))
+                self.log.info("Finished running %d 'on_app_ready' plugins.", len(results))
+
+        self.to_task(frontend_ready(), "Running frontend plugins")
 
     def _gen_repr_from_keys(self, keys: Iterable):  # noqa: ARG002
         return super()._gen_repr_from_keys(("kernelId",))
@@ -164,7 +178,7 @@ class JupyterFrontEnd(AsyncWidgetBase):
             **kwgs,
         )
 
-    def _get_namespace(self, name=""):
+    def get_namespace(self, name=""):
         "Get the 'globals' namespace stored for name."
         d = self._ipy_default_namespace
         if self._ipy_shell:
@@ -182,7 +196,7 @@ class JupyterFrontEnd(AsyncWidgetBase):
 
     def update_namespace(self, name: str, glbls: dict, *, activate=False):
         "Update the namespace for the name."
-        self._get_namespace(name).update(glbls)
+        self.get_namespace(name).update(glbls)
         if activate:
             self.activate_namespace(name)
 
@@ -191,7 +205,7 @@ class JupyterFrontEnd(AsyncWidgetBase):
         if not self._ipy_shell:
             msg = "Ipython shell is not loaded!"
             raise RuntimeError(msg)
-        ns = self._get_namespace(name)
+        ns = self.get_namespace(name)
         self._ipy_shell.reset()
         self._ipy_shell.push(ns)
         self.set_trait("active_namespace", name)
@@ -247,7 +261,7 @@ class JupyterFrontEnd(AsyncWidgetBase):
 
         """
         namespace_name = options.get("namespace_name", "")
-        glbls = self._get_namespace(namespace_name) | options | {"buffers": buffers}
+        glbls = self.get_namespace(namespace_name) | options | {"buffers": buffers}
         evaluate = options.get("evaluate", {})
         if isinstance(evaluate, str):
             evaluate = {"payload": evaluate}
