@@ -6,6 +6,7 @@ dependencies:
   - mamba
   - pydata-sphinx-theme
   - myst-parser
+  - build
   - ipywidgets >=8.1,<9
   - jupyterlab >=4.1,<5
   - jupyterlite-core
