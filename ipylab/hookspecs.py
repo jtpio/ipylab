@@ -20,39 +20,60 @@ if t.TYPE_CHECKING:
 class IpylabHookspec:
     @hookspec(firstresult=True)
     def on_frontend_error(self, obj: AsyncWidgetBase, error: Exception, content: dict, buffers) -> None:
-        """Intercept an error message for logging purposes.
+        """
+        Intercept an error message for logging purposes.
 
         Fired when the task handling comms receives the error prior to raising it.
 
-        Args: AsyncWidgetBase
-            obj:
-                The object from where the error.
-            error: str
-                The message from the JupyterFrontend.
-            content:
-                The content of the message accompanying the frontend error.
+        Args
+        ----
+
+        obj: AsyncWidgetBase
+            The object from where the error.
+        error: str
+            The message from the JupyterFrontend.
+        content:
+            The content of the message accompanying the frontend error.
         """
 
     @hookspec(firstresult=True)
     def on_task_error(self, obj: AsyncWidgetBase, aw: Awaitable, error: Exception) -> None:
-        """Intercept an error message for logging purposes.
+        """
+        Intercept an error message for logging purposes.
 
         Fired when an exception occurs in a task started with the method `AsyncWidgetBase.to_task`.
 
-        Args: AsyncWidgetBase
-            obj:
-                The object from where the error.
+        Args
+        ----
+
+        obj: AsyncWidgetBase
+            The object from where the error.
+
+        aw: Awaitable
+            The awaitable object running in the task.
+
+        error: Exception
+            The exception.
         """
 
     @hookspec(firstresult=True)
     def on_message_error(self, obj: AsyncWidgetBase, msg: str, error: Exception) -> None:
-        """Intercept an error message for logging purposes.
+        """
+        Intercept an error message for logging purposes.
 
-        Fired when an exception occurs in a task started with the method `AsyncWidgetBase.to_task`.
+        Fired when an exception occurs trying to process a message from the frontend.
 
-        Args: AsyncWidgetBase
-            obj:
-                The object from where the error.
+        Args
+        ----
+
+        obj: AsyncWidgetBase
+            The object from where the error.
+
+        aw: Awaitable
+            The awaitable object running in the task.
+
+        error: Exception
+            The exception.
         """
 
     @hookspec(firstresult=True)
@@ -61,41 +82,51 @@ class IpylabHookspec:
         obj.log.error("Unknown operation '%s' for %r", operation, obj)
 
     @hookspec()
-    async def on_app_ready(self, app: JupyterFrontEnd):
-        """Called when the app is ready but not in the backend."""
+    async def autostart(self, app: JupyterFrontEnd):
+        """
+        Called inside each Python kernel when the frontend is 'ready'.
+
+        Use this with modules that define entry points.
+        """
 
     @hookspec()
-    async def on_backend_ready(self, app: JupyterFrontEnd):
-        "Called when the backend is ready."
+    async def ipylab_only_autostart(self, app: JupyterFrontEnd):
+        """
+        Called inside the Ipylab Python kernel ONLY. Called when the frontend is 'ready'.
+
+        Use this with modules that define entry points.
+        """
 
 
 class IpylabDefaultsPlugin:
     @hookimpl
     def on_frontend_error(self, obj: AsyncWidgetBase, error: Exception, content: dict, buffers) -> None:  # noqa: ARG002
-        msg = obj.log.error("An error occurred on the frontend with message %s %s", error, content)
-        raise RuntimeError(msg)
+        obj.log.exception("%r on_frontend_error %s", error, exc_info=error)
+        import ipylab
+
+        ipylab.app.dialog.show_error_message("Frontend error", f"{obj=} error='{error}'")
 
     @hookimpl
     def unhandled_frontend_operation_message(self, obj: AsyncWidgetBase, operation: str):
-        msg = f"Unhandled frontend_operation_message from {obj=} {operation=}"
-        raise RuntimeError(msg)
+        import ipylab
+
+        ipylab.app.dialog.show_error_message("Unhandled frontend message", f"The {operation=} is unhandled for {obj} ")
 
     @hookimpl
     def on_task_error(self, obj: AsyncWidgetBase, aw: str, error: Exception) -> None:
-        obj.log.error("Error executing %s", aw, exc_info=error)
+        obj.log.exception("%r on_task_error %s aw=%s", error, aw, exc_info=error)
 
     @hookimpl
     def on_message_error(self, obj: AsyncWidgetBase, msg: str, error: Exception) -> None:
-        obj.log.exception("%r handling message %s", error, msg, exc_info=error)
+        """
+        Called when an error occurs when processing a message from the Frontend.
+        """
+        obj.log.exception("%r on_message_error %s", error, msg, exc_info=error)
+        import ipylab
 
-    @hookimpl(specname="on_backend_ready")
-    async def autostart_example(self, app: JupyterFrontEnd):
-        "Demonstrates how to use on_backend_ready"
+        ipylab.app.dialog.show_error_message("Message error", f"{error=}\n{obj=}\n{msg=}'")
 
 
-def get_plugin_manager():
-    pm = pluggy.PluginManager("ipylab")
-    pm.add_hookspecs(IpylabHookspec)
-    pm.load_setuptools_entrypoints("ipylab")
-    pm.register(IpylabDefaultsPlugin())
-    return pm
+_plugin_manager = pluggy.PluginManager("ipylab")
+_plugin_manager.add_hookspecs(IpylabHookspec)
+_plugin_manager.register(IpylabDefaultsPlugin())

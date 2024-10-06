@@ -1,7 +1,6 @@
 // Copyright (c) ipylab contributors
 // Distributed under the terms of the Modified BSD License.
 
-import { IpylabBackendModel } from './widgets/backend';
 import { CommandRegistryModel } from './widgets/commands';
 import { ConnectionModel } from './widgets/connection';
 import { JupyterFrontEndModel } from './widgets/frontend';
@@ -13,7 +12,6 @@ import { SplitPanelModel, SplitPanelView } from './widgets/split_panel';
 import { TitleModel } from './widgets/title';
 
 export {
-  IpylabBackendModel,
   CommandRegistryModel,
   ConnectionModel,
   IconModel,

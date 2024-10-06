@@ -10,7 +10,7 @@ import {
 import { FileDialog } from '@jupyterlab/filebrowser';
 import { IMainMenu, MainMenu } from '@jupyterlab/mainmenu';
 import { PromiseDelegate, UUID } from '@lumino/coreutils';
-import { IpylabBackendModel } from './backend';
+import { IpylabAutostart } from './autostart';
 import { IpylabModel, Widget } from './ipylab';
 import { listProperties } from './utils';
 
@@ -31,6 +31,7 @@ export class JupyterFrontEndModel extends IpylabModel {
     }
     this._updateAllSessionDetails();
     await super.ipylabInit(base);
+    await this.pluginsLoaded.promise;
     IpylabModel.jfemPromises.get(this.kernelId).resolve(this);
   }
 
@@ -107,8 +108,8 @@ export class JupyterFrontEndModel extends IpylabModel {
         return this._generateMenu(payload.options);
       case 'evaluate':
         return await JupyterFrontEndModel.evaluate(payload);
-      case 'startIyplabPythonBackend':
-        return (await IpylabBackendModel.checkStart(
+      case 'checkstartIyplabKernel':
+        return (await IpylabAutostart.checkStart(
           payload.restart ?? false
         )) as any;
       case 'shutdownKernel':
@@ -120,6 +121,12 @@ export class JupyterFrontEndModel extends IpylabModel {
           this.kernel.shutdown();
         }
         return null;
+      case 'plugins_loading':
+        this.pluginsLoaded.resolve(null);
+        if (payload.ipylabKernelReady) {
+          IpylabModel.ipylabKernelReady.resolve(null);
+        }
+        return '🔓';
       default:
         return await super.operation(op, payload);
     }
@@ -140,7 +147,7 @@ export class JupyterFrontEndModel extends IpylabModel {
    */
   static async restoreToShell(args: any): Promise<Widget> {
     // Wait for backend to load/reload plugins.
-    await IpylabModel.backend_ready.promise;
+    await IpylabModel.ipylabKernelReady.promise;
 
     // When starting from scratch we should start new kernels and substitute the kernelId
     if (!(await IpylabModel.kernelManager.findById(args.kernelId))) {
@@ -185,7 +192,7 @@ export class JupyterFrontEndModel extends IpylabModel {
     let id: string = args.id ?? '';
     cid = cid || `ipylab-shell-connection:${UUID.uuid4()}`;
     if (IpylabModel.connections.has(cid)) {
-      luminoWidget = await IpylabBackendModel.fromConnectionOrId(cid);
+      luminoWidget = await IpylabModel.fromConnectionOrId(cid);
       if (!(luminoWidget instanceof Widget)) {
         throw new Error(`Not a Widget ${listProperties(luminoWidget)}`);
       }
@@ -257,6 +264,9 @@ export class JupyterFrontEndModel extends IpylabModel {
       jfem.updateTrackerInfo();
     }
   }
+
+  isIpylabKernel: boolean;
+  pluginsLoaded = new PromiseDelegate();
 
   /**
    * The default attributes.

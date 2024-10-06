@@ -24,28 +24,29 @@ if TYPE_CHECKING:
 class Connection(AsyncWidgetBase):
     """A connection to a single object in the Frontend.
 
-    Connection and subclasses of connection are used extensiviely in ipylab to
-    provide a connection between an object in the frontend (Javascript) and the
-    backend (Python). Instances of `Connections` are created automatically when
-    the transform is set as `Transform.connection`. This option is available whenever
-    a transform argument is available in a method call that goes to `schedule_operation`.
+    `Connection` and subclasses of `Connection` are used extensiviely in Ipylab
+    to provide a connection to an object in the frontend (Javascript).
+    Instances of `Connection` are created automatically when the transform is
+    set as `Transform.connection`. This option is available whenever a transform
+    argument is available in a method call that goes to `schedule_operation`.
 
-    When the `cid` *prefix* matches a subclass `CID_PREFIX`, a new subclass instance will
-    be created in place of Connection (on the python side).
+    When the `cid` *prefix* matches a subclass `CID_PREFIX`, a new subclass
+    instance will be created in place of `Connection` (on the python side).
 
-    The 'dispose' method will call the dispose method on the frontend object and
-    close this object.
+    When closing the connection the object in the frontend can be directed to
+    to dispose. Some subclasses such as `CommandConnection`,`CommandPalletConnection`
+    and `LauncherConnection` (a subclass of `CommandPalletConnection`) have dispose
+    enabled by default.
 
-    Non-disposable objects are patched with a blank `dispose` method.
+    It is possible to creat a connection to most objects in the frontend, non-disposable
+    objects are patched with a blank `dispose` method.
 
     see: https://lumino.readthedocs.io/en/latest/api/modules/disposable.html
 
-    Subclasses that are inherited with and CID_PREFIX.
-
     If a specific subclass of Connection is required, the transform should be
-    specified with the cid from the subclass. Use the keyword argument `cid` to ensure
-    the subclass instance is returned. The class methods `to_cid` will generate an
-    appropriate id.
+    specified with the cid from the subclass. Use the keyword argument `cid` to
+    ensure the subclass instance is returned. The class methods `to_cid` will
+    generate an appropriate id.
 
     See also `Transform.connection` for further detail about transforms.
     """

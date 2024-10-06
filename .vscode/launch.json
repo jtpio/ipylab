@@ -24,7 +24,7 @@
       "justMyCode": false
     },
     {
-      "name": "Ipylab backend",
+      "name": "Ipylab",
       "type": "debugpy",
       "request": "launch",
       "args": [
@@ -61,7 +61,7 @@
   "compounds": [
     {
       "name": "Debug IPylab with firefox",
-      "configurations": ["Ipylab backend", "IPylab frontend with Firefox"]
+      "configurations": ["Ipylab", "IPylab frontend with Firefox"]
     }
   ]
 }

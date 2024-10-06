@@ -19,6 +19,7 @@ from ipylab.asyncwidget import AsyncWidgetBase, register
 from ipylab.commands import CommandRegistry
 from ipylab.common import InsertMode
 from ipylab.dialog import Dialog, FileDialog
+from ipylab.hookspecs import _plugin_manager
 from ipylab.menu import ContextMenu, MainMenu
 from ipylab.notification import NotificationManager
 from ipylab.sessions import SessionManager
@@ -64,6 +65,7 @@ class JupyterFrontEnd(AsyncWidgetBase):
     active_namespace = Unicode("", read_only=True, help="name of the current namespace")
     namespace_defaults = Dict({"ipylab": ipylab, "ipywidgets": ipywidgets, "ipw": ipywidgets})
     _namespaces: Container[dict[str, LastUpdatedOrderedDict]] = Dict(read_only=True)  # type: ignore
+    _plugin_manager = _plugin_manager
 
     _ipy_shell = get_ipython()
     _ipy_default_namespace: ClassVar = getattr(_ipy_shell, "user_ns", {})
@@ -75,21 +77,38 @@ class JupyterFrontEnd(AsyncWidgetBase):
     def close(self):
         "Cannot close"
 
-    def on_frontend_init(self, content: dict):
-        super().on_frontend_init(content)
-        if getattr(self, "_in_ipylab_kernel", False):
-            return
+    @property
+    def plugin_manager(self):
+        return self._plugin_manager
 
-        async def frontend_ready():
-            coros = self.plugin_manager.hook.on_app_ready(app=self.app)
-            if coros:
-                results = await asyncio.gather(*coros, return_exceptions=True)
-                for result in results:
-                    if isinstance(result, Exception):
-                        await self.app.dialog.show_error_message("Plugin failed", str(result))
-                self.log.info("Finished running %d 'on_app_ready' plugins.", len(results))
+    @property
+    def is_ipylab_kernel(self):
+        "Returns True when the kernel is the Ipylab kernel."
+        return bool(getattr(self, "_is_ipylab_kernel", False))
 
-        self.to_task(frontend_ready(), "Running frontend plugins")
+    def _on_frontend_init(self):
+        # Only load entry points in a kernel with a frontend and once
+        # it is known if which kernel is the Ipylab kernel.
+        self._plugin_manager.load_setuptools_entrypoints("ipylab")
+        super()._on_frontend_init()
+
+        async def autostart():
+            plugins = []
+            if self.is_ipylab_kernel:
+                plugins.extend(self.app.plugin_manager.hook.ipylab_only_autostart(app=self.app))
+            plugins.extend(self.app.plugin_manager.hook.autostart(app=self.app))
+
+            # Start loading plugins
+            loop = asyncio.as_completed(filter(inspect.isawaitable, plugins))
+            await self.schedule_operation("plugins_loading", ipylabKernelReady=self.is_ipylab_kernel)
+            # Check the results completed
+            for coro in loop:
+                result = await coro
+                if isinstance(result, Exception):
+                    await self.app.dialog.show_error_message("Plugin failed", str(result))
+            self.log.info("Finished running %d 'autostart' plugins.", len(plugins))
+
+        self.to_task(autostart(), "Autostart plugins")
 
     def _gen_repr_from_keys(self, keys: Iterable):  # noqa: ARG002
         return super()._gen_repr_from_keys(("kernelId",))
@@ -123,7 +142,7 @@ class JupyterFrontEnd(AsyncWidgetBase):
 
     def checkstart_iyplab_python_backend(self, *, restart=False):
         """Checks backend is running and starts it if it isn't, returning the session model."""
-        return self.schedule_operation("startIyplabPythonBackend", restart=restart, transform=Transform.raw)
+        return self.schedule_operation("checkstartIyplabKernel", restart=restart, transform=Transform.raw)
 
     # TODO: move to AsyncWidgetBase maybe. Maybe use a path instead of a kernel or find the kernel by the path
     def evaluate(

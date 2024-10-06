@@ -16,7 +16,6 @@ import ipylab
 import ipylab._frontend as _fe
 import ipylab.commands
 from ipylab.common import Transform, TransformType, pack
-from ipylab.hookspecs import get_plugin_manager
 
 if TYPE_CHECKING:
     import logging
@@ -82,15 +81,11 @@ class AsyncWidgetBase(WidgetBase):
     _pending_operations: Dict[str, Response] = Dict()
     _tasks: Container[set[asyncio.Task]] = Set()
     _comm = None
-    _plugin_manager = get_plugin_manager()
+
     ready = Bool(read_only=True, help="Set to True when `init` message received")
     add_traits = None  # type: ignore # Don't support the method HasTraits.add_traits as it creates a new type that isn't a subclass of its origin)
     if TYPE_CHECKING:
         log: logging.Logger
-
-    @property
-    def plugin_manager(self):
-        return self._plugin_manager
 
     def __new__(cls, *, model_id=None, **kwgs):
         if not model_id and cls.SINGLETON:
@@ -157,7 +152,7 @@ class AsyncWidgetBase(WidgetBase):
             raise
         except Exception as e:
             try:
-                self.plugin_manager.hook.on_task_error(obj=self, aw=aw, error=e)
+                self.app.plugin_manager.hook.on_task_error(obj=self, aw=aw, error=e)
             finally:
                 raise e
 
@@ -195,11 +190,11 @@ class AsyncWidgetBase(WidgetBase):
         try:
             super().send(json.dumps(content, default=pack), buffers)
         except Exception as error:
-            self.plugin_manager.hook.on_frontend_error(obj=self, error=error, content=content, buffers=buffers)
+            self.app.plugin_manager.hook.on_frontend_error(obj=self, error=error, content=content, buffers=buffers)
 
     async def _send_receive(self, content: dict):
         async with self:
-            self._pending_operations[content["ipylab_BE"]] = response = Response()
+            self._pending_operations[content["ipylab_PY"]] = response = Response()
             self.send(content)
             try:
                 return await self._wait_response_check_error(response, content)
@@ -220,8 +215,8 @@ class AsyncWidgetBase(WidgetBase):
             content = json.loads(msg)
             error = self._to_error(content) if "error" in content else None
             if "operation" in content:
-                if "ipylab_BE" in content:
-                    self._pending_operations.pop(content["ipylab_BE"]).set(content.get("payload"), error)
+                if "ipylab_PY" in content:
+                    self._pending_operations.pop(content["ipylab_PY"]).set(content.get("payload"), error)
                 elif "ipylab_FE" in content:
                     self.to_task(self._handle_frontend_operation(buffers=buffers, **content))
             elif "init" in content:
@@ -232,15 +227,15 @@ class AsyncWidgetBase(WidgetBase):
                     case "ready":
                         self._ready_event.set()
                         self.set_trait("ready", True)
-                        self.on_frontend_init(content)
+                        self._on_frontend_init()
             elif "closed" in content:
                 self.close()
             if error:
-                self.plugin_manager.hook.on_frontend_error(obj=self, error=error, content=content, buffers=buffers)
+                self.app.plugin_manager.hook.on_frontend_error(obj=self, error=error, content=content, buffers=buffers)
         except Exception as e:
-            self.plugin_manager.hook.on_message_error(obj=self, error=e, msg=msg, buffers=buffers)
+            self.app.plugin_manager.hook.on_message_error(obj=self, error=e, msg=msg, buffers=buffers)
 
-    def on_frontend_init(self, content: dict):
+    def _on_frontend_init(self):
         """Called when the frontend is initialized.
 
         This will occur on initial connection and whenever the model is restored from the kernel."""
@@ -262,7 +257,7 @@ class AsyncWidgetBase(WidgetBase):
                 "repr": repr(e).replace("'", '"'),
                 "traceback": traceback.format_tb(e.__traceback__),
             }
-            self.plugin_manager.hook.on_frontend_error(obj=self, error=e, content=content, buffers=buffers)
+            self.app.plugin_manager.hook.on_frontend_error(obj=self, error=e, content=content, buffers=buffers)
         finally:
             try:
                 self.send(content, buffers)
@@ -273,11 +268,11 @@ class AsyncWidgetBase(WidgetBase):
                     "traceback": traceback.format_tb(e.__traceback__),
                 }
                 self.send(content, buffers)
-                self.plugin_manager.hook.on_frontend_error(obj=self, error=e, content=content, buffers=buffers)
+                self.app.plugin_manager.hook.on_frontend_error(obj=self, error=e, content=content, buffers=buffers)
 
     async def _do_operation_for_frontend(self, operation: str, payload: dict, buffers: list):  # noqa: ARG002
         """Overload this function as required."""
-        self.plugin_manager.hook.unhandled_frontend_operation_message(obj=self, operation=operation)
+        self.app.plugin_manager.hook.unhandled_frontend_operation_message(obj=self, operation=operation)
 
     def schedule_operation(
         self,
@@ -328,9 +323,9 @@ class AsyncWidgetBase(WidgetBase):
         if not operation or not isinstance(operation, str):
             msg = f"Invalid {operation=}"
             raise ValueError(msg)
-        ipylab_BE = str(uuid.uuid4())  # noqa: N806
+        ipylab_PY = str(uuid.uuid4())  # noqa: N806
         content = {
-            "ipylab_BE": ipylab_BE,
+            "ipylab_PY": ipylab_PY,
             "operation": operation,
             "kwgs": kwgs,
             "transform": Transform.validate(transform),
@@ -340,7 +335,7 @@ class AsyncWidgetBase(WidgetBase):
         if toObject:
             content["toObject"] = list(map(str, toObject))
 
-        return self.to_task(self._send_receive(content), name=ipylab_BE)
+        return self.to_task(self._send_receive(content), name=ipylab_PY)
 
     def execute_command(
         self,

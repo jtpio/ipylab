@@ -16,6 +16,7 @@ import { IRenderMimeRegistry } from '@jupyterlab/rendermime';
 import { ITranslator } from '@jupyterlab/translation';
 import { MODULE_NAME, MODULE_VERSION } from './version';
 import { IpylabModel, JupyterFrontEndModel } from './widget';
+import { IpylabAutostart } from './widgets/autostart';
 const EXTENSION_ID = 'ipylab:plugin';
 
 /**
@@ -95,14 +96,14 @@ async function activate(
     rank: 1
   });
 
-  widgetExports.IpylabBackendModel.checkStart();
+  IpylabAutostart.checkStart();
   // Handle state restoration.
   if (restorer) {
     void restorer.restore(IpylabModel.tracker, {
       command: 'ipylab:restore',
       args: widget => (widget as any).ipylabSettings,
       name: widget => (widget as any).ipylabSettings.cid,
-      when: IpylabModel.backend_ready.promise
+      when: IpylabModel.ipylabKernelReady.promise
     });
   }
 }

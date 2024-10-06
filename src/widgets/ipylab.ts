@@ -218,7 +218,6 @@ export class IpylabModel extends WidgetModel {
         'This payload is a simplified representation because it has circular references.';
       if (typeof value.dispose === 'function') {
         // Keep a reference to disposable objects in case it needs to be found again in the frontend.
-        // Not intended to be used by the backend as a connection transform is available.
         const cid = (out['ipylab_cid'] = `ipylab-connection:${UUID.uuid4()}`);
         IpylabModel.registerConnection(cid, value);
       }
@@ -230,8 +229,8 @@ export class IpylabModel extends WidgetModel {
   /**
    * Convert custom messages into operations for action.
    * There are two types:
-   * 1. Response to requested operation sent to Python backend (ipylab_FE).
-   * 2. Operation requests received from the Python backend (ipylab_BE).
+   * 1. Response to requested operation sent to Python (ipylab_FE).
+   * 2. Operation requests received from the Python (ipylab_PY).
    * @param msg
    */
   private async _onCustomMessage(msg: any) {
@@ -268,7 +267,7 @@ export class IpylabModel extends WidgetModel {
       }
     }
     if (content.ipylab_FE) {
-      // Result of an operation request in the backend.
+      // Result of an operation request sent to Python.
       const op = this._pendingOperations.get(content.ipylab_FE);
       this._pendingOperations.delete(content.ipylab_FE);
       if (op) {
@@ -278,20 +277,18 @@ export class IpylabModel extends WidgetModel {
           op.resolve(content.payload);
         }
       }
-    } else if (content.ipylab_BE) {
-      this._do_operation_for_backend(content);
+    } else if (content.ipylab_PY) {
+      this._do_operation_for_python(content);
     }
   }
 
   /**
-   * Perform an operation for the backend returning the result if successful
+   * Perform an operation requested by Python returning the result if successful
    * or an 'error' message if unsuccessful.
-   * Results are 'transformed' by the method specified in the call to the operation from the backend.
-   * The transformed result is returned to the backend using the ipylab_BE value (uuid4).
    * @param content
    */
-  private async _do_operation_for_backend(content: any) {
-    const { operation, ipylab_BE, transform, kwgs } = content;
+  private async _do_operation_for_python(content: any) {
+    const { operation, ipylab_PY, transform, kwgs } = content;
     try {
       let result, buffers;
       result = await this.operation(operation, kwgs);
@@ -303,7 +300,7 @@ export class IpylabModel extends WidgetModel {
         result = (result as any).payload;
       }
       const response = {
-        ipylab_BE,
+        ipylab_PY,
         operation,
         payload: (await this.transformObject(result, transform)) ?? null
       };
@@ -311,7 +308,7 @@ export class IpylabModel extends WidgetModel {
     } catch (e) {
       this.send({
         operation: operation,
-        ipylab_BE: content.ipylab_BE,
+        ipylab_PY: content.ipylab_PY,
         error: `${(e as Error).message}`
       });
       console.error(e);
@@ -357,12 +354,12 @@ export class IpylabModel extends WidgetModel {
   }
 
   /**
-   * Schedule an operation to be performed on the backend.
-   * This is a mirror of 'schedule_operation' on the backend.
+   * Schedule an operation to be performed in Python.
+   * This is a mirror of 'schedule_operation' in Python.
    *
-   * @param operation The name of the operation to perform on the backend.
-   * @param payload Corresponding payload as expected by the backend.
-   * @param transform The type of transformation to apply. See python `class Transform`.
+   * @param operation The name of the operation to perform in Python.
+   * @param payload Payload to send to Python.
+   * @param transform The type of transformation to apply on the returned result.
    */
   async scheduleOperation(
     operation: string,
@@ -619,6 +616,7 @@ export class IpylabModel extends WidgetModel {
         const model = await manager.get_model(model_id);
         luminoWidget = (await manager.create_view(model, {})).luminoWidget;
         IpylabModel.onKernelLost(kernel, luminoWidget.dispose, luminoWidget);
+        kernelId = manager.kernel.id;
       } else {
         luminoWidget = await IpylabModel.fromConnectionOrId(id);
       }
@@ -674,9 +672,7 @@ export class IpylabModel extends WidgetModel {
           code: isIpylabKernel
             ? `
             import ipylab
-            ipylab.app._in_ipylab_kernel=True
-            import ipylab._backend
-            ipylab._backend.IpylabBackEnd()`
+            ipylab.app._is_ipylab_kernel=True`
             : `import ipylab`,
           store_history: false
         },
@@ -690,7 +686,7 @@ export class IpylabModel extends WidgetModel {
   }
 
   static async getFrontendModel(kernelId: string, timeout = 100000) {
-    await this.backend_ready.promise;
+    await this.ipylabKernelReady.promise;
     if (!IpylabModel.jfemPromises.has(kernelId)) {
       const model = await IpylabModel.kernelManager.findById(kernelId);
       if (!model) {
@@ -866,7 +862,6 @@ export class IpylabModel extends WidgetModel {
   static serializers: ISerializers = {
     ...WidgetModel.serializers
   };
-
   widget_manager: KernelWidgetManager;
   private _pendingOperations = new Map<string, PromiseDelegate<any>>();
   private _base: object | null;
@@ -876,7 +871,7 @@ export class IpylabModel extends WidgetModel {
   static view_module: string;
   static view_module_version = MODULE_VERSION;
   static initial_load: boolean;
-  static backend_ready = new PromiseDelegate();
+  static ipylabKernelReady = new PromiseDelegate();
   static app: JupyterFrontEnd;
   static rendermime: IRenderMimeRegistry;
   static labShell: LabShell;
