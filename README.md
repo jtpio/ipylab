@@ -65,7 +65,6 @@ Or with `mamba` / `conda`:
 mamba install -c conda-forge ipylab
 ```
 
-
 ## Running the examples locally
 
 To try out the examples locally, the recommended way is to create a new environment with the dependencies:
@@ -121,8 +120,6 @@ jlpm lint:check
 
 # Sometimes, it helps to clear cached files too by running
 git clean -dfX
-# You will also need to redo
-pip install -e .[dev]
 ```
 
 ## Related projects

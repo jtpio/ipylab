@@ -131,6 +131,7 @@ export function listProperties({
     const obj_ = obj[name];
     let type_: string = typeof obj_;
     let val: any = name;
+    /*eslint no-fallthrough: ["error", { "commentPattern": "break[\\s\\w]*omitted" }]*/
     switch (type_) {
       case 'string':
       case 'number':
@@ -140,6 +141,7 @@ export function listProperties({
         break;
       case 'undefined':
         out[name] = null;
+        break;
       case 'object':
         if (obj_ instanceof Promise) {
           type_ = 'Promise';
@@ -151,6 +153,7 @@ export function listProperties({
           val = {};
           val[name] = listProperties({ obj: obj_, type, depth: 1, omitHidden });
         }
+      // caution: break is omitted intentionally
       default:
         if (!out[`<${type_}s>`]) {
           out[`<${type_}s>`] = [val];

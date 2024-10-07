@@ -2,7 +2,7 @@
 # Distributed under the terms of the Modified BSD License.
 from __future__ import annotations
 
-from ipylab._version import __version__
+from ipylab._frontend import module_version as __version__
 
 __all__ = [
     "__version__",

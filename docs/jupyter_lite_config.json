@@ -1,8 +1,5 @@
 {
   "PipliteAddon": {
-    "piplite_urls": [
-      "../dist",
-      "../pkg"
-    ]
+    "piplite_urls": ["../dist", "../pkg"]
   }
 }

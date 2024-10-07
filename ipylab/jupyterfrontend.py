@@ -179,7 +179,6 @@ class JupyterFrontEnd(Ipylab):
         """Checks backend is running and starts it if it isn't, returning the session model."""
         return self.schedule_operation("checkstartIyplabKernel", restart=restart, transform=Transform.raw)
 
-    # TODO: move to Ipylab maybe. Maybe use a path instead of a kernel or find the kernel by the path
     def evaluate(
         self,
         evaluate: dict[str, str | inspect._SourceObjectType] | str,

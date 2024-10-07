@@ -33,7 +33,7 @@ export class ConnectionModel extends IpylabModel {
     const base = IpylabModel.connections.get(this.get('cid'));
     if (typeof base === 'undefined') {
       // Trigger close if not already disposed.
-      this.close(!Boolean(this.comm), true);
+      this.close(!this.comm, true);
     }
     if (base !== this.currentbase) {
       this.currentbase?.disposed?.disconnect(this.onBaseDisposed, this);
