@@ -19,11 +19,14 @@ __all__ = [
     "JupyterFrontEnd",
     "pack",
     "_jupyter_labextension_paths",
+    "Ipylab",
 ]
-import ipylab.commands as _commands  # noqa: F401
-from ipylab.common import Area, InsertMode, NotificationType, Transform, pack
+
+
+import ipylab.commands as _commands  # Import first  # noqa: F401
+from ipylab.common import Area, InsertMode, NotificationType, Transform, hookimpl, pack
 from ipylab.connection import Connection, ShellConnection
-from ipylab.hookspecs import hookimpl
+from ipylab.ipylab import Ipylab
 from ipylab.jupyterfrontend import JupyterFrontEnd
 from ipylab.widgets import Icon, Panel, SplitPanel
 

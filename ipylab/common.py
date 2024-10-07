@@ -4,13 +4,16 @@ import inspect
 import typing
 from typing import TYPE_CHECKING, Literal
 
+import pluggy
 from ipywidgets import Widget, widget_serialization
 
 import ipylab
 from ipylab._compat.enum import StrEnum
 from ipylab._compat.typing import NotRequired, TypedDict
 
-__all__ = ["Area", "InsertMode", "Transform", "TransformType", "JavascriptType", "ShellConnectionInfo"]
+__all__ = ["Area", "InsertMode", "Transform", "TransformType", "JavascriptType", "ShellConnectionInfo", "hookimpl"]
+
+hookimpl = pluggy.HookimplMarker("ipylab")  # Used for plugins
 
 if TYPE_CHECKING:
     from typing import TypeVar, overload

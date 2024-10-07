@@ -11,9 +11,9 @@ from traitlets import Callable as CallableTrait
 from traitlets import Container, Dict, Instance, Tuple, Unicode
 
 from ipylab._compat.typing import Any, NotRequired, TypedDict, Unpack
-from ipylab.asyncwidget import AsyncWidgetBase, Transform, register
 from ipylab.common import pack
 from ipylab.connection import Connection
+from ipylab.ipylab import Ipylab, Transform, register
 from ipylab.widgets import Icon
 
 if TYPE_CHECKING:
@@ -109,7 +109,7 @@ class CommandPalletConnection(Connection):
         super().close(dispose=dispose)
 
 
-class CommandPalette(AsyncWidgetBase):
+class CommandPalette(Ipylab):
     # https://jupyterlab.readthedocs.io/en/latest/api/interfaces/apputils.ICommandPalette.html
     _basename = Unicode("pallet").tag(sync=True)
     SINGLETON = True
@@ -148,7 +148,7 @@ class LauncherConnection(CommandPalletConnection):
     """A connection to an disposable launcher item."""
 
 
-class Launcher(AsyncWidgetBase):
+class Launcher(Ipylab):
     """
     ref: https://jupyterlab.readthedocs.io/en/latest/api/interfaces/launcher.ILauncher-1.html"""
 
@@ -184,7 +184,7 @@ class Launcher(AsyncWidgetBase):
 
 
 @register
-class CommandRegistry(AsyncWidgetBase):
+class CommandRegistry(Ipylab):
     _model_name = Unicode("CommandRegistryModel").tag(sync=True)
     _basename = Unicode("commands").tag(sync=True)
     all_commands = Tuple(read_only=True).tag(sync=True)

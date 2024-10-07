@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING
 from ipywidgets import Widget
 
 from ipylab import Area, Connection, InsertMode, ShellConnection, Transform, pack
-from ipylab.asyncwidget import AsyncWidgetBase, Unicode
+from ipylab.ipylab import Ipylab, Unicode
 
 if TYPE_CHECKING:
     import inspect
@@ -17,7 +17,7 @@ if TYPE_CHECKING:
 __all__ = ["Shell"]
 
 
-class Shell(AsyncWidgetBase):
+class Shell(Ipylab):
     """
     Provides access to the shell.
     The minimal interface is:

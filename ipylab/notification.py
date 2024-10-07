@@ -10,7 +10,7 @@ from traitlets import Container, Instance, Unicode
 
 from ipylab import Connection, NotificationType, Transform, pack
 from ipylab._compat.typing import NotRequired, TypedDict
-from ipylab.asyncwidget import AsyncWidgetBase
+from ipylab.ipylab import Ipylab
 
 if TYPE_CHECKING:
     from asyncio import Task
@@ -67,7 +67,7 @@ class NotificationConnection(Connection):
 
 
 @register
-class NotificationManager(AsyncWidgetBase):
+class NotificationManager(Ipylab):
     """Create new notifications with access to the notification manager.
 
     ref: https://jupyterlab.readthedocs.io/en/stable/extension/ui_helpers.html#notifications

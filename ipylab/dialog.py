@@ -5,7 +5,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 import ipylab
-from ipylab.asyncwidget import Widget
+from ipylab.ipylab import Widget
 
 if TYPE_CHECKING:
     from asyncio import Task

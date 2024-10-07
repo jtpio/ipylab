@@ -12,8 +12,8 @@ from traitlets import Dict, Instance, Unicode, observe
 
 import ipylab
 import ipylab._frontend as _fe
-from ipylab.asyncwidget import WidgetBase
 from ipylab.common import Area, InsertMode
+from ipylab.ipylab import WidgetBase
 
 if TYPE_CHECKING:
     from ipylab.connection import ShellConnection

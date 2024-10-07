@@ -9,17 +9,18 @@ from collections import OrderedDict
 from typing import TYPE_CHECKING, Any
 
 import ipywidgets
+import pluggy
 from IPython.core.getipython import get_ipython
 from ipywidgets import widget_serialization
 from traitlets import Container, Dict, Instance, Tuple, Unicode, observe
 
 import ipylab
+import ipylab.hookspecs
 from ipylab import ShellConnection, Transform
-from ipylab.asyncwidget import AsyncWidgetBase, register
 from ipylab.commands import CommandRegistry
 from ipylab.common import InsertMode
 from ipylab.dialog import Dialog, FileDialog
-from ipylab.hookspecs import _plugin_manager
+from ipylab.ipylab import Ipylab, register
 from ipylab.menu import ContextMenu, MainMenu
 from ipylab.notification import NotificationManager
 from ipylab.sessions import SessionManager
@@ -29,6 +30,37 @@ if TYPE_CHECKING:
     from asyncio import Task
     from collections.abc import Iterable
     from typing import ClassVar
+
+
+class IpylabDefaultsPlugin:
+    @ipylab.hookimpl
+    def on_frontend_error(self, obj: Ipylab, error: Exception, content: dict, buffers) -> None:  # noqa: ARG002
+        obj.log.exception("%r on_frontend_error %s", error, exc_info=error)
+
+        ipylab.app.dialog.show_error_message("Frontend error", f"{error=} {obj=}")
+
+    @ipylab.hookimpl
+    def on_send_error(self, obj: Ipylab, error: Exception, content: dict, buffers) -> None:  # noqa: ARG002
+        obj.log.exception("%r on_send_error %s", error, exc_info=error)
+
+        ipylab.app.dialog.show_error_message("Send error", f"{error=} {obj=}")
+
+    @ipylab.hookimpl
+    def unhandled_frontend_operation_message(self, obj: Ipylab, operation: str):
+        ipylab.app.dialog.show_error_message("Unhandled frontend message", f"The {operation=} is unhandled for {obj} ")
+
+    @ipylab.hookimpl
+    def on_task_error(self, obj: Ipylab, aw: str, error: Exception) -> None:
+        obj.log.exception("%r on_task_error %s aw=%s", error, aw, exc_info=error)
+
+    @ipylab.hookimpl
+    def on_message_error(self, obj: Ipylab, msg: str, error: Exception) -> None:
+        """
+        Called when an error occurs when processing a message from the Frontend.
+        """
+        obj.log.exception("%r on_message_error %s", error, msg, exc_info=error)
+
+        ipylab.app.dialog.show_error_message("Message error", f"{error=}\n{obj=}\n{msg=}'")
 
 
 class LastUpdatedOrderedDict(OrderedDict):
@@ -42,7 +74,7 @@ class LastUpdatedOrderedDict(OrderedDict):
 
 
 @register
-class JupyterFrontEnd(AsyncWidgetBase):
+class JupyterFrontEnd(Ipylab):
     _model_name = Unicode("JupyterFrontEndModel").tag(sync=True)
     _basename = Unicode("app", read_only=True).tag(sync=True)
     SINGLETON = True
@@ -65,7 +97,6 @@ class JupyterFrontEnd(AsyncWidgetBase):
     active_namespace = Unicode("", read_only=True, help="name of the current namespace")
     namespace_defaults = Dict({"ipylab": ipylab, "ipywidgets": ipywidgets, "ipw": ipywidgets})
     _namespaces: Container[dict[str, LastUpdatedOrderedDict]] = Dict(read_only=True)  # type: ignore
-    _plugin_manager = _plugin_manager
 
     _ipy_shell = get_ipython()
     _ipy_default_namespace: ClassVar = getattr(_ipy_shell, "user_ns", {})
@@ -79,6 +110,11 @@ class JupyterFrontEnd(AsyncWidgetBase):
 
     @property
     def plugin_manager(self):
+        if not hasattr(self, "_plugin_manager"):
+            self._plugin_manager = pm = pluggy.PluginManager("ipylab")
+            pm.add_hookspecs(ipylab.hookspecs.IpylabHookspec)
+            pm.register(IpylabDefaultsPlugin())
+            pm.load_setuptools_entrypoints("ipylab")
         return self._plugin_manager
 
     @property
@@ -89,14 +125,11 @@ class JupyterFrontEnd(AsyncWidgetBase):
     def _on_frontend_init(self):
         # Only load entry points in a kernel with a frontend and once
         # it is known if which kernel is the Ipylab kernel.
-        self._plugin_manager.load_setuptools_entrypoints("ipylab")
+
         super()._on_frontend_init()
 
         async def autostart():
-            plugins = []
-            if self.is_ipylab_kernel:
-                plugins.extend(self.app.plugin_manager.hook.ipylab_only_autostart(app=self.app))
-            plugins.extend(self.app.plugin_manager.hook.autostart(app=self.app))
+            plugins = self.hook.autostart(app=self)
 
             # Start loading plugins
             loop = asyncio.as_completed(filter(inspect.isawaitable, plugins))
@@ -105,7 +138,7 @@ class JupyterFrontEnd(AsyncWidgetBase):
             for coro in loop:
                 result = await coro
                 if isinstance(result, Exception):
-                    await self.app.dialog.show_error_message("Plugin failed", str(result))
+                    await self.dialog.show_error_message("Plugin failed", str(result))
             self.log.info("Finished running %d 'autostart' plugins.", len(plugins))
 
         self.to_task(autostart(), "Autostart plugins")
@@ -144,7 +177,7 @@ class JupyterFrontEnd(AsyncWidgetBase):
         """Checks backend is running and starts it if it isn't, returning the session model."""
         return self.schedule_operation("checkstartIyplabKernel", restart=restart, transform=Transform.raw)
 
-    # TODO: move to AsyncWidgetBase maybe. Maybe use a path instead of a kernel or find the kernel by the path
+    # TODO: move to Ipylab maybe. Maybe use a path instead of a kernel or find the kernel by the path
     def evaluate(
         self,
         evaluate: dict[str, str | inspect._SourceObjectType] | str,
@@ -275,7 +308,7 @@ class JupyterFrontEnd(AsyncWidgetBase):
         """Evaluate code corresponding to a call from 'evaluate'.
 
         A call to this method should originate from either:
-         1. An `evaluate` method call from a subclass of `AsyncWidgetBase`.
+         1. An `evaluate` method call from a subclass of `Ipylab`.
          2. A direct call in the frontend at jfem.evaluate.
 
         """

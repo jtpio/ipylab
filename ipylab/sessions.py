@@ -5,11 +5,11 @@ from asyncio import Task
 from types import ModuleType
 from typing import Literal
 
-from ipylab.asyncwidget import AsyncWidgetBase, Transform, Unicode
 from ipylab.connection import Connection
+from ipylab.ipylab import Ipylab, Transform, Unicode
 
 
-class SessionManager(AsyncWidgetBase):
+class SessionManager(Ipylab):
     """
     https://jupyterlab.readthedocs.io/en/latest/api/interfaces/services.Session.IManager.html
     """

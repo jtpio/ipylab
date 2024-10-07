@@ -10,8 +10,8 @@ from typing import TYPE_CHECKING, Any, ClassVar
 from ipywidgets import Widget, register
 from traitlets import Bool, Dict, Unicode
 
-from ipylab.asyncwidget import AsyncWidgetBase
 from ipylab.common import pack
+from ipylab.ipylab import Ipylab
 
 if TYPE_CHECKING:
     from collections.abc import Generator
@@ -21,7 +21,7 @@ if TYPE_CHECKING:
 
 
 @register
-class Connection(AsyncWidgetBase):
+class Connection(Ipylab):
     """A connection to a single object in the Frontend.
 
     `Connection` and subclasses of `Connection` are used extensiviely in Ipylab

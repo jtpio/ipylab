@@ -9,14 +9,14 @@
 - Upgraded to provide asynchronous bi-directional comms for performing operations
   in the Frontend. Each operation returns a task that when complete returns the
   response or raise an error if unsuccessful.
-- On the Python side `JupyterFrontEnd` is derived from `AsyncWidgetBase` and is now a singleton per kernel.
+- On the Python side `JupyterFrontEnd` is derived from `Ipylab` and is now a singleton per kernel.
 - On the JavaScript frontend side `JupyterFrontendModel`, `CommandRegistryModel`,
   `CommandPalletModel`, extend the new `IpylabModel`.
 - `Connections` provides a link from Python to an object in the Frontend.
 
 ### Added
 
-- `AsyncWidgetBase` - This provides the Python side functionality for messaging.
+- `Ipylab` - This provides the Python side functionality for messaging.
 - `IpylabModel` - Provides the JavaScript frontend side messaging for the model.
 - Panel.app - a property giving access to the instance of the JupyterFrontEnd.
 - Panel & SplitPanel can add themselves to the shell with the method `.addToShell()`

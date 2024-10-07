@@ -7,9 +7,9 @@ from typing import TYPE_CHECKING
 from ipywidgets import TypedTuple
 from traitlets import Container, Instance, Unicode, observe
 
-from ipylab.asyncwidget import AsyncWidgetBase, Transform
 from ipylab.commands import CommandConnection
 from ipylab.connection import Connection
+from ipylab.ipylab import Ipylab, Transform
 
 if TYPE_CHECKING:
     from asyncio import Task
@@ -35,7 +35,7 @@ class MenuItemConnection(Connection):
         super().close(dispose=True)
 
 
-class RankedMenu(AsyncWidgetBase):
+class RankedMenu(Ipylab):
     """
 
     ref: https://jupyterlab.readthedocs.io/en/4.0   .x/api/classes/ui_components.RankedMenu.html
@@ -125,7 +125,7 @@ class MenuConnection(RankedMenu, Connection):
     """A connection to a custom menu"""
 
 
-class MainMenu(AsyncWidgetBase):
+class MainMenu(Ipylab):
     """Direct access to the Jupyterlab main menu.
 
     ref: https://jupyterlab.readthedocs.io/en/4.0.x/api/classes/mainmenu.MainMenu.html

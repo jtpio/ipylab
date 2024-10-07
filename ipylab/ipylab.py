@@ -135,6 +135,10 @@ class Ipylab(WidgetBase):
             msg = f"This widget is closed {self!r}"
             raise RuntimeError(msg)
 
+    @property
+    def hook(self):
+        return self.app.plugin_manager.hook
+
     def to_task(self, coro: Awaitable[T], name: str | None = None) -> Task[T]:
         """Run the coro in a task."""
 
@@ -148,11 +152,9 @@ class Ipylab(WidgetBase):
         try:
             async with self:
                 return await aw
-        except asyncio.CancelledError:
-            raise
         except Exception as e:
             try:
-                self.app.plugin_manager.hook.on_task_error(obj=self, aw=aw, error=e)
+                self.hook.on_task_error(obj=self, aw=aw, error=e)
             finally:
                 raise e
 
@@ -190,7 +192,7 @@ class Ipylab(WidgetBase):
         try:
             super().send(json.dumps(content, default=pack), buffers)
         except Exception as error:
-            self.app.plugin_manager.hook.on_frontend_error(obj=self, error=error, content=content, buffers=buffers)
+            self.hook.on_send_error(obj=self, error=error, content=content, buffers=buffers)
 
     async def _send_receive(self, content: dict):
         async with self:
@@ -218,7 +220,7 @@ class Ipylab(WidgetBase):
                 if "ipylab_PY" in content:
                     self._pending_operations.pop(content["ipylab_PY"]).set(content.get("payload"), error)
                 elif "ipylab_FE" in content:
-                    self.to_task(self._handle_frontend_operation(buffers=buffers, **content))
+                    self.to_task(self._do_operation_for_fe(buffers=buffers, **content))
             elif "init" in content:
                 match content["init"]:
                     case "ipylabInit":
@@ -231,16 +233,16 @@ class Ipylab(WidgetBase):
             elif "closed" in content:
                 self.close()
             if error:
-                self.app.plugin_manager.hook.on_frontend_error(obj=self, error=error, content=content, buffers=buffers)
+                self.hook.on_frontend_error(obj=self, error=error, content=content, buffers=buffers)
         except Exception as e:
-            self.app.plugin_manager.hook.on_message_error(obj=self, error=e, msg=msg, buffers=buffers)
+            self.hook.on_message_error(obj=self, error=e, msg=msg, buffers=buffers)
 
     def _on_frontend_init(self):
         """Called when the frontend is initialized.
 
         This will occur on initial connection and whenever the model is restored from the kernel."""
 
-    async def _handle_frontend_operation(self, *, ipylab_FE: str, operation: str, payload: dict, buffers: list):
+    async def _do_operation_for_fe(self, *, ipylab_FE: str, operation: str, payload: dict, buffers: list):
         """Handle operation requests from the frontend and reply with a result."""
         content: dict[str, Any] = {"ipylab_FE": ipylab_FE}
         buffers = []
@@ -257,22 +259,13 @@ class Ipylab(WidgetBase):
                 "repr": repr(e).replace("'", '"'),
                 "traceback": traceback.format_tb(e.__traceback__),
             }
-            self.app.plugin_manager.hook.on_frontend_error(obj=self, error=e, content=content, buffers=buffers)
+            self.hook.on_do_operation_for_fe_error(obj=self, error=e, content=content, buffers=buffers)
         finally:
-            try:
-                self.send(content, buffers)
-            except ValueError as e:
-                content.pop("payload", None)
-                content["error"] = {
-                    "repr": repr(e).replace("'", '"'),
-                    "traceback": traceback.format_tb(e.__traceback__),
-                }
-                self.send(content, buffers)
-                self.app.plugin_manager.hook.on_frontend_error(obj=self, error=e, content=content, buffers=buffers)
+            self.send(content, buffers)
 
-    async def _do_operation_for_frontend(self, operation: str, payload: dict, buffers: list):  # noqa: ARG002
+    async def _do_operation_for_frontend(self, operation: str, payload: dict, buffers: list):
         """Overload this function as required."""
-        self.app.plugin_manager.hook.unhandled_frontend_operation_message(obj=self, operation=operation)
+        raise NotImplementedError(operation)
 
     def schedule_operation(
         self,
