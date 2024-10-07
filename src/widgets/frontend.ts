@@ -4,6 +4,7 @@
 import {
   InputDialog,
   MainAreaWidget,
+  SessionContext,
   showDialog,
   showErrorMessage
 } from '@jupyterlab/apputils';
@@ -215,7 +216,7 @@ export class JupyterFrontEndModel extends IpylabModel {
     }
 
     area = area || 'main';
-
+    const ipylabSettings = { ...args, id, cid, kernelId };
     if (
       (area === 'main' && !(luminoWidget instanceof MainAreaWidget)) ||
       typeof luminoWidget.title === 'undefined'
@@ -223,12 +224,15 @@ export class JupyterFrontEndModel extends IpylabModel {
       // Wrap the widget with a MainAreaWidget
       const w = (luminoWidget = new MainAreaWidget({ content: luminoWidget }));
       w.node.removeChild(w.toolbar.node);
+      (w as any).sessionContext =
+        await IpylabModel.newSessionContext(ipylabSettings);
+      w.disposed.connect(() => delete (w as any).sessionContext);
       w.addClass('ipylab-MainArea');
     }
 
     luminoWidget.addClass('ipylab-shell');
     luminoWidget.id = id = id || cid;
-    (luminoWidget as any).ipylabSettings = { ...args, id, cid, kernelId };
+    (luminoWidget as any).ipylabSettings = ipylabSettings;
     IpylabModel.registerConnection(cid, luminoWidget);
     IpylabModel.app.shell.add(luminoWidget as any, area, options);
     if (!IpylabModel.tracker.has(luminoWidget)) {
@@ -247,13 +251,12 @@ export class JupyterFrontEndModel extends IpylabModel {
   }
 
   static async openConsole(args: any) {
-    const info = (IpylabModel.tracker.currentWidget as any).ipylabSettings;
-    const path = args.path ?? info.path ?? '';
-    const kernelId = args.kernelId ?? info.kernelId;
-    const jfem = await IpylabModel.getFrontendModel(kernelId);
+    const currentWidget = IpylabModel.app.shell.currentWidget as any;
+    const sc: SessionContext = currentWidget.sessionContext;
+    const jfem = await IpylabModel.getFrontendModel(sc.session.kernel.id);
     return await jfem.scheduleOperation(
       'open console',
-      { ...args, path },
+      { ...args, path: sc.path },
       'raw'
     );
   }
