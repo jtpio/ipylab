@@ -100,6 +100,14 @@ class SplitPanel(Panel):
 
     # ============== Start temp fix =============
     # Below here is added as a temporary fix to address issue https://github.com/jtpio/ipylab/issues/129
+    def __init__(self, children=(), **kwargs):
+        super().__init__(children, **kwargs)
+        self.app.restored.register_callback(self._rerender)
+
+    def close(self):
+        super().close()
+        self.app.restored.register_callback(self._rerender, True)
+
     @observe("children")
     def _observe_children(self, _):
         self._rerender()

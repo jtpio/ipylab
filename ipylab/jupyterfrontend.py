@@ -11,7 +11,7 @@ from typing import TYPE_CHECKING, Any
 import ipywidgets
 import pluggy
 from IPython.core.getipython import get_ipython
-from ipywidgets import widget_serialization
+from ipywidgets import CallbackDispatcher, widget_serialization
 from traitlets import Container, Dict, Instance, Tuple, Unicode, observe
 
 import ipylab
@@ -97,6 +97,7 @@ class JupyterFrontEnd(Ipylab):
     active_namespace = Unicode("", read_only=True, help="name of the current namespace")
     namespace_defaults = Dict({"ipylab": ipylab, "ipywidgets": ipywidgets, "ipw": ipywidgets})
     _namespaces: Container[dict[str, LastUpdatedOrderedDict]] = Dict(read_only=True)  # type: ignore
+    restored = Instance(CallbackDispatcher, (), read_only=True, help="Called when restored")
 
     _ipy_shell = get_ipython()
     _ipy_default_namespace: ClassVar = getattr(_ipy_shell, "user_ns", {})
@@ -140,6 +141,7 @@ class JupyterFrontEnd(Ipylab):
                 if isinstance(result, Exception):
                     await self.dialog.show_error_message("Plugin failed", str(result))
             self.log.info("Finished running %d 'autostart' plugins.", len(plugins))
+            self.restored()
 
         self.to_task(autostart(), "Autostart plugins")
 
