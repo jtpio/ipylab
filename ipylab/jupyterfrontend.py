@@ -95,7 +95,6 @@ class JupyterFrontEnd(Ipylab):
     context_menu = Instance(ContextMenu, ())
     notification = Instance(NotificationManager, ())
     active_namespace = Unicode("", read_only=True, help="name of the current namespace")
-    namespace_defaults = Dict({"ipylab": ipylab, "ipywidgets": ipywidgets, "ipw": ipywidgets})
     _namespaces: Container[dict[str, LastUpdatedOrderedDict]] = Dict(read_only=True)  # type: ignore
     restored = Instance(CallbackDispatcher, (), read_only=True, help="Called when restored")
 
@@ -243,8 +242,9 @@ class JupyterFrontEnd(Ipylab):
         if name not in self._namespaces:
             self._namespaces[name] = LastUpdatedOrderedDict(d)
             self.set_trait("namespaces", tuple(self.namespaces))
-        self._namespaces[name].update(self.namespace_defaults)
-        self._namespaces[name]["app"] = self
+        defaults = {"ipylab": ipylab, "ipywidgets": ipywidgets, "ipw": ipywidgets, "app": self}
+        self.hook.namespace_defaults(defaults=defaults, namespace_name=name, app=self)
+        self._namespaces[name].update(defaults)
         return self._namespaces[name]
 
     def update_namespace(self, name: str, glbls: dict, *, activate=False):

@@ -32,6 +32,10 @@ class IpylabHookspec:
         ```
         """
 
+    @hookspec()
+    def namespace_defaults(self, defaults: dict, namespace_name: str, app: JupyterFrontEnd) -> None:
+        "Modify the namespace defaults by adding or removing entries."
+
     @hookspec(firstresult=True)
     def on_frontend_error(self, obj: Ipylab, error: Exception, content: dict, buffers) -> None:
         """
