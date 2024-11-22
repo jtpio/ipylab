@@ -13,6 +13,7 @@ from ._frontend import module_name, module_version
 from .commands import CommandRegistry
 from .shell import Shell
 from .sessions import SessionManager
+from .contents import ContentsManager
 
 
 @register
@@ -25,6 +26,7 @@ class JupyterFrontEnd(Widget):
     shell = Instance(Shell).tag(sync=True, **widget_serialization)
     commands = Instance(CommandRegistry).tag(sync=True, **widget_serialization)
     sessions = Instance(SessionManager).tag(sync=True, **widget_serialization)
+    contents = Instance(ContentsManager).tag(sync=True, **widget_serialization)
 
     def __init__(self, *args, **kwargs):
         super().__init__(
@@ -32,6 +34,7 @@ class JupyterFrontEnd(Widget):
             shell=Shell(),
             commands=CommandRegistry(),
             sessions=SessionManager(),
+            contents=ContentsManager(),
             **kwargs,
         )
         self._ready_event = asyncio.Event()
