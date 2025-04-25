@@ -1,6 +1,6 @@
 # Copyright (c) ipylab contributors.
 # Distributed under the terms of the Modified BSD License.
-
+import json
 from collections import defaultdict
 
 from ipywidgets import CallbackDispatcher, Widget, register
@@ -53,7 +53,8 @@ class CommandRegistry(Widget):
     def _on_frontend_msg(self, _, content, buffers):
         if content.get("event", "") == "execute":
             command_id = content.get("id")
-            self._execute_callbacks[command_id]()
+            args = json.loads(content.get("args"))
+            self._execute_callbacks[command_id](**args)
 
     def execute(self, command_id, args=None):
         args = args or {}

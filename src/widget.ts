@@ -10,6 +10,8 @@ import { ShellModel } from './widgets/shell';
 import { SplitPanelModel, SplitPanelView } from './widgets/split_panel';
 import { TitleModel } from './widgets/title';
 import { IconView, IconModel } from './widgets/icon';
+import { CustomMenuModel } from './widgets/menu';
+import { CustomToolbarModel } from './widgets/toolbar';
 
 export {
   CommandRegistryModel,
@@ -22,5 +24,7 @@ export {
   TitleModel,
   SessionManagerModel,
   IconModel,
-  IconView
+  IconView,
+  CustomMenuModel,
+  CustomToolbarModel
 };

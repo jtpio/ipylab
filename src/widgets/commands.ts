@@ -138,12 +138,12 @@ export class CommandRegistryModel extends WidgetModel {
       label,
       iconClass,
       icon: labIcon,
-      execute: () => {
+      execute: args => {
         if (!this.comm_live) {
           command.dispose();
           return;
         }
-        this.send({ event: 'execute', id }, {});
+        this.send({ event: 'execute', id, args: JSON.stringify(args) }, {});
       },
       isEnabled: () => commandEnabled(command),
       isVisible: () => commandEnabled(command)

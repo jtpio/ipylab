@@ -1,0 +1,136 @@
+# Copyright (c) ipylab contributors.
+# Distributed under the terms of the Modified BSD License.
+
+from ipywidgets import Widget, register
+from traitlets import List, Unicode
+from ._frontend import module_name, module_version
+from .commands import CommandRegistry
+
+
+@register
+class CustomMenu(Widget):
+    _model_name = Unicode("CustomMenuModel").tag(sync=True)
+    _model_module = Unicode(module_name).tag(sync=True)
+    _model_module_version = Unicode(module_version).tag(sync=True)
+
+    _menu_list = List(Unicode, read_only=True).tag(sync=True)
+    commands = None
+
+    def set_command_registry(self, commands: CommandRegistry):
+        if self.commands is not None:
+            raise ValueError("Cannot set command registry twice")
+        self.commands = commands
+
+    def add_menu(self, title, spec) -> None:
+        if title in self._menu_list:
+            raise Exception(f"Menu {title} is already registered")
+
+        if self.commands is None:
+            raise Exception("No command registry")
+
+        self.send(
+            {
+                "func": "addMenu",
+                "payload": {
+                    "title": title,
+                    "spec": self._compile_spec(spec),
+                },
+            }
+        )
+
+    def remove_menu(self, title) -> None:
+        if self.commands is None:
+            raise Exception("No command registry")
+
+        if title in self._menu_list:
+            self.send(
+                {
+                    "func": "removeMenu",
+                    "payload": {
+                        "title": title,
+                    },
+                }
+            )
+
+    def is_separator(self, s):
+        return s == "separator" or all(c == "-" for c in s)
+
+    def _compile_spec(self, spec):
+        result = []
+        for entry in spec:
+            if isinstance(entry, str):
+                if self.is_separator(entry):
+                    result.append({"type": "separator"})
+                else:
+                    raise Exception(f"unknown menu entry '{entry}'")
+            elif "name" not in entry:
+                raise Exception("invalid menu entry '{entry}'; 'name' is missing.")
+            else:
+                name = entry["name"]
+                if "sub-menu" in entry:
+                    type = "submenu"
+                    payload = self._compile_spec(entry["sub-menu"])
+                elif "external-link" in entry:
+
+                    def cmd(url):
+                        return lambda: self.commands.execute("help:open", {"url": url})
+
+                    type = "command"
+                    payload = f"custom-menu:open-url:{name}"
+                    try:
+                        self.commands.add_command(
+                            payload,
+                            execute=cmd(entry["external-link"]),
+                            label=entry["name"],
+                        )
+                    except:
+                        pass
+                elif "snippet" in entry:
+
+                    def cmd(snippet):
+                        return lambda: self.commands.execute(
+                            "custom-menu:snippet", snippet
+                        )
+
+                    type = "command"
+                    payload = f"custom-menu:snippet:{name}"
+                    try:
+                        self.commands.add_command(
+                            payload, execute=cmd(entry["snippet"]), label=entry["name"]
+                        )
+                    except:
+                        pass
+                elif "run-snippet" in entry:
+
+                    def cmd(snippet):
+                        return lambda: self.commands.execute(
+                            "custom-menu:run-snippet", snippet
+                        )
+
+                    type = "command"
+                    payload = f"custom-menu:run-snippet:{name}"
+                    try:
+                        self.commands.add_command(
+                            payload,
+                            execute=cmd(entry["run-snippet"]),
+                            label=entry["name"],
+                        )
+                    except:
+                        pass
+                elif "command" in entry:
+
+                    def cmd(cmd):
+                        return lambda: self.commands.execute(cmd)
+
+                    type = "command"
+                    payload = f"custom-menu:run-command:{name}"
+                    try:
+                        self.commands.add_command(
+                            payload, execute=cmd(entry["command"]), label=entry["name"]
+                        )
+                    except:
+                        pass
+                else:
+                    raise Exception(f"unknown menu entry '{entry}'")
+                result.append({"name": name, "payload": payload, "type": type})
+        return result
