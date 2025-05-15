@@ -125,8 +125,13 @@ class CustomMenu(Widget):
                     type = "command"
                     payload = f"custom-menu:run-command:{name}"
                     try:
+                        execute = (
+                            cmd(entry["command"])
+                            if isinstance(entry["command"], str)
+                            else entry["command"]
+                        )
                         self.commands.add_command(
-                            payload, execute=cmd(entry["command"]), label=entry["name"]
+                            payload, execute=execute, label=entry["name"]
                         )
                     except:
                         pass
