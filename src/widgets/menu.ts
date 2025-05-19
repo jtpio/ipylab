@@ -30,9 +30,9 @@ namespace CommandIDs {
 }
 
 interface IMenuOptions {
-  title : string;
+  title: string;
   spec: any;
-  className? : string;
+  className?: string;
 }
 
 /**
@@ -98,14 +98,19 @@ export class CustomMenuModel extends WidgetModel {
   /**
    *  Create a menu labeled 'title' and containing entries described by 'spec.
    */
-  private createMenuFromSpec(title: string, spec: any, className : string): Menu {
+  private createMenuFromSpec(
+    title: string,
+    spec: any,
+    className: string
+  ): Menu {
     const result = new Menu({ commands: this.commands });
     result.title.label = title;
     if (className) {
-      if (result.title.className)
-        result.title.className += " ";
+      if (result.title.className) {
+        result.title.className += ' ';
+      }
       result.title.className += className;
-      result.addClass(className)
+      result.addClass(className);
     }
     if (spec === null) {
       return result;
@@ -118,7 +123,11 @@ export class CustomMenuModel extends WidgetModel {
 
     for (const entry of spec) {
       if (entry.type === 'submenu') {
-        const submenu = this.createMenuFromSpec(entry.name, entry.payload, className);
+        const submenu = this.createMenuFromSpec(
+          entry.name,
+          entry.payload,
+          className
+        );
         result.addItem({ type: 'submenu', submenu });
       } else if (entry.type === 'command') {
         result.addItem({ type: 'command', command: entry.payload, args: {} });
@@ -131,15 +140,19 @@ export class CustomMenuModel extends WidgetModel {
     return result;
   }
 
-  private hasMenu(title: string) : boolean {
-    return this.mainMenu.menus.findIndex((value,index,obj)=>value.title.label === title) >= 0
+  private hasMenu(title: string): boolean {
+    return (
+      this.mainMenu.menus.findIndex(
+        (value, index, obj) => value.title.label === title
+      ) >= 0
+    );
   }
 
-  private addMenu(options : IMenuOptions) {
+  private addMenu(options: IMenuOptions) {
     const { title, spec, className } = options;
 
     if (this.hasMenu(title)) {
-      console.log("menu '"+title+"' already exists.")
+      console.log("menu '" + title + "' already exists.");
     } else {
       const rank = this.mainMenu.helpMenu.rank - 1;
       const newMenu = this.createMenuFromSpec(title, spec, className);
@@ -150,7 +163,7 @@ export class CustomMenuModel extends WidgetModel {
     this._sendMenuList();
   }
 
-  private removeMenu(options : IMenuOptions) {
+  private removeMenu(options: IMenuOptions) {
     const title = options['title'];
 
     const menu = Private.customMenus.get(title);

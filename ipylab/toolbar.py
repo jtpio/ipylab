@@ -5,6 +5,7 @@ from ipywidgets import Widget, register
 from traitlets import List, Unicode
 from ._frontend import module_name, module_version
 from .icon import Icon
+from .commands import CommandRegistry
 
 
 @register
@@ -14,10 +15,16 @@ class CustomToolbar(Widget):
     _model_module_version = Unicode(module_version).tag(sync=True)
 
     _toolbar_buttons = List(Unicode, read_only=True).tag(sync=True)
+    commands = None
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.on_msg(self._on_frontend_msg)
+
+    def set_command_registry(self, commands: CommandRegistry):
+        if self.commands is not None:
+            raise ValueError("Cannot set command registry twice")
+        self.commands = commands
 
     def _on_frontend_msg(self, _, content, buffers):
         pass
@@ -32,7 +39,7 @@ class CustomToolbar(Widget):
         label=None,
         after=None,
         tooltip=None,
-        className=None
+        className=None,
     ) -> None:
         if name in self._toolbar_buttons:
             raise Exception(f"Button {name} is already registered")
@@ -41,6 +48,13 @@ class CustomToolbar(Widget):
             iconMsg = f"IPY_MODEL_{icon.model_id}"
         elif isinstance(icon, str):
             iconMsg = icon
+
+        if callable(execute):
+            commandname = f"button_{name}_{execute.__name__}"
+            self.commands.add_command(commandname, execute=execute, label=name)
+            execute = commandname
+        elif not isinstance(execute, str):
+            raise TypeError("execute must be a str or callable")
 
         self.send(
             {

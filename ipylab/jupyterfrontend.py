@@ -44,6 +44,7 @@ class JupyterFrontEnd(Widget):
         self._on_ready_callbacks = CallbackDispatcher()
         self.on_msg(self._on_frontend_msg)
         self.menu.set_command_registry(self.commands)
+        self.toolbar.set_command_registry(self.commands)
 
     def _on_frontend_msg(self, _, content, buffers):
         if content.get("event", "") == "lab_ready":
