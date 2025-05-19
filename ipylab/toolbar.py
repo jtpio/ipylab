@@ -29,8 +29,10 @@ class CustomToolbar(Widget):
         args=None,
         iconClass=None,
         icon=None,
+        label=None,
         after=None,
         tooltip=None,
+        className=None
     ) -> None:
         if name in self._toolbar_buttons:
             raise Exception(f"Button {name} is already registered")
@@ -49,8 +51,10 @@ class CustomToolbar(Widget):
                     "args": args or {},
                     "icon": iconMsg,
                     "iconClass": iconClass,
+                    "label": label,
                     "tooltip": tooltip,
                     "after": after,
+                    "className": className,
                 },
             }
         )

@@ -21,8 +21,10 @@ interface IToolbarButtonOptions {
   args: any;
   icon: string;
   iconClass: string;
+  label?: string;
   tooltip?: string;
   after?: string;
+  className? : string
 }
 
 /**
@@ -77,7 +79,8 @@ export class CustomToolbarModel extends WidgetModel {
   private async addToolbarButton(
     options: IToolbarButtonOptions
   ): Promise<void> {
-    const { name, execute, args, icon, iconClass, tooltip, after } = options;
+    const { name, execute, args, icon, iconClass, tooltip, label, after, className } =
+      options;
 
     if (Private.customToolbarButtons.has(name)) {
       console.log("button '" + name + "' already exists.");
@@ -98,13 +101,17 @@ export class CustomToolbarModel extends WidgetModel {
 
     const button = new ToolbarButton({
       icon: labIcon,
-      iconClass,
+      iconClass: iconClass,
       onClick: () => {
         this.commands.execute(execute, args);
       },
-      tooltip: tooltip
+      tooltip: tooltip,
+      label: label,
     });
 
+    if(className) {
+      className.split(/\s+/).forEach(button.addClass.bind(button));
+    }
     if (this.toolbar.insertAfter(after, name, button as Widget)) {
       console.log("button '" + name + "' has been added.");
     }

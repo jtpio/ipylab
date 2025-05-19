@@ -29,6 +29,12 @@ namespace CommandIDs {
   export const run_snippet = 'custom-menu:run-snippet';
 }
 
+interface IMenuOptions {
+  title : string;
+  spec: any;
+  className? : string;
+}
+
 /**
  * The model for a shell.
  */
@@ -75,12 +81,12 @@ export class CustomMenuModel extends WidgetModel {
   private async _onMessage(msg: any): Promise<void> {
     switch (msg.func) {
       case 'addMenu': {
-        this.addMenu(msg.payload['title'], msg.payload['spec']);
+        this.addMenu(msg.payload);
         break;
       }
 
       case 'removeMenu': {
-        this.removeMenu(msg.payload['title']);
+        this.removeMenu(msg.payload);
         break;
       }
 
@@ -92,9 +98,15 @@ export class CustomMenuModel extends WidgetModel {
   /**
    *  Create a menu labeled 'title' and containing entries described by 'spec.
    */
-  private createMenuFromSpec(title: string, spec: any): Menu {
+  private createMenuFromSpec(title: string, spec: any, className : string): Menu {
     const result = new Menu({ commands: this.commands });
     result.title.label = title;
+    if (className) {
+      if (result.title.className)
+        result.title.className += " ";
+      result.title.className += className;
+      result.addClass(className)
+    }
     if (spec === null) {
       return result;
     }
@@ -106,7 +118,7 @@ export class CustomMenuModel extends WidgetModel {
 
     for (const entry of spec) {
       if (entry.type === 'submenu') {
-        const submenu = this.createMenuFromSpec(entry.name, entry.payload);
+        const submenu = this.createMenuFromSpec(entry.name, entry.payload, className);
         result.addItem({ type: 'submenu', submenu });
       } else if (entry.type === 'command') {
         result.addItem({ type: 'command', command: entry.payload, args: {} });
@@ -119,16 +131,28 @@ export class CustomMenuModel extends WidgetModel {
     return result;
   }
 
-  private addMenu(title: string, spec: any) {
-    const rank = this.mainMenu.helpMenu.rank - 1;
-    const newMenu = this.createMenuFromSpec(title, spec);
-    this.mainMenu.addMenu(newMenu, true, { rank });
-    Private.customMenus.set(title, newMenu);
-    newMenu.activate();
+  private hasMenu(title: string) : boolean {
+    return this.mainMenu.menus.findIndex((value,index,obj)=>value.title.label === title) >= 0
+  }
+
+  private addMenu(options : IMenuOptions) {
+    const { title, spec, className } = options;
+
+    if (this.hasMenu(title)) {
+      console.log("menu '"+title+"' already exists.")
+    } else {
+      const rank = this.mainMenu.helpMenu.rank - 1;
+      const newMenu = this.createMenuFromSpec(title, spec, className);
+      this.mainMenu.addMenu(newMenu, true, { rank });
+      Private.customMenus.set(title, newMenu);
+      newMenu.activate();
+    }
     this._sendMenuList();
   }
 
-  private removeMenu(title: string) {
+  private removeMenu(options : IMenuOptions) {
+    const title = options['title'];
+
     const menu = Private.customMenus.get(title);
     if (menu === undefined) {
       console.log("unknown menu '" + title + "'.");
@@ -223,6 +247,7 @@ export class CustomMenuModel extends WidgetModel {
     if (this.notebookPanel) {
       const { context, content } = this.notebookPanel;
       await NotebookActions.run(content, context.sessionContext);
+      await NotebookActions.selectBelow(this.notebookPanel.content);
     } else {
       console.log('no current widget');
     }
