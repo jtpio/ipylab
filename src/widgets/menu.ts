@@ -252,6 +252,7 @@ export class CustomMenuModel extends WidgetModel {
       } else {
         e.replaceSelection(typeof texts);
       }
+      await NotebookActions.changeCellType(this.notebookPanel.content, 'code');
     }
   }
 
