@@ -33,7 +33,7 @@ class CustomMenu(Widget):
                 "func": "addMenu",
                 "payload": {
                     "title": title,
-                    "spec": self._compile_spec(spec),
+                    "spec": self._compile_spec(title, spec),
                     "className": className,
                 },
             }
@@ -56,7 +56,7 @@ class CustomMenu(Widget):
     def is_separator(self, s):
         return s == "separator" or all(c == "-" for c in s)
 
-    def _compile_spec(self, spec):
+    def _compile_spec(self, title, spec):
         result = []
         for entry in spec:
             if isinstance(entry, str):
@@ -70,14 +70,14 @@ class CustomMenu(Widget):
                 name = entry["name"]
                 if "sub-menu" in entry:
                     type = "submenu"
-                    payload = self._compile_spec(entry["sub-menu"])
+                    payload = self._compile_spec(f"{title}:{name}", entry["sub-menu"])
                 elif "external-link" in entry:
 
                     def cmd(url):
                         return lambda: self.commands.execute("help:open", {"url": url})
 
                     type = "command"
-                    payload = f"custom-menu:open-url:{name}"
+                    payload = f"custom-menu:open-url:{title}:{name}"
                     try:
                         self.commands.add_command(
                             payload,
@@ -94,7 +94,7 @@ class CustomMenu(Widget):
                         )
 
                     type = "command"
-                    payload = f"custom-menu:snippet:{name}"
+                    payload = f"custom-menu:snippet:{title}:{name}"
                     try:
                         self.commands.add_command(
                             payload, execute=cmd(entry["snippet"]), label=entry["name"]
@@ -109,7 +109,7 @@ class CustomMenu(Widget):
                         )
 
                     type = "command"
-                    payload = f"custom-menu:run-snippet:{name}"
+                    payload = f"custom-menu:run-snippet:{title}:{name}"
                     try:
                         self.commands.add_command(
                             payload,
@@ -124,7 +124,7 @@ class CustomMenu(Widget):
                         return lambda: self.commands.execute(cmd)
 
                     type = "command"
-                    payload = f"custom-menu:run-command:{name}"
+                    payload = f"custom-menu:run-command:{title}:{name}"
                     try:
                         execute = (
                             cmd(entry["command"])
