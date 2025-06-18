@@ -21,7 +21,7 @@ class CustomMenu(Widget):
             raise ValueError("Cannot set command registry twice")
         self.commands = commands
 
-    def add_menu(self, title, spec, className) -> None:
+    def add_menu(self, title, spec, className=None) -> None:
         if title in self._menu_list:
             raise Exception(f"Menu {title} is already registered")
 
