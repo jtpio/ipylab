@@ -11,6 +11,8 @@ from traitlets import Instance, Unicode
 from ._frontend import module_name, module_version
 
 from .commands import CommandRegistry
+from .menu import CustomMenu
+from .toolbar import CustomToolbar
 from .shell import Shell
 from .sessions import SessionManager
 
@@ -25,6 +27,8 @@ class JupyterFrontEnd(Widget):
     shell = Instance(Shell).tag(sync=True, **widget_serialization)
     commands = Instance(CommandRegistry).tag(sync=True, **widget_serialization)
     sessions = Instance(SessionManager).tag(sync=True, **widget_serialization)
+    menu = Instance(CustomMenu).tag(sync=True, **widget_serialization)
+    toolbar = Instance(CustomToolbar).tag(sync=True, **widget_serialization)
 
     def __init__(self, *args, **kwargs):
         super().__init__(
@@ -32,11 +36,15 @@ class JupyterFrontEnd(Widget):
             shell=Shell(),
             commands=CommandRegistry(),
             sessions=SessionManager(),
+            menu=CustomMenu(),
+            toolbar=CustomToolbar(),
             **kwargs,
         )
         self._ready_event = asyncio.Event()
         self._on_ready_callbacks = CallbackDispatcher()
         self.on_msg(self._on_frontend_msg)
+        self.menu.set_command_registry(self.commands)
+        self.toolbar.set_command_registry(self.commands)
 
     def _on_frontend_msg(self, _, content, buffers):
         if content.get("event", "") == "lab_ready":
