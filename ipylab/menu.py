@@ -21,6 +21,12 @@ class CustomMenu(Widget):
             raise ValueError("Cannot set command registry twice")
         self.commands = commands
 
+    def insert_snippet(self, snippet):
+        self.commands.execute("custom-menu:snippet", snippet)
+
+    def run_snippet(self, snippet):
+        self.commands.execute("custom-menu:run-snippet", snippet)
+
     def add_menu(self, title, spec, className=None) -> None:
         if title in self._menu_list:
             raise Exception(f"Menu {title} is already registered")
@@ -71,53 +77,6 @@ class CustomMenu(Widget):
                 if "sub-menu" in entry:
                     type = "submenu"
                     payload = self._compile_spec(f"{title}:{name}", entry["sub-menu"])
-                elif "external-link" in entry:
-
-                    def cmd(url):
-                        return lambda: self.commands.execute("help:open", {"url": url})
-
-                    type = "command"
-                    payload = f"custom-menu:open-url:{title}:{name}"
-                    try:
-                        self.commands.add_command(
-                            payload,
-                            execute=cmd(entry["external-link"]),
-                            label=entry["name"],
-                        )
-                    except:
-                        pass
-                elif "snippet" in entry:
-
-                    def cmd(snippet):
-                        return lambda: self.commands.execute(
-                            "custom-menu:snippet", snippet
-                        )
-
-                    type = "command"
-                    payload = f"custom-menu:snippet:{title}:{name}"
-                    try:
-                        self.commands.add_command(
-                            payload, execute=cmd(entry["snippet"]), label=entry["name"]
-                        )
-                    except:
-                        pass
-                elif "run-snippet" in entry:
-
-                    def cmd(snippet):
-                        return lambda: self.commands.execute(
-                            "custom-menu:run-snippet", snippet
-                        )
-
-                    type = "command"
-                    payload = f"custom-menu:run-snippet:{title}:{name}"
-                    try:
-                        self.commands.add_command(
-                            payload,
-                            execute=cmd(entry["run-snippet"]),
-                            label=entry["name"],
-                        )
-                    except:
-                        pass
                 elif "command" in entry:
 
                     def cmd(cmd):
