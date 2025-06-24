@@ -2,6 +2,35 @@
 
 <!-- <START NEW CHANGELOG ENTRY> -->
 
+## 1.1.0
+
+([Full Changelog](https://github.com/jtpio/ipylab/compare/v1.0.0...49d7fa229b54977359ae4779109d4c84d1b99739))
+
+### Enhancements made
+
+- Customization of menus and toolbar [#156](https://github.com/jtpio/ipylab/pull/156) ([@pictavien](https://github.com/pictavien))
+
+### Maintenance and upkeep improvements
+
+- Update releaser workflows [#157](https://github.com/jtpio/ipylab/pull/157) ([@jtpio](https://github.com/jtpio))
+- Bump cross-spawn from 6.0.5 to 6.0.6 [#152](https://github.com/jtpio/ipylab/pull/152) ([@dependabot](https://github.com/dependabot))
+- Bump markdown-to-jsx from 7.3.2 to 7.5.0 [#151](https://github.com/jtpio/ipylab/pull/151) ([@dependabot](https://github.com/dependabot))
+- Bump ws from 8.13.0 to 8.18.0 [#150](https://github.com/jtpio/ipylab/pull/150) ([@dependabot](https://github.com/dependabot))
+- Bump webpack from 5.88.2 to 5.95.0 [#149](https://github.com/jtpio/ipylab/pull/149) ([@dependabot](https://github.com/dependabot))
+- Maintenance updates [#148](https://github.com/jtpio/ipylab/pull/148) ([@jtpio](https://github.com/jtpio))
+- Bump micromatch from 4.0.5 to 4.0.8 [#146](https://github.com/jtpio/ipylab/pull/146) ([@dependabot](https://github.com/dependabot))
+- Bump postcss from 8.4.27 to 8.4.31 [#130](https://github.com/jtpio/ipylab/pull/130) ([@dependabot](https://github.com/dependabot))
+- Bump loader-utils from 2.0.2 to 2.0.4 [#127](https://github.com/jtpio/ipylab/pull/127) ([@dependabot](https://github.com/dependabot))
+- Bump semver from 5.7.1 to 5.7.2 [#122](https://github.com/jtpio/ipylab/pull/122) ([@dependabot](https://github.com/dependabot))
+
+### Contributors to this release
+
+([GitHub contributors page for this release](https://github.com/jtpio/ipylab/graphs/contributors?from=2023-08-11&to=2025-06-24&type=c))
+
+[@dependabot](https://github.com/search?q=repo%3Ajtpio%2Fipylab+involves%3Adependabot+updated%3A2023-08-11..2025-06-24&type=Issues) | [@fleming79](https://github.com/search?q=repo%3Ajtpio%2Fipylab+involves%3Afleming79+updated%3A2023-08-11..2025-06-24&type=Issues) | [@github-actions](https://github.com/search?q=repo%3Ajtpio%2Fipylab+involves%3Agithub-actions+updated%3A2023-08-11..2025-06-24&type=Issues) | [@jtpio](https://github.com/search?q=repo%3Ajtpio%2Fipylab+involves%3Ajtpio+updated%3A2023-08-11..2025-06-24&type=Issues) | [@pictavien](https://github.com/search?q=repo%3Ajtpio%2Fipylab+involves%3Apictavien+updated%3A2023-08-11..2025-06-24&type=Issues)
+
+<!-- <END NEW CHANGELOG ENTRY> -->
+
 ## 1.0.0
 
 ([Full Changelog](https://github.com/jtpio/ipylab/compare/v0.7.1...0f4e2a141ef68e7d6f3957c3250b300919b3d2d7))
@@ -20,8 +49,6 @@
 ([GitHub contributors page for this release](https://github.com/jtpio/ipylab/graphs/contributors?from=2023-03-30&to=2023-08-11&type=c))
 
 [@bollwyvl](https://github.com/search?q=repo%3Ajtpio%2Fipylab+involves%3Abollwyvl+updated%3A2023-03-30..2023-08-11&type=Issues) | [@dependabot](https://github.com/search?q=repo%3Ajtpio%2Fipylab+involves%3Adependabot+updated%3A2023-03-30..2023-08-11&type=Issues) | [@github-actions](https://github.com/search?q=repo%3Ajtpio%2Fipylab+involves%3Agithub-actions+updated%3A2023-03-30..2023-08-11&type=Issues) | [@jtpio](https://github.com/search?q=repo%3Ajtpio%2Fipylab+involves%3Ajtpio+updated%3A2023-03-30..2023-08-11&type=Issues)
-
-<!-- <END NEW CHANGELOG ENTRY> -->
 
 ## 0.7.1
 
